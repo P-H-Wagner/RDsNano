@@ -20,8 +20,13 @@
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h" //for vertex fitting!
 #include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h" //for vertex fitting!!
 #include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h" //for the vertex fitting!!
+#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h" //for the vertex fitting!!
+#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h" //for the vertex fitting!!
+#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h" //for the vertex fitting!!
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h" //for the vertex fitting!
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"//for the vertex fitting!!
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"//for the vertex fitting!!
+#include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" //for vertex fittign!!
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -383,32 +388,79 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
         //define the vector for the particles to be fitted
-        std::vector<RefCountedKinematicParticle> partToFit;
-        // add the final states
+        std::vector<RefCountedKinematicParticle> phiToFit;
+        std::vector<RefCountedKinematicParticle> dsToFit;
+        std::vector<RefCountedKinematicParticle> bsToFit;
 
-        //intermediate step
-        const reco::Track* test = piPtr->bestTrack();
-        reco::TransientTrack test2 = getTransientTrack(test);
-        
+        // add the final states
         ParticleMass piMass = 0.13957039;
         ParticleMass kMass = 0.493677;
         ParticleMass phiMass = 1.019461;
         ParticleMass dsMass = 1.86965;
+        ParticleMass muMass = 0.105658;
 
         float chi = 0.0;
         float ndf = 0.0;
         float sigma = 0.0;
-        partToFit.push_back(pFactory.particle(getTransientTrack(k1Ptr->bestTrack()),kMass,chi,ndf,sigma));
-        partToFit.push_back(pFactory.particle(getTransientTrack(k2Ptr->bestTrack()),kMass,chi,ndf,sigma));
-        partToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
+        float phiMassSigma = 0.000005; //discuss
+        float dsMassSigma = 0.00005;  //discuss
+        float muMassSigma = 0.000005;  //discuss
+
+        phiToFit.push_back(pFactory.particle(getTransientTrack(k1Ptr->bestTrack()),kMass,chi,ndf,sigma));
+        phiToFit.push_back(pFactory.particle(getTransientTrack(k2Ptr->bestTrack()),kMass,chi,ndf,sigma));
+        dsToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
+        bsToFit.push_back(pFactory.particle(getTransientTrack(muPtr->bestTrack()),muMass,chi,ndf,sigma));
 
 
-        //constraints
-        MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass);
-        //create the fitter
-        KinematicConstrainedVertexFitter kcvFitter;
-        RefCountedKinematicTree myTree = kcvFitter.fit(partToFit, phiConstr);
+        //create the vertex fitter
+        KinematicParticleVertexFitter kpvFitter;
+
+        /////////// PHI VERTEX FIT ////////////////
+        RefCountedKinematicTree phiTree = kpvFitter.fit(phiToFit);
+        //creating the particle fitter
+        KinematicParticleFitter phiFitter;
+
+        //now create the phi mass constraint
+        KinematicConstraint* phiConstr = new MassKinematicConstraint(phiMass,phiMassSigma);
+
+        //now do a constraiend fit
+        RefCountedKinematicTree phiConstrTree = phiFitter.fit(phiConstr,phiTree);       
         
+        phiConstrTree->movePointerToTheTop();
+        RefCountedKinematicParticle phiParticle = phiConstrTree->currentParticle();
+
+        //now add this particle to the pion!
+        dsToFit.push_back(phiParticle); 
+
+        //////////// DS VERTEX FIT  ///////////////
+
+        RefCountedKinematicTree dsTree = kpvFitter.fit(dsToFit);
+        KinematicParticleFitter dsFitter;
+        KinematicConstraint* dsConstr = new MassKinematicConstraint(dsMass,dsMassSigma);
+        RefCountedKinematicTree dsConstrTree = phiFitter.fit(dsConstr,dsTree);
+        dsConstrTree->movePointerToTheTop();
+        RefCountedKinematicParticle dsParticle = dsConstrTree->currentParticle();
+        bsToFit.push_back(dsParticle);
+
+        //access the parameters of the reconstructed ds (vector of size7, matrix of sie 7x7)
+        //defined /RecoVertex/KinematicFitPrimitives/interface/Matrices.h
+        AlgebraicVector7 dsParams = dsParticle->currentState().kinematicParameters().vector();
+        AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
+
+        std::cout << dsParams(0) << std::endl;
+        std::cout << dsErr(0,0) << std::endl;
+
+        bool child = dsConstrTree->movePointerToTheFirstChild();
+
+        if(child){
+        std::cout << "I have a child" <<std::endl;
+        }
+
+
+
+
+
+
         /*
         //  TODO, where are these defined?
         if( !preVtxSelection_(kkPair)) continue;

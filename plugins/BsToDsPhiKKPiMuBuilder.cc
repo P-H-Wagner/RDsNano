@@ -26,7 +26,8 @@
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h" //for the vertex fitting!
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"//for the vertex fitting!!
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"//for the vertex fitting!!
-#include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" //for vertex fittign!!
+#include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" //for vertex fitting!!
+#include "DataFormats/GeometryVector/interface/GlobalPoint.h" //for vertex fitting!!
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -111,8 +112,8 @@ private:
   const edm::InputTag primaryVtxTag;
   const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
  
-  const edm::ESInputTag ttkTag;
-  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttkToken_;
+  //const edm::ESInputTag ttkTag;
+  //const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttkToken_;
 };
 
 //define the constructor
@@ -145,12 +146,12 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     //ttrackMuonTag(iConfig.getParameter<edm::InputTag>("SelectedTransientTracks")),
     //muonTracks_(consumes<TransientTrackCollection>(ttrackMuonTag)), 
 
-    primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
-    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)),
-  
     //transienTrackBuilder
-    ttkTag(iConfig.getParameter<edm::ESInputTag>("test")),
-    ttkToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttkTag)){
+    //ttkTag(iConfig.getParameter<edm::ESInputTag>("test")),
+    //ttkToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttkTag))
+
+    primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
+    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)){
        //body of the constructor
        //define edm to be filled collections
        produces<pat::CompositeCandidateCollection>("bs");
@@ -186,7 +187,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   iEvent.getByToken(primaryVtx_,primaryVtx);
 
   //get the TransientTrackBuilder
-  const TransientTrackBuilder* theB = &iSetup.getData(ttkToken_);
+  //const TransientTrackBuilder* theB = &iSetup.getData(ttkToken_);
 
 
   // to save 
@@ -300,7 +301,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       
         //only continue when they build a phi resonance, allow 15MeV:
         if (fabs(kkPair.mass() - 1.019461) > 0.015) continue;
-        //std::cout << "this is a true phi resonance" << std::endl;
+        std::cout << "this is a true phi resonance" << std::endl;
 
         kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
         kkPair.addUserFloat("kkPairDeltaR", reco::deltaR(*k1Ptr, *k2Ptr));
@@ -315,7 +316,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //only continue when they build a phi resonance, allow 50MeV:
         if (fabs(ds.mass() - 1.9683) > 0.05) continue;
 
-        //std::cout << "this is a true ds resonance" << std::endl;
+        std::cout << "this is a true ds resonance" << std::endl;
 
         ds.setCharge(kkPair.charge() + piPtr->charge());
         ds.addUserFloat("phiPiDeltaR", reco::deltaR(kkPair, *piPtr));
@@ -396,7 +397,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ParticleMass piMass = 0.13957039;
         ParticleMass kMass = 0.493677;
         ParticleMass phiMass = 1.019461;
-        ParticleMass dsMass = 1.86965;
+        ParticleMass dsMass = 1.96834;
         ParticleMass muMass = 0.105658;
 
         float chi = 0.0;
@@ -411,244 +412,97 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
         bsToFit.push_back(pFactory.particle(getTransientTrack(muPtr->bestTrack()),muMass,chi,ndf,sigma));
 
+        // constraints
+        MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass);
+        MultiTrackKinematicConstraint* dsConstr = new TwoTrackMassKinematicConstraint(dsMass);
+        //fitter
+        KinematicConstrainedVertexFitter kcvFitter;
 
-        //create the vertex fitter
-        KinematicParticleVertexFitter kpvFitter;
+        // PHI VERTEX FIT
+        RefCountedKinematicTree phiTree = kcvFitter.fit(phiToFit, phiConstr);
+        if (!phiTree->isValid()) continue;
 
-        /////////// PHI VERTEX FIT ////////////////
-        RefCountedKinematicTree phiTree = kpvFitter.fit(phiToFit);
-        //creating the particle fitter
-        KinematicParticleFitter phiFitter;
+        phiTree->movePointerToTheTop();
+        RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
+        RefCountedKinematicVertex phiDecayVertex = phiTree->currentDecayVertex();
+        std::vector<RefCountedKinematicParticle> phiDaus = phiTree->finalStateParticles();
 
-        //now create the phi mass constraint
-        KinematicConstraint* phiConstr = new MassKinematicConstraint(phiMass,phiMassSigma);
+        std::cout << "we should have 2 of them: " << phiDaus.size() << std::endl;
 
-        //now do a constraiend fit
-        RefCountedKinematicTree phiConstrTree = phiFitter.fit(phiConstr,phiTree);       
-        
-        phiConstrTree->movePointerToTheTop();
-        RefCountedKinematicParticle phiParticle = phiConstrTree->currentParticle();
+        dsToFit.push_back(phiParticle);
 
-        //now add this particle to the pion!
-        dsToFit.push_back(phiParticle); 
 
-        //////////// DS VERTEX FIT  ///////////////
+        // DS VERTEX FIT
+        RefCountedKinematicTree dsTree = kcvFitter.fit(dsToFit, dsConstr);
+        if (!dsTree->isValid()) continue;
 
-        RefCountedKinematicTree dsTree = kpvFitter.fit(dsToFit);
-        KinematicParticleFitter dsFitter;
-        KinematicConstraint* dsConstr = new MassKinematicConstraint(dsMass,dsMassSigma);
-        RefCountedKinematicTree dsConstrTree = phiFitter.fit(dsConstr,dsTree);
-        dsConstrTree->movePointerToTheTop();
-        RefCountedKinematicParticle dsParticle = dsConstrTree->currentParticle();
+        dsTree->movePointerToTheTop();
+        RefCountedKinematicParticle dsParticle = dsTree->currentParticle();
+        RefCountedKinematicVertex dsDecayVertex = dsTree->currentDecayVertex();
         bsToFit.push_back(dsParticle);
+
+        // BS VERTEX FIT
+        RefCountedKinematicTree bsTree = kcvFitter.fit(bsToFit); // no constraint for bs bc missing momentum
+        if (!bsTree->isValid()) continue; 
+
+        bsTree->movePointerToTheTop();
+        RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
+        RefCountedKinematicVertex bsDecayVertex = bsTree->currentDecayVertex();
+
+
 
         //access the parameters of the reconstructed ds (vector of size7, matrix of sie 7x7)
         //defined /RecoVertex/KinematicFitPrimitives/interface/Matrices.h
-        AlgebraicVector7 dsParams = dsParticle->currentState().kinematicParameters().vector();
-        AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicVector7  phiParams = phiParticle->currentState().kinematicParameters().vector();
+        //AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicVector7  dsParams = dsParticle->currentState().kinematicParameters().vector();
+        //AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicVector7  bsParams = bsParticle->currentState().kinematicParameters().vector();
+        //AlgebraicMatrix77 bsErr = bsParticle->currentState().kinematicParametersError().matrix();
 
-        std::cout << dsParams(0) << std::endl;
-        std::cout << dsErr(0,0) << std::endl;
-
-        bool child = dsConstrTree->movePointerToTheFirstChild();
-
-        if(child){
-        std::cout << "I have a child" <<std::endl;
-        }
-
-
-
-
-
-
-        /*
-        //  TODO, where are these defined?
-        if( !preVtxSelection_(kkPair)) continue;
-        if( !preVtxSelection_(ds)) continue;
-        if( !preVtxSelection_(bs)) continue;
-
-      
-        // Fit the two kaon tracks
-        KinVtxFitter fitterPhi(
-          {k1Ptr->bestTrack(), k2Ptr->bestTrack()},
-          {k2Ptr->mass(), k1Ptr->mass()},
-          {LEP_SIGMA, LEP_SIGMA} //some small sigma for the particle mass ?? where are these defined?
-          );
-        if( !postVtxSelection_(kkPair) ) continue;//?
-
-        // Fit the two phi and pi track
-        KinVtxFitter fitterDs(
-          {kkPair.bestTrack(),piPtr->bestTrack()},
-          {kkPair.mass(), piPtr->mass()},
-          {LEP_SIGMA, LEP_SIGMA} //some small sigma for the particle mass ?? where are these defined?
-          );
-        if( !postVtxSelection_(dsMu) ) continue;//?
-
-        // Fit the Ds and mu track
-        KinVtxFitter fitterDsMu(
-          {ds.bestTrack(),muPtr->bestTrack()},
-          {ds.mass(), muPtr->mass()},
-          {LEP_SIGMA, LEP_SIGMA} //some small sigma for the particle mass ?? where are these defined?
-          );
-
-        if( !postVtxSelection_(dsMu) ) continue;//?
-
-        //vertuces must be valid!
-        if ((!fitterPhi.fitted_vtx().vertexIsValid()) || (!fitterDs.fitted_vtx().vertexIsValid()) || (!fitterDsMu.fitted_vtx().vertexIsValid()) ) continue;
-
+        //check if vertex position is truly at 0,1,2: result: Yes it is!
+        //double xdecay = phiDecayVertex->position().x();
+        //std::cout << xdecay << "---" << phiParams(0) << std::endl; 
+   
         // save fitter info
-        kkPair.addUserFloat("phiVtx_success", fitterPhi.success()); // float?
-        kkPair.addUserFloat("phiVtx_prob", fitterPhi.prob());
-        kkPair.addUserFloat("phiVtx_chi2", fitterPhi.chi2());
-        
-        kkPair.addUserFloat("phiVtx_position", fitterPhi.fitted_vtx().x()); //why x? 
-        kkPair.addUserFloat("phiVtx_ndof", fitterPhi.dof()); //flaot?
-        
-        auto fit_p4 = fitter.fitted_p4();
-       
-        //syntax explanation:
-        // if fitter.success() == true, return the fitter.fitted_candidate().mass(), otherwise return -1
-        kkPair.addUserFloat("phi_m"      , fitterPhi.success() ? fitterPhi.fitted_candidate().mass() : -1); 
-        kkPair.addUserFloat("phi_merr"   , fitterPhi.success() ? sqrt(fitterPhi.fitted_candidate().kinematicParametersError().matrix()(6,6)) : -1);
-        
-        kkPair.addUserFloat("phiVtx_x"   , fitterPhi.fitted_vtx().x());
-        kkPair.addUserFloat("phiVtx_y"   , fitterPhi.fitted_vtx().y());
-        kkPair.addUserFloat("phiVtx_z"   , fitterPhi.fitted_vtx().z());
-        kkPair.addUserFloat("phiVtx_ex"  , sqrt(fitterPhi.fitted_vtx_uncertainty().cxx()));
-        kkPair.addUserFloat("phiVtx_ey"  , sqrt(fitterPhi.fitted_vtx_uncertainty().cyy()));
-        kkPair.addUserFloat("phiVtx_ez"  , sqrt(fitterPhi.fitted_vtx_uncertainty().czz()));
-        kkPair.addUserFloat("phiVtx_chi2", fitterPhi.chi2());
+        bs.addUserFloat("phi_fitted_x",  phiParams(0)); 
+        bs.addUserFloat("phi_fitted_y",  phiParams(1)); 
+        bs.addUserFloat("phi_fitted_z",  phiParams(2)); 
+        bs.addUserFloat("phi_fitted_px", phiParams(3)); 
+        bs.addUserFloat("phi_fitted_py", phiParams(4)); 
+        bs.addUserFloat("phi_fitted_pz", phiParams(5)); 
+        bs.addUserFloat("phi_fitted_m",  phiParams(6)); 
 
-        kkPair.addUserFloat("phi_pt"  , fit_p4.pt());
-        kkPair.addUserFloat("phi_eta" , fit_p4.eta());
-        kkPair.addUserFloat("phi_phi" , fit_p4.phi());
-        kkPair.addUserFloat("phi_x"   , fit_p4.x());
-        kkPair.addUserFloat("phi_y"   , fit_p4.y());
-        kkPair.addUserFloat("phi_z"   , fit_p4.z());
+        bs.addUserFloat("ds_fitted_x",  dsParams(0)); 
+        bs.addUserFloat("ds_fitted_y",  dsParams(1)); 
+        bs.addUserFloat("ds_fitted_z",  dsParams(2)); 
+        bs.addUserFloat("ds_fitted_px", dsParams(3)); 
+        bs.addUserFloat("ds_fitted_py", dsParams(4)); 
+        bs.addUserFloat("ds_fitted_pz", dsParams(5)); 
+        bs.addUserFloat("ds_fitted_m",  dsParams(6)); 
 
-        kkPair.addUserFloat("k1_pt"  , fitterPhi.daughter_p4(0).pt());
-        kkPair.addUserFloat("k1_eta" , fitterPhi.daughter_p4(0).eta());
-        kkPair.addUserFloat("k1_phi" , fitterPhi.daughter_p4(0).phi());
-        kkPair.addUserFloat("k1_x"   , fitterPhi.daughter_p4(0).x());
-        kkPair.addUserFloat("k1_y"   , fitterPhi.daughter_p4(0).y());
-        kkPair.addUserFloat("k1_z"   , fitterPhi.daughter_p4(0).z());
-        kkPair.addUserFloat("k2_pt"  , fitterPhi.daughter_p4(1).pt());
-        kkPair.addUserFloat("k2_eta" , fitterPhi.daughter_p4(1).eta());
-        kkPair.addUserFloat("k2_phi" , fitterPhi.daughter_p4(1).phi());
-        kkPair.addUserFloat("k2_x"   , fitterPhi.daughter_p4(1).x());
-        kkPair.addUserFloat("k2_y"   , fitterPhi.daughter_p4(1).y());
-        kkPair.addUserFloat("k2_z"   , fitterPhi.daughter_p4(1).z());
+        bs.addUserFloat("bs_fitted_x",  bsParams(0)); 
+        bs.addUserFloat("bs_fitted_y",  bsParams(1)); 
+        bs.addUserFloat("bs_fitted_z",  bsParams(2)); 
+        bs.addUserFloat("bs_fitted_px", bsParams(3)); 
+        bs.addUserFloat("bs_fitted_py", bsParams(4)); 
+        bs.addUserFloat("bs_fitted_pz", bsParams(5)); 
+        bs.addUserFloat("bs_fitted_m",  bsParams(6)); 
+
+        // helicity angles in all possibe variations
+        // = angle between one of the kaons and the pi in the rest frame of the phi
+ 
+        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
+        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
+        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
+   
+ 
+        //float helAngle_k1 = 
+        //float helAngle_k2 = 
+        //float helAngle_k+ = 
 
 
-        kkPair.addUserFloat("phi_err00", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(0,0));
-        kkPair.addUserFloat("phi_err11", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(1,1));
-        kkPair.addUserFloat("phi_err22", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(2,2));
-        kkPair.addUserFloat("phi_err01", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(0,1));
-        kkPair.addUserFloat("phi_err02", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(0,2));
-        kkPair.addUserFloat("phi_err12", fitterPhi.fitted_candidate().kinematicParametersError().matrix()(1,2));
-      
-        Ds.addUserFloat("ds_m"      , fitterDs.success() ? fitter.fitted_candidate().mass() : -1); 
-        Ds.addUserFloat("ds_merr"   , fitterDs.success() ? sqrt(fitter.fitted_candidate().kinematicParametersError().matrix()(6,6)) : -1);
-        Ds.addUserFloat("dsVtx_x"   , fitterDs.fitted_vtx().x());
-        Ds.addUserFloat("dsVtx_y"   , fitterDs.fitted_vtx().y());
-        Ds.addUserFloat("dsVtx_z"   , fitterDs.fitted_vtx().z());
-        Ds.addUserFloat("dsVtx_ex"  , sqrt(fitterDs.fitted_vtx_uncertainty().cxx()));
-        Ds.addUserFloat("dsVtx_ey"  , sqrt(fitterDs.fitted_vtx_uncertainty().cyy()));
-        Ds.addUserFloat("dsVtx_ez"  , sqrt(fitterDs.fitted_vtx_uncertainty().czz()));
-        Ds.addUserFloat("dsVtx_chi2", fitterDs.chi2());
 
-        Ds.addUserFloat("ds_pt"  , fit_p4.pt());
-        Ds.addUserFloat("ds_eta" , fit_p4.eta());
-        Ds.addUserFloat("ds_phi" , fit_p4.phi());
-        Ds.addUserFloat("ds_x"   , fit_p4.x());
-        Ds.addUserFloat("ds_y"   , fit_p4.y());
-        Ds.addUserFloat("ds_z"   , fit_p4.z());
-
-        Ds.addUserFloat("phi_pt"  , fitterDs.daughter_p4(0).pt());
-        Ds.addUserFloat("phi_eta" , fitterDs.daughter_p4(0).eta());
-        Ds.addUserFloat("phi_phi" , fitterDs.daughter_p4(0).phi());
-        Ds.addUserFloat("phi_x"   , fitterDs.daughter_p4(0).x());
-        Ds.addUserFloat("phi_y"   , fitterDs.daughter_p4(0).y());
-        Ds.addUserFloat("phi_z"   , fitterDs.daughter_p4(0).z());
-        Ds.addUserFloat("pi_pt"  , fitterDs.daughter_p4(1).pt());
-        Ds.addUserFloat("pi_eta" , fitterDs.daughter_p4(1).eta());
-        Ds.addUserFloat("pi_phi" , fitterDs.daughter_p4(1).phi());
-        Ds.addUserFloat("pi_x"   , fitterDs.daughter_p4(1).x());
-        Ds.addUserFloat("pi_y"   , fitterDs.daughter_p4(1).y());
-        Ds.addUserFloat("pi_z"   , fitterDs.daughter_p4(1).z());
-
-
-        Ds.addUserFloat("ds_err00", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,0));
-        Ds.addUserFloat("ds_err11", fitterDs.fitted_candidate().kinematicParametersError().matrix()(1,1));
-        Ds.addUserFloat("ds_err22", fitterDs.fitted_candidate().kinematicParametersError().matrix()(2,2));
-        Ds.addUserFloat("ds_err01", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,1));
-        Ds.addUserFloat("ds_err02", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,2));
-        Ds.addUserFloat("ds_err12", fitterDs.fitted_candidate().kinematicParametersError().matrix()(1,2));
-      
-        dsMu.addUserFloat("dsMu_m"      , fitterDs.success() ? fitter.fitted_candidate().mass() : -1); 
-        dsMu.addUserFloat("dsMu_merr"   , fitterDs.success() ? sqrt(fitter.fitted_candidate().kinematicParametersError().matrix()(6,6)) : -1);
-        dsMu.addUserFloat("dsMuVtx_x"   , fitterDs.fitted_vtx().x());
-        dsMu.addUserFloat("dsMuVtx_y"   , fitterDs.fitted_vtx().y());
-        dsMu.addUserFloat("dsMuVtx_z"   , fitterDs.fitted_vtx().z());
-        dsMu.addUserFloat("dsMuVtx_ex"  , sqrt(fitterDs.fitted_vtx_uncertainty().cxx()));
-        dsMu.addUserFloat("dsMuVtx_ey"  , sqrt(fitterDs.fitted_vtx_uncertainty().cyy()));
-        dsMu.addUserFloat("dsMuVtx_ez"  , sqrt(fitterDs.fitted_vtx_uncertainty().czz()));
-        dsMu.addUserFloat("dsMuVtx_chi2", fitterDs.chi2());
-
-        dsMu.addUserFloat("dsMu_pt"  , fit_p4.pt());
-        dsMu.addUserFloat("dsMu_eta" , fit_p4.eta());
-        dsMu.addUserFloat("dsMu_phi" , fit_p4.phi());
-        dsMu.addUserFloat("dsMu_x"   , fit_p4.x());
-        dsMu.addUserFloat("dsMu_y"   , fit_p4.y());
-        dsMu.addUserFloat("dsMu_z"   , fit_p4.z());
-
-        dsMu.addUserFloat("dsMu_pt"  , fitterDs.daughter_p4(0).pt());
-        dsMu.addUserFloat("dsMu_eta" , fitterDs.daughter_p4(0).eta());
-        dsMu.addUserFloat("dsMu_phi" , fitterDs.daughter_p4(0).phi());
-        dsMu.addUserFloat("dsMu_x"   , fitterDs.daughter_p4(0).x());
-        dsMu.addUserFloat("dsMu_y"   , fitterDs.daughter_p4(0).y());
-        dsMu.addUserFloat("dsMu_z"   , fitterDs.daughter_p4(0).z());
-        dsMu.addUserFloat("dsMu_pt"  , fitterDs.daughter_p4(1).pt());
-        dsMu.addUserFloat("dsMu_eta" , fitterDs.daughter_p4(1).eta());
-        dsMu.addUserFloat("dsMu_phi" , fitterDs.daughter_p4(1).phi());
-        dsMu.addUserFloat("dsMu_x"   , fitterDs.daughter_p4(1).x());
-        dsMu.addUserFloat("dsMu_y"   , fitterDs.daughter_p4(1).y());
-        dsMu.addUserFloat("dsMu_z"   , fitterDs.daughter_p4(1).z());
-
-
-        dsMu.addUserFloat("dsMu_err00", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,0));
-        dsMu.addUserFloat("dsMu_err11", fitterDs.fitted_candidate().kinematicParametersError().matrix()(1,1));
-        dsMu.addUserFloat("dsMu_err22", fitterDs.fitted_candidate().kinematicParametersError().matrix()(2,2));
-        dsMu.addUserFloat("dsMu_err01", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,1));
-        dsMu.addUserFloat("dsMu_err02", fitterDs.fitted_candidate().kinematicParametersError().matrix()(0,2));
-        dsMu.addUserFloat("dsMu_err12", fitterDs.fitted_candidate().kinematicParametersError().matrix()(1,2));
-
-        //calculate the decay lenght of the phi in the transverse plane 
-         
-        const reco::GlobalPoint& phiPosi =  fitterPhi.fitted_vtx().position();
-        const reco::GlobalPoint& dsPosi  =  fitterDs.fitted_vtx().position(); 
-
-        reco::GlobalPoint lxyzPosi = phiPosi - dsPosi;
-        reco::GlobalPoint lxyPosi = (lxyzPosi.x(),lxyzPosi.y(),0.0);
-
-        kkPair.addUserFloat("phiLxyz",lxyzPosi.mag());
-        kkPair.addUserFloat("phiLxy",lxyPosi.mag());
-
-        // if needed, add here more stuff
-        // cut on the SV info
-        // const reco::TransientTrack& fitted_candidate_ttrk()
-        if(!fitter.fitted_candidate_ttrk().isValid()) continue;
-        const reco::TransientTrack& dimuonTT = fitter.fitted_candidate_ttrk();
-        int pvIdx = getPVIdx(vertices, dimuonTT);
-        
-  
-        dimuon_tt->emplace_back(fitter.fitted_candidate_ttrk());
-        //ret_value->push_back(muon_pair);
-        */
-
-        //kkPair.addUserFloat("sumpt"  , k1NewPtr->pt() + k2NewPtr->pt());
-
-        //std::cout << iEvent.id().event() << std::endl;
         //std::cout << bs.pt() << std::endl;
 
         ret_value->emplace_back(bs);

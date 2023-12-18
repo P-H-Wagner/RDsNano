@@ -25,6 +25,14 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         bs_charge = Var("charge()",float),
         bs_pdgId = Var("pdgId()",int),
 
+        bs_fitted_x = Var("userFloat('bs_fitted_x')",float),
+        bs_fitted_y = Var("userFloat('bs_fitted_y')",float),
+        bs_fitted_z = Var("userFloat('bs_fitted_z')",float),
+        bs_fitted_px = Var("userFloat('bs_fitted_px')",float),
+        bs_fitted_py = Var("userFloat('bs_fitted_py')",float),
+        bs_fitted_pz = Var("userFloat('bs_fitted_pz')",float),
+        bs_fitted_m =  Var("userFloat('bs_fitted_m')",float),
+
         k1_pt = Var("userCand('k1').pt()",float),
         k1_eta = Var("userCand('k1').eta()",float),
         k1_phi = Var("userCand('k1').phi()",float),
@@ -59,6 +67,14 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         phi_mass = Var("userFloat('phi_mass')",float),
         phi_charge = Var("userFloat('phi_charge')",float),
 
+        phi_fitted_x = Var("userFloat('phi_fitted_x')",float),
+        phi_fitted_y = Var("userFloat('phi_fitted_y')",float),
+        phi_fitted_z = Var("userFloat('phi_fitted_z')",float),
+        phi_fitted_px = Var("userFloat('phi_fitted_px')",float),
+        phi_fitted_py = Var("userFloat('phi_fitted_py')",float),
+        phi_fitted_pz = Var("userFloat('phi_fitted_pz')",float),
+        phi_fitted_m =  Var("userFloat('phi_fitted_m')",float),
+
         ds_pt = Var("userFloat('ds_pt')",float),
         ds_eta = Var("userFloat('ds_eta')",float),
         ds_phi = Var("userFloat('ds_phi')",float),
@@ -71,6 +87,13 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         dsMu_mass = Var("userFloat('dsMu_mass')",float),
         dsMu_charge = Var("userFloat('dsMu_charge')",float),
 
+        ds_fitted_x = Var("userFloat('ds_fitted_x')",float),
+        ds_fitted_y = Var("userFloat('ds_fitted_y')",float),
+        ds_fitted_z = Var("userFloat('ds_fitted_z')",float),
+        ds_fitted_px = Var("userFloat('ds_fitted_px')",float),
+        ds_fitted_py = Var("userFloat('ds_fitted_py')",float),
+        ds_fitted_pz = Var("userFloat('ds_fitted_pz')",float),
+        ds_fitted_m =  Var("userFloat('ds_fitted_m')",float),
 
         piMu_charge = uint("piMuCharge"),
         kk_charge = uint("kkCharge"),

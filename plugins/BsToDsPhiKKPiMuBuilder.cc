@@ -16,6 +16,12 @@
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h" // for the vertex fitting!
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h" //for vertex fitting!
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h" //for vertex fitting!
+#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h" //for vertex fitting!
+#include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h" //for vertex fitting!!
+#include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h" //for the vertex fitting!!
+#include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"//for the vertex fitting!!
+#include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"//for the vertex fitting!!
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -25,6 +31,9 @@
 #include <algorithm>
 //#include "KinVtxFitter.h" --> not needed now 
 #include "helper.h" // ---> for now!!
+
+//B field
+#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
 
 class BsToDsPhiKKPiMuBuilder : public edm::global::EDProducer<> {
 
@@ -41,9 +50,26 @@ public:
   int  getPVIdx(const reco::VertexCollection*,const reco::TransientTrack&) const;
 
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions) {}
-  
+
+  //function which produces a transient Track out of a track reference
+  //reco::TransientTrack getTransientTrack(const reco::TrackRef& trackRef) {    
+  //    reco::TransientTrack transientTrack(trackRef, paramField);
+  //    return transientTrack;
+  //  }  
+
+  //must be constant as it takes constant arguments!! otherwise compiler rises an error
+  //because it thinks it may modify the input!!
+  reco::TransientTrack getTransientTrack(const reco::Track* track) const {    
+      reco::TransientTrack transientTrack(*track, paramField);
+
+      return transientTrack;
+    }
+
 
 private:
+  
+  //Bfield
+  OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
   //cuts 
   //const StringCutObjectSelector<pat::PackedCandidate> k1Selection_; // cut on k1
@@ -354,7 +380,36 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //float helAngle_k2 = 
         //float helAngle_k+ = 
 
-         /*
+        //define a factory
+        KinematicParticleFactoryFromTransientTrack pFactory;
+        //define the vector for the particles to be fitted
+        std::vector<RefCountedKinematicParticle> partToFit;
+        // add the final states
+
+        //intermediate step
+        const reco::Track* test = piPtr->bestTrack();
+        reco::TransientTrack test2 = getTransientTrack(test);
+        
+        ParticleMass piMass = 0.13957039;
+        ParticleMass kMass = 0.493677;
+        ParticleMass phiMass = 1.019461;
+        ParticleMass dsMass = 1.86965;
+
+        float chi = 0.0;
+        float ndf = 0.0;
+        float sigma = 0.0;
+        partToFit.push_back(pFactory.particle(getTransientTrack(k1Ptr->bestTrack()),kMass,chi,ndf,sigma));
+        partToFit.push_back(pFactory.particle(getTransientTrack(k2Ptr->bestTrack()),kMass,chi,ndf,sigma));
+        partToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
+
+
+        //constraints
+        MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass);
+        //create the fitter
+        KinematicConstrainedVertexFitter kcvFitter;
+        RefCountedKinematicTree myTree = kcvFitter.fit(partToFit, phiConstr);
+        
+        /*
         //  TODO, where are these defined?
         if( !preVtxSelection_(kkPair)) continue;
         if( !preVtxSelection_(ds)) continue;

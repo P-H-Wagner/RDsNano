@@ -14,6 +14,8 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "CommonTools/Statistics/interface/ChiSquaredProbability.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h" // for the vertex fitting!
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h" //for vertex fitting!
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -77,7 +79,9 @@ private:
 
   const edm::InputTag primaryVtxTag;
   const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
-
+ 
+  const edm::ESInputTag ttkTag;
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttkToken_;
 };
 
 //define the constructor
@@ -111,7 +115,11 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     //muonTracks_(consumes<TransientTrackCollection>(ttrackMuonTag)), 
 
     primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
-    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)){
+    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)),
+  
+    //transienTrackBuilder
+    ttkTag(iConfig.getParameter<edm::ESInputTag>("test")),
+    ttkToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttkTag)){
        //body of the constructor
        //define edm to be filled collections
        produces<pat::CompositeCandidateCollection>("bs");
@@ -145,6 +153,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   edm::Handle<reco::VertexCollection> primaryVtx;
   iEvent.getByToken(primaryVtx_,primaryVtx);
+
+  //get the TransientTrackBuilder
+  const TransientTrackBuilder* theB = &iSetup.getData(ttkToken_);
+
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> ret_value(new pat::CompositeCandidateCollection());

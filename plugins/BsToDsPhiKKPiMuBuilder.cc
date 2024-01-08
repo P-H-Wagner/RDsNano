@@ -35,9 +35,10 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include <limits>
 #include <algorithm>
-//#include "KinVtxFitter.h" --> not needed now 
+#include "KinVtxFitter.h" //--> not needed now 
 #include "helper.h" // ---> for now!!
-
+//#include "PxPyPzMVector.h" // to new :(
+#include "TLorentzVector.h" // use this instead 
 //B field
 #include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
 
@@ -301,7 +302,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       
         //only continue when they build a phi resonance, allow 15MeV:
         if (fabs(kkPair.mass() - 1.019461) > 0.015) continue;
-        std::cout << "this is a true phi resonance" << std::endl;
 
         kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
         kkPair.addUserFloat("kkPairDeltaR", reco::deltaR(*k1Ptr, *k2Ptr));
@@ -316,7 +316,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //only continue when they build a phi resonance, allow 50MeV:
         if (fabs(ds.mass() - 1.9683) > 0.05) continue;
 
-        std::cout << "this is a true ds resonance" << std::endl;
 
         ds.setCharge(kkPair.charge() + piPtr->charge());
         ds.addUserFloat("phiPiDeltaR", reco::deltaR(kkPair, *piPtr));
@@ -386,14 +385,26 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //float helAngle_k2 = 
         //float helAngle_k+ = 
 
+        //easy fit as a sanity check
+        //KinVtxFitter easyFitter(
+        //{getTransientTrack(k1Ptr->bestTrack()), getTransientTrack(k2Ptr->bestTrack())},
+        //{K_MASS, K_MASS},
+        //{0.00005,0.00005} //some small sigma for the lepton mass
+        //);
+        //if(!easyFitter.success()) continue;
+        //std::cout << "phi easy fit vx: " << fitter.fitted_vtx().x() << std::endl;
+        //std::cout << "phi easy fit vy: " << fitter.fitted_vtx().y() << std::endl;
+        //std::cout << "phi easy fit vz: " << fitter.fitted_vtx().z() << std::endl;
+
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
+
         //define the vector for the particles to be fitted
         std::vector<RefCountedKinematicParticle> phiToFit;
         std::vector<RefCountedKinematicParticle> dsToFit;
         std::vector<RefCountedKinematicParticle> bsToFit;
 
-        // add the final states
+        // add masses
         ParticleMass piMass = 0.13957039;
         ParticleMass kMass = 0.493677;
         ParticleMass phiMass = 1.019461;
@@ -402,8 +413,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float chi = 0.0;
         float ndf = 0.0;
-        float sigma = 0.0;
-        float phiMassSigma = 0.000005; //discuss
+        float sigma = 0.00005;
+        float phiMassSigma = 0.000005; //fine, something small
         float dsMassSigma = 0.00005;  //discuss
         float muMassSigma = 0.000005;  //discuss
 
@@ -412,59 +423,90 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
         bsToFit.push_back(pFactory.particle(getTransientTrack(muPtr->bestTrack()),muMass,chi,ndf,sigma));
 
-        // constraints
+        /////////////////////////////// global fitter ///////////////////////////////////////
+
+        // define fitter
+        KinematicConstrainedVertexFitter phiFitter;
+        // define cosntraints
         MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass);
         MultiTrackKinematicConstraint* dsConstr = new TwoTrackMassKinematicConstraint(dsMass);
-        //fitter
-        KinematicConstrainedVertexFitter kcvFitter;
 
         // PHI VERTEX FIT
-        RefCountedKinematicTree phiTree = kcvFitter.fit(phiToFit, phiConstr);
-        if (!phiTree->isValid()) continue;
+        RefCountedKinematicTree phiTree = phiFitter.fit(phiToFit, phiConstr);
+        if (!phiTree->isValid()) continue; //check if fit result is valid
 
+        //access the fitted resonance and the refitted children
         phiTree->movePointerToTheTop();
         RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
-        RefCountedKinematicVertex phiDecayVertex = phiTree->currentDecayVertex();
-        std::vector<RefCountedKinematicParticle> phiDaus = phiTree->finalStateParticles();
+        phiTree->movePointerToTheFirstChild();
+        RefCountedKinematicParticle phiDau1 = phiTree->currentParticle();
+        phiTree->movePointerToTheNextChild();
+        RefCountedKinematicParticle phiDau2 = phiTree->currentParticle();
 
-        std::cout << "we should have 2 of them: " << phiDaus.size() << std::endl;
-
+        // get the vectors full of fit information (vertex and momenta and mass)
+        AlgebraicVector7 phiParams = phiParticle->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 phiDau1Params = phiDau1->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 phiDau2Params = phiDau2->currentState().kinematicParameters().vector();
+     
+        // add the phi to the list of particles (pi) to fit the ds 
         dsToFit.push_back(phiParticle);
 
-
         // DS VERTEX FIT
-        RefCountedKinematicTree dsTree = kcvFitter.fit(dsToFit, dsConstr);
-        if (!dsTree->isValid()) continue;
+        KinematicConstrainedVertexFitter dsFitter; //check --> define new fitter?
 
+        RefCountedKinematicTree dsTree = dsFitter.fit(dsToFit, dsConstr);
+        if (!dsTree->isValid()) continue; //check if fit result is valid
+
+        // access the fitted resonance and the refitted children
         dsTree->movePointerToTheTop();
         RefCountedKinematicParticle dsParticle = dsTree->currentParticle();
-        RefCountedKinematicVertex dsDecayVertex = dsTree->currentDecayVertex();
+        RefCountedKinematicVertex dsDecayVertex = dsTree->currentDecayVertex(); //compare to the access via AlgebraicVector7
+        dsTree->movePointerToTheFirstChild();
+        RefCountedKinematicParticle dsDau1 = dsTree->currentParticle();
+        dsTree->movePointerToTheNextChild();
+        RefCountedKinematicParticle dsDau2 = dsTree->currentParticle();
+
+        // get the vectors full of fit information (vertex and momenta and mass)
+        AlgebraicVector7 dsParams = dsParticle->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 dsDau1Params = dsDau1->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 dsDau2Params = dsDau2->currentState().kinematicParameters().vector();
+
+        // add the ds to the list of particles to fit the bs
         bsToFit.push_back(dsParticle);
-
+        
         // BS VERTEX FIT
-        RefCountedKinematicTree bsTree = kcvFitter.fit(bsToFit); // no constraint for bs bc missing momentum
-        if (!bsTree->isValid()) continue; 
+        KinematicConstrainedVertexFitter bsFitter;
 
+        RefCountedKinematicTree bsTree = bsFitter.fit(bsToFit); // no constraint for bs because missing momentum
+        if (!bsTree->isValid()) continue; //check if fit result is valid 
+
+        // access the fitted resonance and the refitted children
         bsTree->movePointerToTheTop();
         RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
         RefCountedKinematicVertex bsDecayVertex = bsTree->currentDecayVertex();
+        bsTree->movePointerToTheFirstChild();
+        RefCountedKinematicParticle bsDau1 = bsTree->currentParticle();
+        bsTree->movePointerToTheNextChild();
+        RefCountedKinematicParticle bsDau2 = bsTree->currentParticle();
 
+        // get the vectors full of fit information (vertex and momenta and mass)
+        AlgebraicVector7 bsParams = bsParticle->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
+        AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
+        //////////////////////////////////// end of global fitter /////////////////////////////////////
 
-        //access the parameters of the reconstructed ds (vector of size7, matrix of sie 7x7)
-        //defined /RecoVertex/KinematicFitPrimitives/interface/Matrices.h
-        AlgebraicVector7  phiParams = phiParticle->currentState().kinematicParameters().vector();
         //AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
-        AlgebraicVector7  dsParams = dsParticle->currentState().kinematicParameters().vector();
         //AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
-        AlgebraicVector7  bsParams = bsParticle->currentState().kinematicParameters().vector();
         //AlgebraicMatrix77 bsErr = bsParticle->currentState().kinematicParametersError().matrix();
-
         //check if vertex position is truly at 0,1,2: result: Yes it is!
         //double xdecay = phiDecayVertex->position().x();
-        //std::cout << xdecay << "---" << phiParams(0) << std::endl; 
-   
+
         // save fitter info
+        // Remark: fitted describes the first fit, refitted describes the refit due to daughters.
+        // TODO: In the end its sequential, and not fitting all at the same time.. maybe there is a possibility? -> keep looking around
+        // TODO: Double check if the order of daughters is kept according to the **ToFit vectors -> include sanity checks
+
         bs.addUserFloat("phi_fitted_x",  phiParams(0)); 
         bs.addUserFloat("phi_fitted_y",  phiParams(1)); 
         bs.addUserFloat("phi_fitted_z",  phiParams(2)); 
@@ -472,6 +514,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("phi_fitted_py", phiParams(4)); 
         bs.addUserFloat("phi_fitted_pz", phiParams(5)); 
         bs.addUserFloat("phi_fitted_m",  phiParams(6)); 
+
+        bs.addUserFloat("k1_refitted_x",  phiDau1Params(0)); 
+        bs.addUserFloat("k1_refitted_y",  phiDau1Params(1)); 
+        bs.addUserFloat("k1_refitted_z",  phiDau1Params(2)); 
+        bs.addUserFloat("k1_refitted_px", phiDau1Params(3)); 
+        bs.addUserFloat("k1_refitted_py", phiDau1Params(4)); 
+        bs.addUserFloat("k1_refitted_pz", phiDau1Params(5)); 
+        bs.addUserFloat("k1_refitted_m",  phiDau1Params(6)); 
+
+        bs.addUserFloat("k2_refitted_x",  phiDau2Params(0)); 
+        bs.addUserFloat("k2_refitted_y",  phiDau2Params(1)); 
+        bs.addUserFloat("k2_refitted_z",  phiDau2Params(2)); 
+        bs.addUserFloat("k2_refitted_px", phiDau2Params(3)); 
+        bs.addUserFloat("k2_refitted_py", phiDau2Params(4)); 
+        bs.addUserFloat("k2_refitted_pz", phiDau2Params(5)); 
+        bs.addUserFloat("k2_refitted_m",  phiDau2Params(6)); 
 
         bs.addUserFloat("ds_fitted_x",  dsParams(0)); 
         bs.addUserFloat("ds_fitted_y",  dsParams(1)); 
@@ -481,6 +539,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_pz", dsParams(5)); 
         bs.addUserFloat("ds_fitted_m",  dsParams(6)); 
 
+        bs.addUserFloat("pi_fitted_x",  dsDau1Params(0)); 
+        bs.addUserFloat("pi_fitted_y",  dsDau1Params(1)); 
+        bs.addUserFloat("pi_fitted_z",  dsDau1Params(2)); 
+        bs.addUserFloat("pi_fitted_px", dsDau1Params(3)); 
+        bs.addUserFloat("pi_fitted_py", dsDau1Params(4)); 
+        bs.addUserFloat("pi_fitted_pz", dsDau1Params(5)); 
+        bs.addUserFloat("pi_fitted_m",  dsDau1Params(6)); 
+
+        bs.addUserFloat("phi_refitted_x",  dsDau2Params(0)); 
+        bs.addUserFloat("phi_refitted_y",  dsDau2Params(1)); 
+        bs.addUserFloat("phi_refitted_z",  dsDau2Params(2)); 
+        bs.addUserFloat("phi_refitted_px", dsDau2Params(3)); 
+        bs.addUserFloat("phi_refitted_py", dsDau2Params(4)); 
+        bs.addUserFloat("phi_refitted_pz", dsDau2Params(5)); 
+        bs.addUserFloat("phi_refitted_m",  dsDau2Params(6)); 
+
         bs.addUserFloat("bs_fitted_x",  bsParams(0)); 
         bs.addUserFloat("bs_fitted_y",  bsParams(1)); 
         bs.addUserFloat("bs_fitted_z",  bsParams(2)); 
@@ -489,19 +563,52 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_fitted_pz", bsParams(5)); 
         bs.addUserFloat("bs_fitted_m",  bsParams(6)); 
 
+        bs.addUserFloat("mu_fitted_x",  bsDau1Params(0)); 
+        bs.addUserFloat("mu_fitted_y",  bsDau1Params(1)); 
+        bs.addUserFloat("mu_fitted_z",  bsDau1Params(2)); 
+        bs.addUserFloat("mu_fitted_px", bsDau1Params(3)); 
+        bs.addUserFloat("mu_fitted_py", bsDau1Params(4)); 
+        bs.addUserFloat("mu_fitted_pz", bsDau1Params(5)); 
+        bs.addUserFloat("mu_fitted_m",  bsDau1Params(6)); 
+
+        bs.addUserFloat("ds_refitted_x",  bsDau2Params(0)); 
+        bs.addUserFloat("ds_refitted_y",  bsDau2Params(1)); 
+        bs.addUserFloat("ds_refitted_z",  bsDau2Params(2)); 
+        bs.addUserFloat("ds_refitted_px", bsDau2Params(3)); 
+        bs.addUserFloat("ds_refitted_py", bsDau2Params(4)); 
+        bs.addUserFloat("ds_refitted_pz", bsDau2Params(5)); 
+        bs.addUserFloat("ds_refitted_m",  bsDau2Params(6)); 
+
+        float lxyDs = std::sqrt(std::pow((bsParams(0) - dsParams(0)),2) + std::pow((bsParams(1) - dsParams(1)),2) ); 
+        std::cout << "lxy(ds)" << lxyDs << std::endl; 
+
+
         // helicity angles in all possibe variations
         // = angle between one of the kaons and the pi in the rest frame of the phi
- 
-        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
-        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
-        //math::PxPyPzMLorentzVector fittedPhiP4(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
-   
- 
+  
+        //fitted resonances
+        TLorentzVector fittedPhi;
+        TLorentzVector fittedDs;
+        TLorentzVector fittedBs;
+
+        fittedPhi.SetXYZM(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
+        fittedDs.SetXYZM(dsParams(3), dsParams(4), dsParams(5), dsParams(6));
+        fittedBs.SetXYZM(bsParams(3), bsParams(4), bsParams(5), bsParams(6));
+
+        //refitted final states
+        TLorentzVector refittedK1;
+        TLorentzVector refittedK2;
+        TLorentzVector refittedPi;
+        TLorentzVector refittedMu;
+
+        refittedK1.SetXYZM(phiDau1Params(3), phiDau1Params(4), phiDau1Params(5), phiDau1Params(6));
+        refittedK2.SetXYZM(phiDau2Params(3), phiDau2Params(4), phiDau2Params(5), phiDau2Params(6));
+        refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
+        refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
+
         //float helAngle_k1 = 
         //float helAngle_k2 = 
         //float helAngle_k+ = 
-
-
 
         //std::cout << bs.pt() << std::endl;
 

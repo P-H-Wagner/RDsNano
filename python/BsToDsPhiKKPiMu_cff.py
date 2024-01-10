@@ -14,6 +14,29 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     pfCand = cms.InputTag('packedPFCandidates'),
     muCand = cms.InputTag('muonTrgSelector', 'trgMuons'),
     pvCand = cms.InputTag("offlineSlimmedPrimaryVertices"),
+    hadSelection = cms.string(' &&  '.join([
+'pdgId != 11',
+'pdgId != 13',
+'charge != 0',
+'pt > 1.0', 
+'eta > -2.4',
+'eta < 2.4',
+'hasTrackDetails'
+
+])), # pre-selection of hadrons (k1,k2 and pion)
+maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
+mindRHadMuon = cms.double(0.005),     # min dR "
+maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv
+phiMassAllowance = cms.double(0.015), # allow 15 MeV when collecting candidates for phi 
+dsMassAllowance = cms.double(0.05),   # allow 50 MeV when collecting candidates for ds
+
+piMass = cms.double(0.13957039),      # pi mass
+kMass = cms.double(0.493677),         # kaon mass
+phiMass = cms.double(1.019461),       # phi mass
+dsMass = cms.double(1.96834),         # ds mass
+muMass = cms.double(0.105658),        # mu mass
+bsMass = cms.double(5.36688)          # bs mass
+
 )
 
 #BsToDsPhiKKPiMuTableVariables = TableDefaultVariables.clone()

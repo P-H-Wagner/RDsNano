@@ -32,22 +32,23 @@ process.Timing = cms.Service("Timing",
 )
 
 #load all the chosen options
-#process.MessageLogger.cerr.FwkReport.reportEvery = 10
+process.MessageLogger.cerr.FwkReport.reportEvery = 1
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(30)
 )
 
 # Input source
 
-filenames = os.listdir('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/')
-inputfiles = ['file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' + filename for filename in filenames ]
+filenames = os.listdir('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/')
+inputfiles = ['file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' + filename for filename in filenames ]
+inputfiles = inputfiles[0:2]
 
-print(inputfiles)
+#print(inputfiles)
 
 process.source = cms.Source(
     "PoolSource",
-    #fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/inclusive_HbToDsPhiKKPiMuNu_0.root'), #includes all processes, sig and bkg
-    fileNames = cms.untracked.vstring('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
+    fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
+    #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
     secondaryFileNames = cms.untracked.vstring(),
 )
 
@@ -73,8 +74,8 @@ process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
         dataTier = cms.untracked.string('NANOAOD'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:/scratch/pahwagne/nanoAOD/test.root' ),
-    #fileName = cms.untracked.string('file:/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanotest.root'), #used for local tests
+    #fileName = cms.untracked.string('file:/scratch/pahwagne/nanoAOD/test.root' ),
+    fileName = cms.untracked.string('file:/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanotest.root'), #used for local tests
     outputCommands = cms.untracked.vstring(
       'drop *',
       "keep nanoaodFlatTable_*Table_*_*",     # event data
@@ -97,7 +98,7 @@ process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run onl
 
 # Path and EndPath definitions
 process.nanoAOD_Bs_step= cms.Path(process.nanoSequence  + process.nanoBsToDsPhiKKPiMuSequence)
-#process.nanoAOD_Bs_step= cms.Path(process.nanoSequence) ##run only Trigger.cc for debugging
+#process.nanoAOD_Bs_step= cms.Path(process.nanoSequence) ## to run only Trigger.cc for debugging
 
 process.endjob_step = cms.EndPath(process.endOfProcess)
 
@@ -118,8 +119,9 @@ process.NANOAODoutput.SelectEvents = cms.untracked.PSet(
 )
 
 ## multicore, I hope this does not screw everything up
-process.options.numberOfThreads=cms.untracked.uint32(8)
-process.options.numberOfStreams=cms.untracked.uint32(0)
+## must be consistent with the cpu number of the batch submission!
+#process.options.numberOfThreads=cms.untracked.uint32(8)
+#process.options.numberOfStreams=cms.untracked.uint32(0)
 
 
 # ?? 

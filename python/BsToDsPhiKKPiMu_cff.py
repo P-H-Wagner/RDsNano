@@ -14,6 +14,8 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     pfCand = cms.InputTag('packedPFCandidates'),
     muCand = cms.InputTag('muonTrgSelector', 'trgMuons'),
     pvCand = cms.InputTag("offlineSlimmedPrimaryVertices"),
+    prunedCand = cms.InputTag("prunedGenParticles"),
+    packedCand = cms.InputTag("packedGenParticles"),
     hadSelection = cms.string(' &&  '.join([
 'pdgId != 11',
 'pdgId != 13',
@@ -21,9 +23,7 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'pt > 1.0', 
 'eta > -2.4',
 'eta < 2.4',
-'hasTrackDetails'
-
-])), # pre-selection of hadrons (k1,k2 and pion)
+'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv

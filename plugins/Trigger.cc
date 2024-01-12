@@ -122,7 +122,7 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
 void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
    
 
-  std::cout << iEvent.id().event() << std::endl;
+  //std::cout << iEvent.id().event() << std::endl;
 
   //Define handles
   //edm::ESHandle<MagneticField> bFieldHandle;
@@ -303,7 +303,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             //std::cout<<" Yes, it is matched and saved :)!" << std::endl;
 
             ++counter;
-            std::cout <<  "counted:" << counter << std::endl;   
+            //std::cout <<  "counted:" << counter << std::endl;   
 
       }
   } //close the loop over pat muons

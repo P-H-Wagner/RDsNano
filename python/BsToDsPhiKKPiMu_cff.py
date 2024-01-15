@@ -24,6 +24,11 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'eta > -2.4',
 'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
+    hadSelectionGen = cms.string(' &&  '.join([
+'charge != 0',
+'pt > 1.0', 
+'eta > -2.4',
+'eta < 2.4'])), # pre-selection of hadrons (k1,k2 and pion)
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv

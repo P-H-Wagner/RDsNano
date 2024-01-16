@@ -51,9 +51,10 @@
 
 // function which checks if a genParticle has a certain ancestor 
 bool isAncestor(const auto dau, const int id){
-
-  if (fabs(dau->pdgId()) == id) return true;
-
+  //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
+  if (fabs(dau->pdgId()) == id){ 
+    return true;
+    }
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
     if (isAncestor(dau->mother(momIdx), id)) return true;  
   }
@@ -75,11 +76,7 @@ std::vector<double> ptEtaPhiAncestor(const auto dau, const int id){
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
     if (isAncestor(dau->mother(momIdx), id)) {
-
-      std::vector<double> ptEtaPhi;
-      ptEtaPhi.push_back(dau->pt());
-      ptEtaPhi.push_back(dau->eta());
-      ptEtaPhi.push_back(dau->phi());
+      std::vector<double> ptEtaPhi = ptEtaPhiAncestor(dau->mother(momIdx),id);
       return ptEtaPhi;
     }
   }
@@ -119,13 +116,14 @@ private:
 
   //cuts 
   const StringCutObjectSelector<pat::PackedCandidate> hadSelection_; // cut on hadrons
-  const StringCutObjectSelector<reco::GenParticle> hadSelectionGen_; // cut on gen hadrons
+  const StringCutObjectSelector<pat::PackedGenParticle> hadSelectionGen_; // cut on gen hadrons
 
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
   const double maxdzDiffHadMuon_; 
   const double phiMassAllowance_;
   const double dsMassAllowance_;
+  const double drMatchGen_;
   const double piMass_;
   const double kMass_;
   const double phiMass_;
@@ -168,7 +166,8 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     maxdzDiffHadMuon_(iConfig.getParameter<double>("maxdzDiffHadMuon")),
     phiMassAllowance_(iConfig.getParameter<double>("phiMassAllowance")),
     dsMassAllowance_(iConfig.getParameter<double>("dsMassAllowance")),
-    
+    drMatchGen_(iConfig.getParameter<double>("drMatchGen")),
+   
 
     piMass_(iConfig.getParameter<double>("piMass")),
     kMass_(iConfig.getParameter<double>("kMass")),
@@ -221,11 +220,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   std::cout << "---------------- NEW EVENT ---------------" << std::endl;
   
-  int nMuGen = 0;
-  int nK1Gen = 0;
-  int nK2Gen = 0;
-  int nPiGen = 0; 
- 
   //////////////////////////////////////////////////////
   // loop over muons                                  //
   //////////////////////////////////////////////////////
@@ -235,44 +229,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     //define a pointer to the muon called mu_ptr
     edm::Ptr<reco::Muon> muPtr(trgMuons, muIdx);
 
-    ////////////////////////////////////////////////////
-    // find the gen-matched muon                      //
-    ////////////////////////////////////////////////////
-    int matchedMuIdx = -1;
-    float drMuonMatch = 0.02;
-
-    for(size_t muIdxGen = 0; muIdxGen < prunedGen->size(); ++muIdxGen){
-
-      //define a pointer to the gen muon    
-      edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, muIdxGen);
-
-      //select only useful gen muons -> check this selection!
-      if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < 6.5 || muPtrGen->eta() > 1.5 || (muPtr->charge() * muPtrGen->charge() < 0)) continue; 
-
-      //now check the dR of the reco muon wrt to the gen Muon 
-      float drMuonMatchTemp = reco::deltaR(*muPtr,*muPtrGen);
-
-      //TODO:define as variable
-      if((drMuonMatchTemp > 0.02) || (drMuonMatchTemp > drMuonMatch)) continue;
-
-      std::cout << "found a gen matched muon!" << std::endl;
-      drMuonMatch = drMuonMatchTemp;
-      ++nMuGen;
-      matchedMuIdx = muIdxGen;
-      //int sig = 0; //assign to signal type 0
-
-      //check if this muon is coming from a tau (tau id = +- 15), abs is taken in function
-      //if(isAncestor(muPtrGen, 15)){ 
-      //std::cout << "and it comes from tau with momentum" << std::endl;
-      //  sig = 1; //assign to signal type 1
-      //std::cout << ptEtaPhiAncestor(muPtrGen,15)[0] << std::endl;    
-
-      //}
-      
-    } 
-    //if no gen match found, leave
-    if(nMuGen == 0) continue;
- 
     std::vector<float> dzMuPV;
 
     //Fix the primary vertex to be the one closest to the trg Muon in dz
@@ -300,36 +256,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       if (!hadSelection_(*k1Ptr)) continue; 
 
-      ////////////////////////////////////////////////
-      // find gen matched k1                        //
-      ////////////////////////////////////////////////
-
-      int matchedK1Idx = -1; //save idx of matched kaon 
-      float drK1Match = 0.02; //dR matching starting value
-
-      for(size_t k1IdxGen = 0; k1IdxGen < prunedGen->size(); ++k1IdxGen){
-           
-        //define a pointer to the gen kaon    
-        edm::Ptr<reco::GenParticle> k1PtrGen(prunedGen, k1IdxGen);
-
-        //select only useful kaons -> check this selection!
-        if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Ptr->charge() * k1PtrGen->charge() < 0)) continue; 
-
-        //now check the dR of the reco muon wrt to the gen Muon 
-        float drK1MatchTemp = reco::deltaR(*k1Ptr,*k1PtrGen);
-
-        //TODO:define as variable
-        if((drK1MatchTemp > 0.02) || (drK1MatchTemp > drK1Match)) continue;
-
-        std::cout << "found a gen matched kaon!" << std::endl;
-        drK1Match = drK1MatchTemp;
-        ++nK1Gen;
-        matchedK1Idx = k1IdxGen;       
-        std::cout << ptEtaPhiAncestor(k1PtrGen,333)[0] << std::endl;    
-      } 
-      //when no gen match found, leave
-      if(nK1Gen == 0) continue;
-
       //the PF algorithm assigns a pdgId hypothesis, generall it distinguishes between:
       // photons, electron/muon, charged hadron, neutral hadrons
       // and we trust the algorithm that when it says its an electron (11) or muon (13), that it is not a kaon or pion
@@ -355,55 +281,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       // if this kaon does not pass the selection, jump to the next!
       if(!hadSelection_(*k2Ptr)) continue;
 
-      ////////////////////////////////////////////////
-      // find gen matched k2                        //
-      ////////////////////////////////////////////////
-      int matchedK2Idx = -1; //save idx of matched kaon 
-      float drK2Match = 0.02; //dR matching starting value
+      float muonK2dR = reco::deltaR(*k2Ptr,*muPtr);
 
-      for(size_t k2IdxGen = 0; k2IdxGen < prunedGen->size(); ++k2IdxGen){
+      bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
 
-        //avoid picking the same gen particle as for k1
-        if(k2IdxGen == static_cast<unsigned int>(matchedK1Idx)) continue; 
-        //define a pointer to the gen kaon    
-        edm::Ptr<reco::GenParticle> k2PtrGen(prunedGen, k2IdxGen);
-
-        //select only useful kaons -> check this selection!
-        if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Ptr->charge() * k2PtrGen->charge() < 0 )) continue; 
-
-        //now check the dR of the reco muon wrt to the gen Muon 
-        float drK2MatchTemp = reco::deltaR(*k2Ptr,*k2PtrGen);
-
-        //TODO:define as variable
-        if((drK2Match > 0.02) || (drK2MatchTemp > drK2Match)) continue;
-
-        std::cout << "found a gen matched kaon!" << std::endl;
-        drK2Match = drK2MatchTemp;
-        ++nK2Gen;
-        matchedK2Idx = k2IdxGen;       
-        std::cout << ptEtaPhiAncestor(k2PtrGen,333)[0] << std::endl;    
-
-       } 
-       //when no gen match found, leave
-       if(nK2Gen == 0) continue;
+      //k1 and k2 must have oppoiste charge
+      if ((k1Ptr->charge() * k2Ptr->charge()) > 0) continue; //No!! lets keep everything for background estimation
+      int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
 
-       float muonK2dR = reco::deltaR(*k2Ptr,*muPtr);
+      if (!k2Sel) continue;
 
-       bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
+      //////////////////////////////////////////////////
+      // Loop over pi and select the good tracks      //
+      //////////////////////////////////////////////////
 
-        //k1 and k2 must have oppoiste charge
-       if ((k1Ptr->charge() * k2Ptr->charge()) > 0) continue; //No!! lets keep everything for background estimation
-       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
-
-
-       if (!k2Sel) continue;
-
-       //////////////////////////////////////////////////
-       // Loop over pi and select the good tracks      //
-       //////////////////////////////////////////////////
-
-       for(size_t piIdx = 0; piIdx < pcand->size(); ++piIdx) {
+      for(size_t piIdx = 0; piIdx < pcand->size(); ++piIdx) {
 
         //make sure the pion is none of the kaons:
         if((piIdx == k1Idx) || (piIdx == k2Idx)) continue;
@@ -414,36 +307,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // if this pion does not pass the selection, jump to the next!
         if(!hadSelection_(*piPtr)) continue;
 
-        ////////////////////////////////////////////////
-        // find gen matched pion                      //
-        ////////////////////////////////////////////////
-        int matchedPiIdx = -1;
-        float drPiMatch = 0.02;
-        for(size_t piIdxGen = 0; piIdxGen < prunedGen->size(); ++piIdxGen){
- 
-          //avoid picking the same gen particle as for k1 or k2
-          if((piIdxGen == static_cast<unsigned int>(matchedK1Idx)) || (piIdxGen == static_cast<unsigned int>(matchedK2Idx))) continue; 
-                  
-          //define a pointer to the gen kaon    
-          edm::Ptr<reco::GenParticle> piPtrGen(prunedGen, piIdxGen);
-
-          //select only useful kaons -> check this selection!
-          if((fabs(piPtrGen->pdgId()) != 321) || !hadSelectionGen_(*piPtrGen) || (piPtr->charge() * piPtrGen->charge() < 0 )) continue; 
-
-          //now check the dR of the reco muon wrt to the gen Muon 
-          float drPiMatchTemp = reco::deltaR(*piPtr,*piPtrGen);
-
-          //TODO:define as variable
-          if((drPiMatchTemp > 0.02) || (drPiMatchTemp > drPiMatch)) continue;
-
-          drPiMatch = drPiMatchTemp;
-          std::cout << "found a gen matched pion!" << std::endl;
-          ++nPiGen;
-          matchedPiIdx = piIdxGen;       
-        } 
-        //when no gen match found, leave
-        if(nPiGen == 0) continue;
- 
         float muonPidR = reco::deltaR(*piPtr,*muPtr);
 
         bool piSel = ((muonPidR < maxdRHadMuon_) && (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&(abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
@@ -454,24 +317,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         int piMuCharge = piPtr->charge() * muPtr->charge();
 
         if (!piSel) continue;
-
-        //////////////////////////////////////////////////
-        // Find resonances at gen level                 //
-        //////////////////////////////////////////////////
-
-        std::cout << matchedK1Idx + matchedK2Idx + matchedPiIdx + matchedMuIdx << std::endl;
-        //edm::Ptr<reco::GenParticle> k1PtrGen(prunedGen, matchedK1Idx);        
-        //edm::Ptr<reco::GenParticle> k2PtrGen(prunedGen, matchedK2Idx);        
-        //edm::Ptr<reco::GenParticle> piPtrGen(prunedGen, matchedPiIdx);        
-        //edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, matchedMuIdx);        
-
-        //check that the two kaons come from the same phi
-        //if (ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0] > 0.000001) continue;
-        //check that the two kaons and the pi come from the Ds
-        //if (ptEtaPhiAncestor(k1PtrGen,431)[0] - ptEtaPhiAncestor(piPtrGen,431)[0] > 0.000001) continue;
-        //check that the two kaons and the mu come from the Bs
-        //if (ptEtaPhiAncestor(k1PtrGen,531)[0] - ptEtaPhiAncestor(piPtrGen,531)[0] > 0.000001) continue;
-        //std::cout << "i survived all three" << std::endl;
 
         //////////////////////////////////////////////////
         // Build Phi resonance                          //
@@ -488,7 +333,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         kkPair.setP4(k1P4 + k2P4);
       
         //only continue when they build a phi resonance, allow 15MeV:
-        if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
+        //if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
 
         kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
         kkPair.addUserFloat("kkPairDeltaR", reco::deltaR(*k1Ptr, *k2Ptr));
@@ -497,11 +342,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         kkPair.addUserInt("k1Idx", k1Idx );
         kkPair.addUserInt("k2Idx", k2Idx );
 
+        //////////////////////////////////////////////////
+        // Build Ds resonance                           //
+        // ///////////////////////////////////////////////
+
         pat::CompositeCandidate ds;
         ds.setP4(kkPair.p4() + piP4); 
 
         //only continue when they build a ds resonance, allow 50MeV:
-        if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
+        //if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
 
 
         ds.setCharge(kkPair.charge() + piPtr->charge());
@@ -512,10 +361,155 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ds.addUserInt("k2Idx", k2Idx);
         ds.addUserInt("piIdx", piIdx);
 
-        //////////////////////////////////////////////////
-        // Find resonances at gen level                 //
-        //////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
+        // Now that we have found resonances at RECO level//
+        // check the gen level and assign the signal ID   //
+        ////////////////////////////////////////////////////
+        // find the gen-matched muon                      //
+        ////////////////////////////////////////////////////
+        int nMuGen = 0;
 
+        for(size_t muIdxGen = 0; muIdxGen < prunedGen->size(); ++muIdxGen){
+
+          //define a pointer to the gen muon    
+          edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, muIdxGen);
+
+          //select only useful gen muons -> check this selection!
+          if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < 6.5 || muPtrGen->eta() > 1.5 || (muPtr->charge() * muPtrGen->charge() < 0)) continue; 
+
+          //now check the dR of the reco muon wrt to the gen Muon 
+          float drMuonMatch = reco::deltaR(*muPtr,*muPtrGen);
+
+          //TODO:define as variable
+          if(drMuonMatch > drMatchGen_) continue;
+
+          std::cout << "found a gen matched muon" << std::endl;
+          ++nMuGen;
+
+          ////////////////////////////////////////////////
+          // find gen matched k1                        //
+          ////////////////////////////////////////////////
+          int nK1Gen = 0;
+
+          for(size_t k1IdxGen = 0; k1IdxGen < packedGen->size(); ++k1IdxGen){
+           
+            //define a pointer to the gen kaon    
+            edm::Ptr<pat::PackedGenParticle> k1PtrGen(packedGen, k1IdxGen);
+
+            //select only useful kaons -> check this selection!
+            if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Ptr->charge() * k1PtrGen->charge() < 0)) continue; 
+
+            //now check the dR of the reco muon wrt to the gen Muon 
+            float drK1Match = reco::deltaR(*k1Ptr,*k1PtrGen);
+
+            //TODO:define as variable
+            if(drK1Match > drMatchGen_) continue;
+
+            std::cout << "found a gen matched k1!" << std::endl;
+            ++nK1Gen;
+
+           ////////////////////////////////////////////////
+           // find gen matched k2                        //
+           ////////////////////////////////////////////////
+           int nK2Gen = 0;
+     
+           for(size_t k2IdxGen = 0; k2IdxGen < packedGen->size(); ++k2IdxGen){
+     
+             //avoid picking the same gen particle as for k1
+             if(k2IdxGen == k1IdxGen) continue; 
+
+             //define a pointer to the gen kaon    
+             edm::Ptr<pat::PackedGenParticle> k2PtrGen(packedGen, k2IdxGen);
+     
+             //select only useful kaons -> check this selection!
+             if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Ptr->charge() * k2PtrGen->charge() < 0 )) continue; 
+     
+             //now check the dR of the reco muon wrt to the gen Muon 
+             float drK2Match = reco::deltaR(*k2Ptr,*k2PtrGen);
+     
+             //TODO:define as variable
+             if(drK2Match > drMatchGen_ ) continue;
+
+             std::cout << "found a gen matched k2!" << std::endl;
+             ++nK2Gen;
+
+             ////////////////////////////////////////////////
+             // find gen matched pion                      //
+             ////////////////////////////////////////////////
+
+             int nPiGen = 0; 
+             for(size_t piIdxGen = 0; piIdxGen < packedGen->size(); ++piIdxGen){
+      
+               //avoid picking the same gen particle as for k1 or k2
+               if((piIdxGen == k1IdxGen) || (piIdxGen == k2IdxGen)) continue; 
+                       
+               //define a pointer to the gen kaon    
+               edm::Ptr<pat::PackedGenParticle> piPtrGen(packedGen, piIdxGen);
+     
+               //select only useful kaons -> check this selection!
+               if((fabs(piPtrGen->pdgId()) != 211) || !hadSelectionGen_(*piPtrGen) || (piPtr->charge() * piPtrGen->charge() < 0 )) continue; 
+     
+               //now check the dR of the reco muon wrt to the gen Muon 
+               float drPiMatch = reco::deltaR(*piPtr,*piPtrGen);
+     
+               //TODO:define as variable
+               if(drPiMatch > drMatchGen_) continue;
+               std::cout << "found a gen matched pion!" << std::endl;
+               ++nPiGen;
+
+               //////////////////////////////////////////////////
+               // Find resonances at gen level                 //
+               //////////////////////////////////////////////////
+       
+               //std::cout << matchedK1Idx << std::endl;
+               //std::cout << matchedK2Idx << std::endl;
+               //std::cout << matchedPiIdx << std::endl; 
+               //std::cout << matchedMuIdx << std::endl;
+               //edm::Ptr<reco::GenParticle> k1PtrGen(packedGen, matchedK1Idx);        
+               //edm::Ptr<reco::GenParticle> k2PtrGen(packedGen, matchedK2Idx);        
+               //edm::Ptr<reco::GenParticle> piPtrGen(packedGen, matchedPiIdx);        
+               //edm::Ptr<reco::GenParticle> muPtrGen(packedGen, matchedMuIdx);        
+       
+               //check that the two kaons come from the same phi, avoid == with float
+               if (fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
+               std::cout << "its a common phi!" << std::endl;
+
+               //check that the two kaons and the pi come from the Ds, avoid == with float
+               if (fabs(ptEtaPhiAncestor(k1PtrGen,431)[0] - ptEtaPhiAncestor(piPtrGen,431)[0]) > 0.00001) continue;
+               std::cout << "its a common ds!" << std::endl;
+
+               //check that the two kaons and the mu come from the Bs, avoid == with float
+               if (ptEtaPhiAncestor(k1PtrGen,531)[0] - ptEtaPhiAncestor(muPtrGen,531)[0] > 0.00001) continue;
+               std::cout << "its a common bs" << std::endl;
+               //std::cout << "k1" << std::endl;
+               //for(size_t i = 0; i<k1PtrGen->numberOfMothers(); ++i){std::cout << k1PtrGen->mother(i)->pdgId() << std::endl;}
+               //std::cout << ptEtaPhiAncestor(k1PtrGen,333)[0] << std::endl; 
+               //std::cout << "k2" << std::endl;
+               //std::cout << ptEtaPhiAncestor(k2PtrGen,333)[0] << std::endl;
+               //if(fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) < 0.00001) {
+               //std::cout << "its a common phi!" << std::endl;
+               //} 
+               //std::cout << "k1 pi --> ds" << ptEtaPhiAncestor(k1PtrGen,431)[0] << std::endl; 
+               //std::cout << ptEtaPhiAncestor(piPtrGen,431)[0] << std::endl;
+       
+               //////////////////////////////////////////////////
+
+             }//close gen matching pi loop 
+            }//close gen matching k2 loop 
+          } //close gen matching k1 loop
+
+
+          //int sig = 0; //assign to signal type 0
+
+          //check if this muon is coming from a tau (tau id = +- 15), abs is taken in function
+          //if(isAncestor(muPtrGen, 15)){ 
+          //std::cout << "and it comes from tau with momentum" << std::endl;
+          //  sig = 1; //assign to signal type 1
+          //std::cout << ptEtaPhiAncestor(muPtrGen,15)[0] << std::endl;    
+
+          //}
+      
+        } //close gen matching mu loop
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //

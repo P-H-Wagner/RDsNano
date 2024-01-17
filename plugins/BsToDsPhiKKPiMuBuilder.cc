@@ -49,6 +49,24 @@
 //B field
 #include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// TODOS:
+//
+// - move gen matching in separate module?
+// - remove hardcoded numbers
+// - helicity plane angles
+// - redefine all variables after the fit? save both ?
+// - beautify the bs.addUserFloat (...)
+// - pos. def. cov matrix 
+// - pruned vs packed -> discuss
+// - output tree has now empty entries when there is no trigger/signal -> how to avoid this?
+// - adapt for Hb background sample
+// - how to save kk same sign pair? --> I have an idea, done
+// - generally: save only gen matched signals?
+// - what if an event has two signals?  
+// - divide into submitter chunks
+///////////////////////////////////////////////////////////////////////////////////////////
+
 // function which checks if a genParticle has a certain ancestor 
 bool isAncestor(const auto dau, const int id){
   //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
@@ -66,12 +84,7 @@ bool isAncestor(const auto dau, const int id){
 std::vector<double> ptEtaPhiAncestor(const auto dau, const int id){
 
   if (fabs(dau->pdgId()) == id){
-    std::vector<double> ptEtaPhi;
-    ptEtaPhi.push_back(dau->pt());
-    ptEtaPhi.push_back(dau->eta());
-    ptEtaPhi.push_back(dau->phi());
-    return ptEtaPhi;
- 
+    return {dau->pt(),dau->eta(),dau->phi()};
   }
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
@@ -134,6 +147,7 @@ private:
   //tokens to access data later
   //edm::Input tag can not be directly initialized inside the construcor! Why did it work fro Trigger.cc??
   //anyway ... 
+
   const edm::InputTag srcTag;
   const edm::EDGetTokenT<pat::PackedCandidateCollection> src_;
 
@@ -152,7 +166,6 @@ private:
 
   const edm::InputTag packedGenTag;
   const edm::EDGetTokenT<pat::PackedGenParticleCollection> packedGen_;
-
 
 };
 
@@ -365,6 +378,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // Now that we have found resonances at RECO level//
         // check the gen level and assign the signal ID   //
         ////////////////////////////////////////////////////
+
+        // We store the Hb background under the index 4 -> no need for gen match
+        // We store the wrong sign pairs for background estimation under the Index 5 -> no need for gen match
+
+        // this value (-1) will change, but it prevents CMSSW from raising unitialized error,
+        // but in any case, if we do not find a matched signal, we dont save it!
+        int sigId = -1; 
+        bool genMatchSuccess = false;
+
+        ////////////////////////////////////////////////////
         // find the gen-matched muon                      //
         ////////////////////////////////////////////////////
         int nMuGen = 0;
@@ -460,15 +483,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //////////////////////////////////////////////////
                // Find resonances at gen level                 //
                //////////////////////////////////////////////////
-       
-               //std::cout << matchedK1Idx << std::endl;
-               //std::cout << matchedK2Idx << std::endl;
-               //std::cout << matchedPiIdx << std::endl; 
-               //std::cout << matchedMuIdx << std::endl;
-               //edm::Ptr<reco::GenParticle> k1PtrGen(packedGen, matchedK1Idx);        
-               //edm::Ptr<reco::GenParticle> k2PtrGen(packedGen, matchedK2Idx);        
-               //edm::Ptr<reco::GenParticle> piPtrGen(packedGen, matchedPiIdx);        
-               //edm::Ptr<reco::GenParticle> muPtrGen(packedGen, matchedMuIdx);        
+      
+               //TODO: should we pick the best gen match (in terms of dR) only? 
        
                //check that the two kaons come from the same phi, avoid == with float
                if (fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
@@ -481,36 +497,34 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //check that the two kaons and the mu come from the Bs, avoid == with float
                if (ptEtaPhiAncestor(k1PtrGen,531)[0] - ptEtaPhiAncestor(muPtrGen,531)[0] > 0.00001) continue;
                std::cout << "its a common bs" << std::endl;
-               //std::cout << "k1" << std::endl;
-               //for(size_t i = 0; i<k1PtrGen->numberOfMothers(); ++i){std::cout << k1PtrGen->mother(i)->pdgId() << std::endl;}
-               //std::cout << ptEtaPhiAncestor(k1PtrGen,333)[0] << std::endl; 
-               //std::cout << "k2" << std::endl;
-               //std::cout << ptEtaPhiAncestor(k2PtrGen,333)[0] << std::endl;
-               //if(fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) < 0.00001) {
-               //std::cout << "its a common phi!" << std::endl;
-               //} 
-               //std::cout << "k1 pi --> ds" << ptEtaPhiAncestor(k1PtrGen,431)[0] << std::endl; 
-               //std::cout << ptEtaPhiAncestor(piPtrGen,431)[0] << std::endl;
-       
+
+               genMatchSuccess = true;
+
+               // now find the signal ID
+               // Ds mu   = 0
+               // Ds* mu  = 1
+               // Ds tau  = 2
+               // Ds* tau = 3
+               sigId = 0; //default
+
+               // look for tau in signal 
+               if(isAncestor(muPtrGen, 15)) sigId = 2;               
+
+               // now look for possible Ds*
+               // TODO: stupid question: this (433) is the only resonance we look at right?
+               if(isAncestor(piPtrGen, 433)) sigId += 1; 
+
+
                //////////////////////////////////////////////////
 
              }//close gen matching pi loop 
             }//close gen matching k2 loop 
           } //close gen matching k1 loop
-
-
-          //int sig = 0; //assign to signal type 0
-
-          //check if this muon is coming from a tau (tau id = +- 15), abs is taken in function
-          //if(isAncestor(muPtrGen, 15)){ 
-          //std::cout << "and it comes from tau with momentum" << std::endl;
-          //  sig = 1; //assign to signal type 1
-          //std::cout << ptEtaPhiAncestor(muPtrGen,15)[0] << std::endl;    
-
-          //}
-      
         } //close gen matching mu loop
 
+        // If we did not find any gen-matched particles, we drop this configuration
+        if(!genMatchSuccess) continue;
+        std::cout << sigId << std::endl; //so this should never be -2
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
         //////////////////////////////////////////////////
@@ -539,6 +553,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pi_mass",piMass_);
 
         bs.addUserCand("mu",muPtr);  
+
+        // save signal Id
+        bs.addUserFloat("sig",sigId);
 
         //add resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
@@ -631,7 +648,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // the children of the phi!! So in this case it would return one of the kaons.
         // To go back to the pi one would have to move the pointer to the top again :)
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
         // define fitter
         KinematicConstrainedVertexFitter phiFitter;
@@ -1046,4 +1062,5 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   iEvent.put(std::move(ret_value), "bs");
 
 }
+
 DEFINE_FWK_MODULE(BsToDsPhiKKPiMuBuilder);

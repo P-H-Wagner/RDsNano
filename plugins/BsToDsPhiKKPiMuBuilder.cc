@@ -29,7 +29,7 @@
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" 
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h" 
-////
+
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
@@ -65,6 +65,8 @@
 // - generally: save only gen matched signals?
 // - what if an event has two signals?  
 // - divide into submitter chunks
+// - save gen information!! 
+// - do gen tests, check f.e. refitted p's with gen p's and unfitted p's
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 // function which checks if a genParticle has a certain ancestor 
@@ -81,6 +83,7 @@ bool isAncestor(const auto dau, const int id){
 
 //function which returns pt eta phi of the ancestor in order to compare
 //ancestors. As far as I know there is no unique index for comparison -.-
+
 std::vector<double> ptEtaPhiAncestor(const auto dau, const int id){
 
   if (fabs(dau->pdgId()) == id){
@@ -99,7 +102,8 @@ std::vector<double> ptEtaPhiAncestor(const auto dau, const int id){
 class BsToDsPhiKKPiMuBuilder : public edm::global::EDProducer<> {
 
 public:
-  
+
+  //define collections which dont exist by default  
   typedef std::vector<reco::GenParticle> GenParticleCollection;
   typedef std::vector<pat::PackedGenParticle> PackedGenParticleCollection;
   //constructor
@@ -129,7 +133,8 @@ private:
 
   //cuts 
   const StringCutObjectSelector<pat::PackedCandidate> hadSelection_; // cut on hadrons
-  const StringCutObjectSelector<pat::PackedGenParticle> hadSelectionGen_; // cut on gen hadrons
+  //const StringCutObjectSelector<pat::PackedGenParticle> hadSelectionGen_; // cut on gen hadrons
+  const StringCutObjectSelector<reco::GenParticle> hadSelectionGen_; // cut on gen hadrons for test with pruned only!
 
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
@@ -161,10 +166,10 @@ private:
   const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
  
   //gen for gen-matching
-  const edm::InputTag prunedGenTag;
+  const edm::InputTag prunedGenTag; //pruned is a compressed packed format
   const edm::EDGetTokenT<reco::GenParticleCollection> prunedGen_;
 
-  const edm::InputTag packedGenTag;
+  const edm::InputTag packedGenTag; //packed contains much more info->most likely not needed!
   const edm::EDGetTokenT<pat::PackedGenParticleCollection> packedGen_;
 
 };
@@ -202,9 +207,9 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     prunedGen_(consumes<reco::GenParticleCollection>(prunedGenTag)),
     packedGenTag(iConfig.getParameter<edm::InputTag>("packedCand")),
     packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)){
-       //body of the constructor
-       //define edm to be filled collections
+       // output collection
        produces<pat::CompositeCandidateCollection>("bs");
+       //produces<pat::CompositeCandidateCollection>("gen");
        //produces<TransientTrackCollection>("kkTransientTracks");
     }
 
@@ -229,6 +234,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> ret_value(new pat::CompositeCandidateCollection());
+  //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
   //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
   std::cout << "---------------- NEW EVENT ---------------" << std::endl;
@@ -298,9 +304,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
 
-      //k1 and k2 must have oppoiste charge
-      if ((k1Ptr->charge() * k2Ptr->charge()) > 0) continue; //No!! lets keep everything for background estimation
+      //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
+
+      if (kkCharge > 0) continue; //To be commented out 
 
 
       if (!k2Sel) continue;
@@ -324,10 +331,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bool piSel = ((muonPidR < maxdRHadMuon_) && (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&(abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
 
-        //pi and mu must have opposite charge
-        if ((piPtr->charge() * muPtr->charge()) > 0) continue; //No!! Lets keep everyting for background esimtaion
-        //but we can save it as mask:
+        //pi and mu must have opposite charge -> only for signal tests, later we keep everything
         int piMuCharge = piPtr->charge() * muPtr->charge();
+        if (piMuCharge > 0) continue; //To be commented out
 
         if (!piSel) continue;
 
@@ -346,14 +352,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         kkPair.setP4(k1P4 + k2P4);
       
         //only continue when they build a phi resonance, allow 15MeV:
-        //if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
+        if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
 
         kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
-        kkPair.addUserFloat("kkPairDeltaR", reco::deltaR(*k1Ptr, *k2Ptr));
-
-        //save index of first and second  kaon
-        kkPair.addUserInt("k1Idx", k1Idx );
-        kkPair.addUserInt("k2Idx", k2Idx );
+        kkPair.addUserFloat("kk_delta_R", reco::deltaR(*k1Ptr, *k2Ptr));
 
         //////////////////////////////////////////////////
         // Build Ds resonance                           //
@@ -363,16 +365,44 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ds.setP4(kkPair.p4() + piP4); 
 
         //only continue when they build a ds resonance, allow 50MeV:
-        //if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
-
+        if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
 
         ds.setCharge(kkPair.charge() + piPtr->charge());
-        ds.addUserFloat("phiPiDeltaR", reco::deltaR(kkPair, *piPtr));
+        ds.addUserFloat("phi_pi_delta_R", reco::deltaR(kkPair, *piPtr));
 
-        //save index of kaons and pi 
-        ds.addUserInt("k1Idx", k1Idx);
-        ds.addUserInt("k2Idx", k2Idx);
-        ds.addUserInt("piIdx", piIdx);
+        //////////////////////////////////////////////////
+        // Build Bs resonance                           //
+        //////////////////////////////////////////////////
+
+        pat::CompositeCandidate dsMu;
+        dsMu.setP4(ds.p4() + muPtr->p4()); 
+
+        dsMu.setCharge(ds.charge() + muPtr->charge()); //sanity check:shoould be 0
+        dsMu.addUserFloat("ds_mu_delta_R", reco::deltaR(ds, *muPtr));
+
+        //build bs with collinear approximation
+        pat::CompositeCandidate bs;
+        bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 536688 (peak in the histo)
+        bs.setCharge(dsMu.charge());
+
+        //save the indices of the final states in the pruned Collection
+        bs.addUserInt("k1_idx",k1Idx);
+        bs.addUserInt("k2_idx",k2Idx);
+        bs.addUserInt("pi_idx",piIdx);
+        bs.addUserInt("mu_idx",muIdx);
+
+        //add final states as Candidates
+        bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
+        bs.addUserFloat("k1_mass",kMass_);
+
+        bs.addUserCand("k2",k2Ptr);  // "
+        bs.addUserFloat("k2_mass",kMass_);
+
+        bs.addUserCand("pi",piPtr);
+        bs.addUserFloat("pi_mass",piMass_);
+
+        bs.addUserCand("mu",muPtr); //muon mass is correct -> check
+
 
         ////////////////////////////////////////////////////
         // Now that we have found resonances at RECO level//
@@ -384,8 +414,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // this value (-1) will change, but it prevents CMSSW from raising unitialized error,
         // but in any case, if we do not find a matched signal, we dont save it!
+       
         int sigId = -1; 
         bool genMatchSuccess = false;
+        double bsPtGen;
+        //pat::CompositeCandidate gen;
+
+        //count the number of gen matches we find, ideally only 1
+        //int nGenMatches = 0;
 
         ////////////////////////////////////////////////////
         // find the gen-matched muon                      //
@@ -414,10 +450,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           ////////////////////////////////////////////////
           int nK1Gen = 0;
 
-          for(size_t k1IdxGen = 0; k1IdxGen < packedGen->size(); ++k1IdxGen){
+          for(size_t k1IdxGen = 0; k1IdxGen < prunedGen->size(); ++k1IdxGen){
            
             //define a pointer to the gen kaon    
-            edm::Ptr<pat::PackedGenParticle> k1PtrGen(packedGen, k1IdxGen);
+            edm::Ptr<reco::GenParticle> k1PtrGen(prunedGen, k1IdxGen);
 
             //select only useful kaons -> check this selection!
             if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Ptr->charge() * k1PtrGen->charge() < 0)) continue; 
@@ -436,13 +472,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
            ////////////////////////////////////////////////
            int nK2Gen = 0;
      
-           for(size_t k2IdxGen = 0; k2IdxGen < packedGen->size(); ++k2IdxGen){
+           for(size_t k2IdxGen = 0; k2IdxGen < prunedGen->size(); ++k2IdxGen){
      
              //avoid picking the same gen particle as for k1
              if(k2IdxGen == k1IdxGen) continue; 
 
              //define a pointer to the gen kaon    
-             edm::Ptr<pat::PackedGenParticle> k2PtrGen(packedGen, k2IdxGen);
+             edm::Ptr<reco::GenParticle> k2PtrGen(prunedGen, k2IdxGen);
      
              //select only useful kaons -> check this selection!
              if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Ptr->charge() * k2PtrGen->charge() < 0 )) continue; 
@@ -461,13 +497,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
              ////////////////////////////////////////////////
 
              int nPiGen = 0; 
-             for(size_t piIdxGen = 0; piIdxGen < packedGen->size(); ++piIdxGen){
+             for(size_t piIdxGen = 0; piIdxGen < prunedGen->size(); ++piIdxGen){
       
                //avoid picking the same gen particle as for k1 or k2
                if((piIdxGen == k1IdxGen) || (piIdxGen == k2IdxGen)) continue; 
                        
                //define a pointer to the gen kaon    
-               edm::Ptr<pat::PackedGenParticle> piPtrGen(packedGen, piIdxGen);
+               edm::Ptr<reco::GenParticle> piPtrGen(prunedGen, piIdxGen);
      
                //select only useful kaons -> check this selection!
                if((fabs(piPtrGen->pdgId()) != 211) || !hadSelectionGen_(*piPtrGen) || (piPtr->charge() * piPtrGen->charge() < 0 )) continue; 
@@ -484,8 +520,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                // Find resonances at gen level                 //
                //////////////////////////////////////////////////
       
-               //TODO: should we pick the best gen match (in terms of dR) only? 
-       
+               //Should we pick the best gen match (in terms of dR) only? -> No, like this is better 
+               //TODO: match by pointer
+              
                //check that the two kaons come from the same phi, avoid == with float
                if (fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
                std::cout << "its a common phi!" << std::endl;
@@ -498,7 +535,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                if (ptEtaPhiAncestor(k1PtrGen,531)[0] - ptEtaPhiAncestor(muPtrGen,531)[0] > 0.00001) continue;
                std::cout << "its a common bs" << std::endl;
 
+               //nGenMatches++;
                genMatchSuccess = true;
+
+               //if(nGenMatches > 1) {
+               //std::cout <<"there is more than one match!!" << std::endl;
+               //}
+               //save the gen info by adding gen candidates
+               //bs.addUserCand("gen_mu",muPtrGen);
+               //bs.addUserCand("gen_k1",k1PtrGen);
+               //bs.addUserCand("gen_k2",k2PtrGen);
+               //bs.addUserCand("gen_pi",piPtrGen);
+
+               //for coll test
+               bsPtGen = ptEtaPhiAncestor(k1PtrGen,531)[0];
 
                // now find the signal ID
                // Ds mu   = 0
@@ -514,7 +564,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                // TODO: stupid question: this (433) is the only resonance we look at right?
                if(isAncestor(piPtrGen, 433)) sigId += 1; 
 
-
                //////////////////////////////////////////////////
 
              }//close gen matching pi loop 
@@ -525,34 +574,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // If we did not find any gen-matched particles, we drop this configuration
         if(!genMatchSuccess) continue;
         std::cout << sigId << std::endl; //so this should never be -2
-        //////////////////////////////////////////////////
-        // Build Bs resonance                           //
-        //////////////////////////////////////////////////
-
-        pat::CompositeCandidate dsMu;
-        dsMu.setP4(ds.p4() + muPtr->p4()); 
-
-        dsMu.setCharge(ds.charge() + muPtr->charge()); //sanity check:shoould be 0
-        dsMu.addUserFloat("dsMuDeltaR", reco::deltaR(ds, *muPtr));
-
-        //build bs with collinear approximation, below we fit
-        pat::CompositeCandidate bs;
-        bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 536688 (peak in the histo)
-        bs.setCharge(dsMu.charge());
-        bs.addUserFloat("dsMuDeltaR", reco::deltaR(ds, *muPtr));
-
-        //add final states
-
-        bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
-        bs.addUserFloat("k1_mass",kMass_);
-
-        bs.addUserCand("k2",k2Ptr);  // "
-        bs.addUserFloat("k2_mass",kMass_);
-
-        bs.addUserCand("pi",piPtr);
-        bs.addUserFloat("pi_mass",piMass_);
-
-        bs.addUserCand("mu",muPtr);  
 
         // save signal Id
         bs.addUserFloat("sig",sigId);
@@ -565,7 +586,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("phi_phi", kkPair.phi());
         bs.addUserFloat("phi_mass", kkPair.mass());
         bs.addUserFloat("phi_charge", kkPair.charge());
-        bs.addUserFloat("phi_deltaR", kkPair.userFloat("kkPairDeltaR"));
+        bs.addUserFloat("phi_deltaR", kkPair.userFloat("kk_delta_R"));
         bs.addUserInt("kkCharge",kkCharge); 
 
         bs.addUserFloat("ds_pt", ds.pt());
@@ -573,19 +594,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_phi", ds.phi());
         bs.addUserFloat("ds_mass", ds.mass());
         bs.addUserFloat("ds_charge", ds.charge());
-        bs.addUserFloat("ds_deltaR", ds.userFloat("phiPiDeltaR"));
+        bs.addUserFloat("ds_deltaR", ds.userFloat("phi_pi_delta_R"));
 
         bs.addUserFloat("dsMu_pt", dsMu.pt());
         bs.addUserFloat("dsMu_eta", dsMu.eta());
         bs.addUserFloat("dsMu_phi", dsMu.phi());
         bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino mass
         bs.addUserFloat("dsMu_charge", dsMu.charge());
-        bs.addUserFloat("dsMu_deltaR", dsMu.userFloat("dsMuDeltaR"));
+        bs.addUserFloat("dsMu_deltaR", dsMu.userFloat("ds_mu_delta_R"));
 
 
         //rel charges
-        bs.addUserInt("kkCharge",kkCharge); 
-        bs.addUserInt("piMuCharge",piMuCharge); 
+        bs.addUserInt("kk_charge",kkCharge); 
+        bs.addUserInt("pi_mu_charge",piMuCharge); 
 
         // helicity angles in all possibe variations
 
@@ -878,6 +899,64 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bsMassCorr = std::sqrt(std::pow(dsMu.mass(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
         bs.addUserFloat("bs_mass_corr", bsMassCorr);
 
+        ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
+        
+
+        //fitted resonances
+        TLorentzVector fittedPhi;
+        TLorentzVector fittedDs;
+        TLorentzVector fittedBs;
+        TLorentzVector collBs;
+
+        fittedPhi.SetXYZM(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
+        fittedDs.SetXYZM(dsParams(3), dsParams(4), dsParams(5), dsParams(6));
+        fittedBs.SetXYZM(bsParams(3), bsParams(4), bsParams(5), bsParams(6));
+        collBs.SetPtEtaPhiM(bs.p4().pt(), bs.p4().eta(), bs.p4().phi(), bs.p4().mass()); //the old coll approx
+ 
+        //refitted final states
+        TLorentzVector refittedK1;
+        TLorentzVector refittedK2;
+        TLorentzVector refittedPi;
+        TLorentzVector refittedMu;
+
+        refittedK1.SetXYZM(phiDau1Params(3), phiDau1Params(4), phiDau1Params(5), phiDau1Params(6));
+        refittedK2.SetXYZM(phiDau2Params(3), phiDau2Params(4), phiDau2Params(5), phiDau2Params(6));
+        refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
+        refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
+     
+        // IT FOLLOWS VERY UGLY CODING -- TO BE CLEANED
+ 
+        // first lets do again the coll. approx but now after the fit :)
+        TLorentzVector refittedCollBs = fittedDs + refittedMu;
+        double refittedDsMuMass = refittedCollBs.M();
+        refittedCollBs *= bsMass_ / refittedDsMuMass; //scale it
+        bs.addUserFloat("bs_pt_coll",refittedCollBs.Pt());
+
+        // now lets use LHCbs method 
+        TVector3 bsFlightDir;
+        TVector3 beamAxis;
+        TVector3 radialAxis;
+
+        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
+        beamAxis.SetXYZ(0.0,0.0,1.0);
+        radialAxis.SetXYZ(1.0,0.0,0.0);
+
+        double theta = bsFlightDir.Angle(beamAxis);
+        TLorentzVector refittedDsMu = fittedDs + refittedMu;
+       
+        double lhcbPz = refittedDsMu.Pz() * bsMass_ / refittedDsMu.M();  
+        double lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+        double lhcbPhi = bsFlightDir.Angle(radialAxis);
+
+        TLorentzVector refittedLhcbBs; 
+        refittedLhcbBs.SetPtEtaPhiM(lhcbPt,3.1415927 - theta,lhcbPhi,bsMass_); 
+        bs.addUserFloat("bs_pt_lhcb",refittedLhcbBs.Pt());
+
+        //now lets do the reco method
+
+        //gen level pt
+        bs.addUserFloat("bs_pt_gen", bsPtGen);
+
         ////////////////// Refitted momenta (and masses for consistency, even if constrained /////////////////////////
 
         bs.addUserFloat("phi_fitted_px", phiParams(3)); 
@@ -946,17 +1025,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         /////////////////////// helicity angles in all possibe variations /////////////////////////
         // = angle between one of the kaons and the pi in the rest frame of the phi
   
-        //fitted resonances
-        TLorentzVector fittedPhi;
-        TLorentzVector fittedDs;
-        TLorentzVector fittedBs;
-        TLorentzVector collBs;
-
-        fittedPhi.SetXYZM(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
-        fittedDs.SetXYZM(dsParams(3), dsParams(4), dsParams(5), dsParams(6));
-        fittedBs.SetXYZM(bsParams(3), bsParams(4), bsParams(5), bsParams(6));
-        collBs.SetPtEtaPhiM(bs.p4().pt(), bs.p4().eta(), bs.p4().phi(), bs.p4().mass());
-
         TLorentzVector fittedCollDs = fittedDs; //need ds twice
 
         // energy transferred
@@ -973,17 +1041,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TVector3 boostBs = fittedBs.BoostVector();
         //check the collinear approx as well!
         TVector3 boostCollBs = collBs.BoostVector();
-
-        //refitted final states
-        TLorentzVector refittedK1;
-        TLorentzVector refittedK2;
-        TLorentzVector refittedPi;
-        TLorentzVector refittedMu;
-
-        refittedK1.SetXYZM(phiDau1Params(3), phiDau1Params(4), phiDau1Params(5), phiDau1Params(6));
-        refittedK2.SetXYZM(phiDau2Params(3), phiDau2Params(4), phiDau2Params(5), phiDau2Params(6));
-        refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
-        refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
 
         TLorentzVector refittedPi2 = refittedPi; //need pion twice
         TLorentzVector refittedMuColl = refittedMu; //need muon twice
@@ -1051,6 +1108,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         ret_value->emplace_back(bs);
+        //ret_value_gen->emplace_back(gen);
+
         //std::cout << "saved!" << std::endl; 
       } //closing k2 loop
     } //closing k1 loop
@@ -1060,6 +1119,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //evt.put(std::move(dimuon_tt), "KKPiTransientTracks");
 } //closing muon loop
   iEvent.put(std::move(ret_value), "bs");
+  //iEvent.put(std::move(ret_value_gen), "gen");
 
 }
 

@@ -26,15 +26,15 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
-'pt > 1.0', 
-'eta > -2.4',
-'eta < 2.4'])), # pre-selection of hadrons (k1,k2 and pion)
+'pt > 0.7', 
+'eta > -2.5',
+'eta < 2.5'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv
 phiMassAllowance = cms.double(0.015), # allow 15 MeV when collecting candidates for phi 
 dsMassAllowance = cms.double(0.05),   # allow 50 MeV when collecting candidates for ds
-drMatchGen = cms.double(0.5),        # allow 0.05 in dR when gen matching
+drMatchGen = cms.double(0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
 
 piMass = cms.double(0.13957039),      # pi mass
 kMass = cms.double(0.493677),         # kaon mass

@@ -19,13 +19,22 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         #k2_pdgId = Var("userCand('k2').pdgId()"),
 
        
-        # bs particle 
+        # bs particle, can directly access its member functions 
         bs_pt = Var("pt()",float),
         bs_eta = Var("eta()",float),
         bs_phi = Var("phi()",float),
         bs_mass = Var("mass()",float),
         bs_charge = Var("charge()",float),
         bs_pdgId = Var("pdgId()",int),
+      
+        #save the indices of the final states in the pruned collection
+        mu_idx = uint("mu_idx"),
+        k1_idx = uint("k1_idx"),
+        k2_idx = uint("k2_idx"),
+        pi_idx = uint("pi_idx"),
+
+        # signal id
+        sig = Var("userFloat('sig')",int),
   
         # from global fit
         sv_x = Var("userFloat('sv_x')",float),
@@ -36,7 +45,14 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         bs_fitted_pz = Var("userFloat('bs_fitted_pz')",float),
         bs_fitted_m =  Var("userFloat('bs_fitted_m')",float),
 
-        # k1 particle
+        # final state particle info
+        mu_pt = Var("userCand('mu').pt()",float),
+        mu_eta = Var("userCand('mu').eta()",float),
+        mu_phi = Var("userCand('mu').phi()",float),
+        mu_mass = Var("userCand('mu').mass()",float),
+        mu_charge = Var("userCand('mu').charge()",float),
+        mu_pdgId = Var("userCand('mu').pdgId()",int),
+
         k1_pt = Var("userCand('k1').pt()",float),
         k1_eta = Var("userCand('k1').eta()",float),
         k1_phi = Var("userCand('k1').phi()",float),
@@ -58,12 +74,13 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         pi_charge = Var("userCand('pi').charge()",float),
         pi_pdgId = Var("userCand('pi').pdgId()",int),
 
-        mu_pt = Var("userCand('mu').pt()",float),
-        mu_eta = Var("userCand('mu').eta()",float),
-        mu_phi = Var("userCand('mu').phi()",float),
-        mu_mass = Var("userCand('mu').mass()",float),
-        mu_charge = Var("userCand('mu').charge()",float),
-        mu_pdgId = Var("userCand('mu').pdgId()",int),
+        # gen particle information
+        gen_mu_pt = Var("userCand('gen_mu').pt()",float),
+        gen_mu_eta = Var("userCand('gen_mu').eta()",float),
+        gen_mu_phi = Var("userCand('gen_mu').phi()",float),
+        gen_mu_mass = Var("userCand('gen_mu').mass()",float),
+        gen_mu_charge = Var("userCand('gen_mu').charge()",float),
+        gen_mu_pdgId = Var("userCand('gen_mu').pdgId()",int),
 
         phi_pt = Var("userFloat('phi_pt')",float),
         phi_eta = Var("userFloat('phi_eta')",float),
@@ -201,7 +218,12 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
 
         bsMassCorr = Var("userFloat('bs_mass_corr')",float), 
 
-        piMu_charge = uint("piMuCharge"),
-        kk_charge = uint("kkCharge"),
+        pi_mu_charge = uint("pi_mu_charge"),
+        kk_charge = uint("kk_charge"),
+
+        bs_pt_coll = Var("userFloat('bs_pt_coll')",float),
+        bs_pt_lhcb = Var("userFloat('bs_pt_lhcb')",float),
+        bs_pt_gen = Var("userFloat('bs_pt_gen')",float),
+
 
 )

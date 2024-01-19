@@ -28,22 +28,10 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         bs_pdgId = Var("pdgId()",int),
       
         #save the indices of the final states in the pruned collection
-        mu_idx = uint("mu_idx"),
+        #mu_idx = uint("mu_idx"), #always 0 :)
         k1_idx = uint("k1_idx"),
         k2_idx = uint("k2_idx"),
         pi_idx = uint("pi_idx"),
-
-        # signal id
-        sig = Var("userFloat('sig')",int),
-  
-        # from global fit
-        sv_x = Var("userFloat('sv_x')",float),
-        sv_y = Var("userFloat('sv_y')",float),
-        sv_z = Var("userFloat('sv_z')",float),
-        bs_fitted_px = Var("userFloat('bs_fitted_px')",float),
-        bs_fitted_py = Var("userFloat('bs_fitted_py')",float),
-        bs_fitted_pz = Var("userFloat('bs_fitted_pz')",float),
-        bs_fitted_m =  Var("userFloat('bs_fitted_m')",float),
 
         # final state particle info
         mu_pt = Var("userCand('mu').pt()",float),
@@ -82,6 +70,60 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         gen_mu_charge = Var("userCand('gen_mu').charge()",float),
         gen_mu_pdgId = Var("userCand('gen_mu').pdgId()",int),
 
+        gen_k1_pt = Var("userCand('gen_k1').pt()",float),
+        gen_k1_eta = Var("userCand('gen_k1').eta()",float),
+        gen_k1_phi = Var("userCand('gen_k1').phi()",float),
+        gen_k1_mass = Var("userCand('gen_k1').mass()",float),
+        gen_k1_charge = Var("userCand('gen_k1').charge()",float),
+        gen_k1_pdgId = Var("userCand('gen_k1').pdgId()",int),
+
+        gen_k2_pt = Var("userCand('gen_k2').pt()",float),
+        gen_k2_eta = Var("userCand('gen_k2').eta()",float),
+        gen_k2_phi = Var("userCand('gen_k2').phi()",float),
+        gen_k2_mass = Var("userCand('gen_k2').mass()",float),
+        gen_k2_charge = Var("userCand('gen_k2').charge()",float),
+        gen_k2_pdgId = Var("userCand('gen_k2').pdgId()",int),
+
+        gen_pi_pt = Var("userCand('gen_pi').pt()",float),
+        gen_pi_eta = Var("userCand('gen_pi').eta()",float),
+        gen_pi_phi = Var("userCand('gen_pi').phi()",float),
+        gen_pi_mass = Var("userCand('gen_pi').mass()",float),
+        gen_pi_charge = Var("userCand('gen_pi').charge()",float),
+        gen_pi_pdgId = Var("userCand('gen_pi').pdgId()",int),
+
+        gen_phi_pt  = Var("userFloat('gen_phi_pt')",float),
+        gen_phi_eta = Var("userFloat('gen_phi_eta')",float),
+        gen_phi_phi = Var("userFloat('gen_phi_phi')",float),
+        gen_phi_vx = Var("userFloat('gen_phi_vx')",float),
+        gen_phi_vy = Var("userFloat('gen_phi_vy')",float),
+        gen_phi_vz = Var("userFloat('gen_phi_vz')",float),
+
+        gen_ds_pt  = Var("userFloat('gen_ds_pt')",float),
+        gen_ds_eta = Var("userFloat('gen_ds_eta')",float),
+        gen_ds_phi = Var("userFloat('gen_ds_phi')",float),
+        gen_ds_vx = Var("userFloat('gen_ds_vx')",float),
+        gen_ds_vy = Var("userFloat('gen_ds_vy')",float),
+        gen_ds_vz = Var("userFloat('gen_ds_vz')",float),
+
+        gen_bs_pt  = Var("userFloat('gen_bs_pt')",float),
+        gen_bs_eta = Var("userFloat('gen_bs_eta')",float),
+        gen_bs_phi = Var("userFloat('gen_bs_phi')",float),
+        gen_bs_vx = Var("userFloat('gen_bs_vx')",float),
+        gen_bs_vy = Var("userFloat('gen_bs_vy')",float),
+        gen_bs_vz = Var("userFloat('gen_bs_vz')",float),
+
+        # signal id
+        sig = Var("userFloat('sig')",int),
+  
+        # from global fit
+        sv_x = Var("userFloat('sv_x')",float),
+        sv_y = Var("userFloat('sv_y')",float),
+        sv_z = Var("userFloat('sv_z')",float),
+        bs_fitted_px = Var("userFloat('bs_fitted_px')",float),
+        bs_fitted_py = Var("userFloat('bs_fitted_py')",float),
+        bs_fitted_pz = Var("userFloat('bs_fitted_pz')",float),
+        bs_fitted_m =  Var("userFloat('bs_fitted_m')",float),
+
         phi_pt = Var("userFloat('phi_pt')",float),
         phi_eta = Var("userFloat('phi_eta')",float),
         phi_phi = Var("userFloat('phi_phi')",float),
@@ -94,6 +136,7 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         phi_fitted_px = Var("userFloat('phi_fitted_px')",float),
         phi_fitted_py = Var("userFloat('phi_fitted_py')",float),
         phi_fitted_pz = Var("userFloat('phi_fitted_pz')",float),
+        phi_fitted_pt = Var("userFloat('phi_fitted_pt')",float),
         phi_fitted_m =  Var("userFloat('phi_fitted_m')",float),
 
         ds_pt = Var("userFloat('ds_pt')",float),
@@ -114,6 +157,7 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         ds_fitted_px = Var("userFloat('ds_fitted_px')",float),
         ds_fitted_py = Var("userFloat('ds_fitted_py')",float),
         ds_fitted_pz = Var("userFloat('ds_fitted_pz')",float),
+        ds_fitted_pt = Var("userFloat('ds_fitted_pt')",float),
         ds_fitted_m =  Var("userFloat('ds_fitted_m')",float),
 
         k1_refitted_vx = Var("userFloat('k1_refitted_vx')",float),
@@ -218,12 +262,16 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
 
         bsMassCorr = Var("userFloat('bs_mass_corr')",float), 
 
-        pi_mu_charge = uint("pi_mu_charge"),
-        kk_charge = uint("kk_charge"),
+        pi_mu_charge = Var("userInt('pi_mu_charge')",int),
+        kk_charge = Var("userInt('kk_charge')",int),
 
         bs_pt_coll = Var("userFloat('bs_pt_coll')",float),
         bs_pt_lhcb = Var("userFloat('bs_pt_lhcb')",float),
         bs_pt_gen = Var("userFloat('bs_pt_gen')",float),
 
-
+        gen_match_success = Var("userInt('gen_match_success')",int),
+        arrived = Var("userInt('arrived')",int),
 )
+
+empty = cms.PSet(arrived = Var("userInt('arrived')",int))
+

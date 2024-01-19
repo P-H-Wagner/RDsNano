@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import Var, CandVars
 from PhysicsTools.RDsNano.common_cff import RDsCandVars, ufloat, uint, ubool
 from PhysicsTools.RDsNano.rds_common_cff import TableDefaultVariables, TableDefault
-from PhysicsTools.RDsNano.variables_cff import BsToDsPhiKKPiMuVariables
+from PhysicsTools.RDsNano.variables_cff import BsToDsPhiKKPiMuVariables, empty
 #from PhysicsTools.RDsNano.primaryVertices_cff import *
 
 #BsToDsPhiKKPiMuCfg = BuilderDefaultCfg.clone()
@@ -26,9 +26,9 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
-'pt > 0.7', 
-'eta > -2.5',
-'eta < 2.5'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+'pt > 1.0', 
+'eta > -2.4',
+'eta < 2.4'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv
@@ -67,17 +67,22 @@ BsToDsPhiKKPiMuTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer
     doc  = cms.string("BsToDsPhiKKPiMu"),
     singleton = cms.bool(False), # the number of entries is variable
     extension = cms.bool(False), # this is the main table for the muons
-    variables = cms.PSet(BsToDsPhiKKPiMuVariables)   #BsToDsPhiKKPiMuTableVariables),
+    variables = cms.PSet(BsToDsPhiKKPiMuVariables)
 
 )
-
-
-BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + BsToDsPhiKKPiMuTable)
 
 #?? why needed
 CountBsToDsPhiKKPiMu = cms.EDFilter(
     "PATCandViewCountFilter",
     minNumber = cms.uint32(0),
     maxNumber = cms.uint32(999999),
-    src = cms.InputTag("BsToDsPhiKKPiMu")
+    src = cms.InputTag("BsToDsPhiKKPiMu"),
 )
+
+arrived = cms.EDFilter(
+    "notEmpty",
+    bs = cms.InputTag('BsToDsPhiKKPiMu', 'bs'),
+)
+
+BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + arrived + BsToDsPhiKKPiMuTable)
+

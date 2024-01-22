@@ -84,20 +84,52 @@ bool isAncestor(const auto dau, const int id){
 //function which returns pt eta phi of the ancestor in order to compare
 //ancestors. As far as I know there is no unique index for comparison -.-
 
-std::vector<double> ptEtaPhiAncestor(const auto dau, const int id){
+std::vector<double> infoAncestor(const auto dau, const int id){
 
   if (fabs(dau->pdgId()) == id){
-    return {dau->pt(),dau->eta(),dau->phi()};
+    return {dau->pt(),dau->eta(),dau->phi(),dau->vx(),dau->vy(),dau->vz()};
   }
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
     if (isAncestor(dau->mother(momIdx), id)) {
-      std::vector<double> ptEtaPhi = ptEtaPhiAncestor(dau->mother(momIdx),id);
-      return ptEtaPhi;
+      std::vector<double> ptEtaPhiVxVyVz = infoAncestor(dau->mother(momIdx),id);
+      return ptEtaPhiVxVyVz;
     }
   }
-  return {0.0,0.0,0.0};
+  return {0.0,0.0,0.0,0.0,0.0,0.0};
 }
+
+/*
+//function which returns pointer to Ancestor :) Like this we can do exact matching
+//and acces pt eta phi in any case
+
+edm::Ptr<reco::GenParticle> ptrAncestor(const auto dau, const int id){
+
+  if (fabs(dau->pdgId()) == id){
+    return dau;
+  }
+
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    if (isAncestor(dau->mother(momIdx), id)) {
+      std::vector<double> dauPtr = ptrAncestor(dau->mother(momIdx),id);
+      return dau;
+    }
+  }
+  return nullptr;
+}
+*/
+
+// counters for filters
+
+int nEvents = 0;
+int k1Sel1Counter = 0;
+int k1Sel2Counter = 0;
+
+int k2Sel1Counter = 0;
+int k2Sel2Counter = 0;
+
+int piSel1Counter = 0;
+int piSel2Counter = 0;
 
 class BsToDsPhiKKPiMuBuilder : public edm::global::EDProducer<> {
 
@@ -214,6 +246,8 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     }
 
 //check const keywords 
+
+// this starts the event loop
 void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSetup &iSetup) const {
 
   //input
@@ -238,13 +272,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
   std::cout << "---------------- NEW EVENT ---------------" << std::endl;
-  
+  nEvents++;
+  int arrived = 0;
+  //define already here :)
+  pat::CompositeCandidate bs;
   //////////////////////////////////////////////////////
-  // loop over muons                                  //
+  // "loop" over muons                                //
+  // (well, we only have 1 trg muon per event due to  //
+  // Trigger.cc, thus muIdx is always 0)              // 
   //////////////////////////////////////////////////////
 
   for(size_t muIdx = 0; muIdx < trgMuons->size(); ++muIdx){
-  
+
+     
     //define a pointer to the muon called mu_ptr
     edm::Ptr<reco::Muon> muPtr(trgMuons, muIdx);
 
@@ -274,6 +314,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       edm::Ptr<pat::PackedCandidate> k1Ptr(pcand, k1Idx);
 
       if (!hadSelection_(*k1Ptr)) continue; 
+      k1Sel1Counter++;
 
       //the PF algorithm assigns a pdgId hypothesis, generall it distinguishes between:
       // photons, electron/muon, charged hadron, neutral hadrons
@@ -284,7 +325,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && (abs(k1Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
 
       if (!k1Sel) continue;
-
+      k1Sel2Counter++;
     //////////////////////////////////////////////////
     // Loop over k2 and select the good tracks      //
     //////////////////////////////////////////////////
@@ -299,6 +340,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
      
       // if this kaon does not pass the selection, jump to the next!
       if(!hadSelection_(*k2Ptr)) continue;
+      k2Sel1Counter++;
 
       float muonK2dR = reco::deltaR(*k2Ptr,*muPtr);
 
@@ -311,6 +353,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
       if (!k2Sel) continue;
+      k2Sel2Counter++;
 
       //////////////////////////////////////////////////
       // Loop over pi and select the good tracks      //
@@ -381,7 +424,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsMu.addUserFloat("ds_mu_delta_R", reco::deltaR(ds, *muPtr));
 
         //build bs with collinear approximation
-        pat::CompositeCandidate bs;
         bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 536688 (peak in the histo)
         bs.setCharge(dsMu.charge());
 
@@ -389,7 +431,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("k1_idx",k1Idx);
         bs.addUserInt("k2_idx",k2Idx);
         bs.addUserInt("pi_idx",piIdx);
-        bs.addUserInt("mu_idx",muIdx);
+        //bs.addUserInt("mu_idx",muIdx); //always 0 :)
 
         //add final states as Candidates
         bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
@@ -416,12 +458,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // but in any case, if we do not find a matched signal, we dont save it!
        
         int sigId = -1; 
-        bool genMatchSuccess = false;
+        int genMatchSuccess = 0;
         double bsPtGen;
         //pat::CompositeCandidate gen;
 
         //count the number of gen matches we find, ideally only 1
-        //int nGenMatches = 0;
+        int nGenMatches = 0;
 
         ////////////////////////////////////////////////////
         // find the gen-matched muon                      //
@@ -434,7 +476,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, muIdxGen);
 
           //select only useful gen muons -> check this selection!
-          if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < 6.5 || muPtrGen->eta() > 1.5 || (muPtr->charge() * muPtrGen->charge() < 0)) continue; 
+          if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < 6.5 || fabs(muPtrGen->eta()) > 1.5 || (muPtr->charge() * muPtrGen->charge() < 0)) continue; 
 
           //now check the dR of the reco muon wrt to the gen Muon 
           float drMuonMatch = reco::deltaR(*muPtr,*muPtrGen);
@@ -524,32 +566,51 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //TODO: match by pointer
               
                //check that the two kaons come from the same phi, avoid == with float
-               if (fabs(ptEtaPhiAncestor(k1PtrGen,333)[0] - ptEtaPhiAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
+               if (fabs(infoAncestor(k1PtrGen,333)[0] - infoAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
                std::cout << "its a common phi!" << std::endl;
 
                //check that the two kaons and the pi come from the Ds, avoid == with float
-               if (fabs(ptEtaPhiAncestor(k1PtrGen,431)[0] - ptEtaPhiAncestor(piPtrGen,431)[0]) > 0.00001) continue;
+               if (fabs(infoAncestor(k1PtrGen,431)[0] - infoAncestor(piPtrGen,431)[0]) > 0.00001) continue;
                std::cout << "its a common ds!" << std::endl;
 
                //check that the two kaons and the mu come from the Bs, avoid == with float
-               if (ptEtaPhiAncestor(k1PtrGen,531)[0] - ptEtaPhiAncestor(muPtrGen,531)[0] > 0.00001) continue;
+               if (fabs(infoAncestor(k1PtrGen,531)[0] - infoAncestor(muPtrGen,531)[0]) > 0.00001) continue;
                std::cout << "its a common bs" << std::endl;
 
-               //nGenMatches++;
-               genMatchSuccess = true;
+               nGenMatches++;
+               genMatchSuccess = 1;
 
-               //if(nGenMatches > 1) {
-               //std::cout <<"there is more than one match!!" << std::endl;
-               //}
-               //save the gen info by adding gen candidates
-               //bs.addUserCand("gen_mu",muPtrGen);
-               //bs.addUserCand("gen_k1",k1PtrGen);
-               //bs.addUserCand("gen_k2",k2PtrGen);
-               //bs.addUserCand("gen_pi",piPtrGen);
+               if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
+              
+               //save the gen info by adding gen candidates of final states
+               bs.addUserCand("gen_mu",muPtrGen);
+               bs.addUserCand("gen_k1",k1PtrGen);
+               bs.addUserCand("gen_k2",k2PtrGen);
+               bs.addUserCand("gen_pi",piPtrGen);
 
-               //for coll test
-               bsPtGen = ptEtaPhiAncestor(k1PtrGen,531)[0];
+               //and gen info from the resonances
+               bs.addUserFloat("gen_phi_pt" ,infoAncestor(k1PtrGen,333)[0]);
+               bs.addUserFloat("gen_phi_eta",infoAncestor(k1PtrGen,333)[1]);
+               bs.addUserFloat("gen_phi_phi",infoAncestor(k1PtrGen,333)[2]);
+               bs.addUserFloat("gen_phi_vx" ,infoAncestor(k1PtrGen,333)[3]);
+               bs.addUserFloat("gen_phi_vy" ,infoAncestor(k1PtrGen,333)[4]);
+               bs.addUserFloat("gen_phi_vz" ,infoAncestor(k1PtrGen,333)[5]);
 
+               bs.addUserFloat("gen_ds_pt"  ,infoAncestor(piPtrGen,431)[0]);
+               bs.addUserFloat("gen_ds_eta" ,infoAncestor(piPtrGen,431)[1]);
+               bs.addUserFloat("gen_ds_phi" ,infoAncestor(piPtrGen,431)[2]);
+               bs.addUserFloat("gen_ds_vx"  ,infoAncestor(piPtrGen,431)[3]);
+               bs.addUserFloat("gen_ds_vy"  ,infoAncestor(piPtrGen,431)[4]);
+               bs.addUserFloat("gen_ds_vz"  ,infoAncestor(piPtrGen,431)[5]);
+
+               bs.addUserFloat("gen_bs_pt"  ,infoAncestor(muPtrGen,531)[0]);
+               bs.addUserFloat("gen_bs_eta" ,infoAncestor(muPtrGen,531)[1]);
+               bs.addUserFloat("gen_bs_phi" ,infoAncestor(muPtrGen,531)[2]);
+               bs.addUserFloat("gen_bs_vx"  ,infoAncestor(muPtrGen,531)[3]);
+               bs.addUserFloat("gen_bs_vy"  ,infoAncestor(muPtrGen,531)[4]);
+               bs.addUserFloat("gen_bs_vz"  ,infoAncestor(muPtrGen,531)[5]);
+
+               std::cout << "eta bs is: " << infoAncestor(muPtrGen,531)[1] << std::endl;
                // now find the signal ID
                // Ds mu   = 0
                // Ds* mu  = 1
@@ -571,9 +632,39 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           } //close gen matching k1 loop
         } //close gen matching mu loop
 
-        // If we did not find any gen-matched particles, we drop this configuration
-        if(!genMatchSuccess) continue;
-        std::cout << sigId << std::endl; //so this should never be -2
+    
+        if (genMatchSuccess == 0) continue; 
+        bs.addUserInt("gen_match_success",genMatchSuccess);
+        /*
+        std::cout << iEvent.id() << std::endl;
+        if (genMatchSuccess == 0){
+          std::cout << "no gen match, I store nan" << std::endl;
+
+          bs.addUserFloat("gen_phi_pt" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_phi_eta",std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_phi_phi",std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_phi_vx" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_phi_vy" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_phi_vz" ,std::numeric_limits<double>::quiet_NaN());
+
+          bs.addUserFloat("gen_ds_pt"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_ds_eta" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_ds_phi" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_ds_vx"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_ds_vy"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_ds_vz"  ,std::numeric_limits<double>::quiet_NaN());
+
+          bs.addUserFloat("gen_bs_pt"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_bs_eta" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_bs_phi" ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_bs_vx"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_bs_vy"  ,std::numeric_limits<double>::quiet_NaN());
+          bs.addUserFloat("gen_bs_vz"  ,std::numeric_limits<double>::quiet_NaN());
+       
+
+        }
+        */
+        std::cout << sigId << std::endl; 
 
         // save signal Id
         bs.addUserFloat("sig",sigId);
@@ -608,22 +699,21 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("kk_charge",kkCharge); 
         bs.addUserInt("pi_mu_charge",piMuCharge); 
 
-        // helicity angles in all possibe variations
-
-        //float helAngle_k1 = 
-        //float helAngle_k2 = 
-        //float helAngle_k+ = 
-
         //easy fit as a sanity check
-        //KinVtxFitter easyFitter(
-        //{getTransientTrack(k1Ptr->bestTrack()), getTransientTrack(k2Ptr->bestTrack())},
-        //{K_MASS, K_MASS},
-        //{0.00005,0.00005} //some small sigma for the lepton mass
-        //);
-        //if(!easyFitter.success()) continue;
-        //std::cout << "phi easy fit vx: " << fitter.fitted_vtx().x() << std::endl;
-        //std::cout << "phi easy fit vy: " << fitter.fitted_vtx().y() << std::endl;
-        //std::cout << "phi easy fit vz: " << fitter.fitted_vtx().z() << std::endl;
+        KinVtxFitter easyFitter(
+        {getTransientTrack(k1Ptr->bestTrack()), getTransientTrack(k2Ptr->bestTrack())},
+        {K_MASS, K_MASS},
+        {0.00005,0.00005} //some small sigma for the lepton mass
+        );
+        if(!easyFitter.success()) continue;
+        bs.addUserFloat("easy_phi_vtx_x",easyFitter.fitted_vtx().x());
+        bs.addUserFloat("easy_phi_vtx_y",easyFitter.fitted_vtx().y());
+        bs.addUserFloat("easy_phi_vtx_z",easyFitter.fitted_vtx().z());
+
+
+        ////////////////////////////////////////////////
+        // Now we do a proper fit                     //
+        ////////////////////////////////////////////////
 
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
@@ -683,6 +773,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //access the fitted resonance and the refitted children
         phiTree->movePointerToTheTop();
         RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
+        auto phiVtx = phiTree->currentDecayVertex();
         phiTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle phiDau1 = phiTree->currentParticle();
         phiTree->movePointerToTheNextChild();
@@ -754,6 +845,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         ////////////////////////////////////// All vertices ///////////////////////////////////////////////
+        // Remark: currentDecayVertex() returns the same as the ALgebraic Vector components 0,1,2--> checked :)
+        // Remark: the daughters of a fitted vertex return the same vertex via Algebraic vector 0,1,2 like the
+        // fitted mother --> checked 
+        
 
         // primary vertex ( = Bs production vertex)
         float pv_x = pv.x();
@@ -818,6 +913,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // dxy(z) is the impact parameter in the xy(z) plane(space), i.e. the distance to the PV
         // TODO: check the errors of dxy and dz      
+        // TODO: bestTrack() is not refitted -> bad?
  
         float dxyMu = muPtr->bestTrack()->dxy(pv.position());  
         float dxyMuErr = muPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
@@ -902,18 +998,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
         
 
-        //fitted resonances
+        //Define 4 vectors of fitted resonances
         TLorentzVector fittedPhi;
         TLorentzVector fittedDs;
         TLorentzVector fittedBs;
+
+        //Define placeholder for collinear approx
         TLorentzVector collBs;
 
         fittedPhi.SetXYZM(phiParams(3), phiParams(4), phiParams(5), phiParams(6));
         fittedDs.SetXYZM(dsParams(3), dsParams(4), dsParams(5), dsParams(6));
         fittedBs.SetXYZM(bsParams(3), bsParams(4), bsParams(5), bsParams(6));
-        collBs.SetPtEtaPhiM(bs.p4().pt(), bs.p4().eta(), bs.p4().phi(), bs.p4().mass()); //the old coll approx
- 
-        //refitted final states
+        collBs.SetPtEtaPhiM(bs.p4().pt(), bs.p4().eta(), bs.p4().phi(), bs.p4().mass()); //the old coll approx (before the fit)
+
+        bs.addUserFloat("bs_fitted_pt",fittedBs.Pt());
+        bs.addUserFloat("ds_fitted_pt",fittedDs.Pt());
+        bs.addUserFloat("phi_fitted_pt",fittedPhi.Pt());
+
+        //Define 4 vectors of refitted final states
         TLorentzVector refittedK1;
         TLorentzVector refittedK2;
         TLorentzVector refittedPi;
@@ -924,38 +1026,71 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
         refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
      
-        // IT FOLLOWS VERY UGLY CODING -- TO BE CLEANED
- 
         // first lets do again the coll. approx but now after the fit :)
+
         TLorentzVector refittedCollBs = fittedDs + refittedMu;
         double refittedDsMuMass = refittedCollBs.M();
         refittedCollBs *= bsMass_ / refittedDsMuMass; //scale it
         bs.addUserFloat("bs_pt_coll",refittedCollBs.Pt());
 
-        // now lets use LHCbs method 
+        // now lets use the LHCbs method 
         TVector3 bsFlightDir;
         TVector3 beamAxis;
         TVector3 radialAxis;
 
         bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
-        beamAxis.SetXYZ(0.0,0.0,1.0);
-        radialAxis.SetXYZ(1.0,0.0,0.0);
+        beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
+        radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
 
-        double theta = bsFlightDir.Angle(beamAxis);
+        double theta = bsFlightDir.Angle(beamAxis); //angle between beam axis and bs flight dir
         TLorentzVector refittedDsMu = fittedDs + refittedMu;
-       
         double lhcbPz = refittedDsMu.Pz() * bsMass_ / refittedDsMu.M();  
         double lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
-        double lhcbPhi = bsFlightDir.Angle(radialAxis);
+        bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
+        double lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
 
         TLorentzVector refittedLhcbBs; 
-        refittedLhcbBs.SetPtEtaPhiM(lhcbPt,3.1415927 - theta,lhcbPhi,bsMass_); 
-        bs.addUserFloat("bs_pt_lhcb",refittedLhcbBs.Pt());
+        double eta = - std::log(std::tan(theta/2));
+        refittedLhcbBs.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
+        bs.addUserFloat("bs_pt_lhcb",lhcbPt);
 
         //now lets do the reco method
+        double neuPar; //neutrino momentum parallel to bs direction
+        double bAbs; //absolute 3 momentum of bs
+        double bs_pt_reco;
+
+        bsFlightDir.SetZ(sv_z - pv_z); //reset bs flight direction
+        // First define the solution for the parallel neutrino momentum
+        
+        double par1 = refittedDsMu.Vect().Mag();
+        double recoAng = refittedDsMu.Vect().Angle(bsFlightDir); 
+        double par2 = std::cos(recoAng);
+        double par3 = std::sin(recoAng);
+        double par4 = refittedDsMu.E(); 
+
+        //solution according to mitternachtsformel 
+
+        double a = 1.0;
+        double b = 2*par1*par2 - 2*par4;
+        double c = std::pow(par1,2)*std::pow(par2,2) + std::pow(par1*par3,2) - std::pow(par4,2) + std::pow(bsMass_,2);
+        double disc = std::pow(b,2) - 4*a*c;      
+        if(disc>0) {
+          //non complex root 
+          neuPar = (-b + std::sqrt(disc)) / (2*a);
+          bAbs = par1*par2 + neuPar; 
+          TVector3 bsReco = bsFlightDir;
+          bsReco *= bAbs; 
+          bs_pt_reco = bsReco.Pt();
+
+        }
+        else{ 
+        bs_pt_reco = std::nan("");
+        }
+
+        bs.addUserFloat("bs_pt_reco",bs_pt_reco); 
 
         //gen level pt
-        bs.addUserFloat("bs_pt_gen", bsPtGen);
+        //bs.addUserFloat("bs_pt_gen", bsPtGen);
 
         ////////////////// Refitted momenta (and masses for consistency, even if constrained /////////////////////////
 
@@ -1105,11 +1240,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
 
-
+        arrived = 1;
+        bs.addUserInt("arrived", arrived);
 
         ret_value->emplace_back(bs);
         //ret_value_gen->emplace_back(gen);
-
+ 
         //std::cout << "saved!" << std::endl; 
       } //closing k2 loop
     } //closing k1 loop
@@ -1118,9 +1254,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //iEvent.put(std::move(ret_value), "bs");
   //evt.put(std::move(dimuon_tt), "KKPiTransientTracks");
 } //closing muon loop
-  iEvent.put(std::move(ret_value), "bs");
+  if(arrived == 1) iEvent.put(std::move(ret_value), "bs");
   //iEvent.put(std::move(ret_value_gen), "gen");
-
+  else{
+  std::cout << "I am here now!!" << std::endl;
+  bs.addUserInt("arrived",arrived);
+  ret_value->emplace_back(bs);
+  iEvent.put(std::move(ret_value), "bs"); 
+  }
 }
 
 DEFINE_FWK_MODULE(BsToDsPhiKKPiMuBuilder);

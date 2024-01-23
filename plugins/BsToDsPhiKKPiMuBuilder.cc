@@ -81,6 +81,16 @@ bool isAncestor(const auto dau, const int id){
   return false;
 }
 
+bool hasAncestor(const auto dau, const auto mom){
+  //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
+  if (dau == mom){ 
+    return true;
+    }
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    if (hasAncestor(dau->mother(momIdx), mom)) return true;  
+  }
+  return false;
+}
 //function which returns pt eta phi of the ancestor in order to compare
 //ancestors. As far as I know there is no unique index for comparison -.-
 
@@ -96,7 +106,32 @@ std::vector<double> infoAncestor(const auto dau, const int id){
       return ptEtaPhiVxVyVz;
     }
   }
-  return {0.0,0.0,0.0,0.0,0.0,0.0};
+  std::vector<double> failedVector(6, std::numeric_limits<double>::quiet_NaN());
+  return failedVector;
+}
+
+
+
+auto getAncestor(const auto dau, const int id){
+
+  //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
+  //we fix it by calling two functions
+ 
+  std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+  if ((fabs(dau->pdgId()) == id)){
+    std::cout << "sucess!" << std::endl;
+    return dau;
+  }
+
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    std::cout << "Now I access mom Nr " << momIdx << std::endl;
+    if (isAncestor(dau->mother(momIdx), id)) {
+      auto dau2 = getAncestor(dau->mother(momIdx),id);
+      return dau2;
+    }
+  }
+  const reco::Candidate* empty; 
+  return empty;
 }
 
 /*
@@ -296,7 +331,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       // when do we use bestTrack() and when do we use TransientTracks()?
       edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, ++vtxIdx);
-      dzMuPV.push_back(muPtr->bestTrack()->dz(vtxPtr->position()));      
+      dzMuPV.push_back(fabs(muPtr->bestTrack()->dz(vtxPtr->position())));      
     }
     
     // take as the primary vertex the one which has minimal dz with the muon 
@@ -564,19 +599,68 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       
                //Should we pick the best gen match (in terms of dR) only? -> No, like this is better 
                //TODO: match by pointer
-              
+               const reco::Candidate* k1Reco = k1PtrGen.get(); 
+               const reco::Candidate* k2Reco = k2PtrGen.get(); 
+               const reco::Candidate* piReco = piPtrGen.get(); 
+               const reco::Candidate* muReco = muPtrGen.get(); 
+
+               std::cout << "searching for phi resonance .. " << std::endl;
+               std::cout << "loop over k1 .. " << std::endl;
+       
+               auto phiFromK1 = getAncestor(k1Reco,333);
+               std::cout << "loop over k2 .. " << std::endl;
+
+               auto phiFromK2 = getAncestor(k2Reco,333);
+               if( phiFromK1 == phiFromK2) std::cout << "phi matched by pointer!" << std::endl; 
+
+               std::cout << phiFromK1->pt() << std::endl;
+               std::cout << "vs " <<infoAncestor(k1PtrGen,333)[0] << std::endl;
+
+               std::cout << "searching for ds resonance .. " << std::endl;
+               std::cout << "loop over phi .. " << std::endl;
+
+               auto dsFromK1 = getAncestor(phiFromK1,431);
+               std::cout << "loop over pi .. " << std::endl;
+
+               auto dsFromPi = getAncestor(piReco,431);
+               if( dsFromK1 == dsFromPi) std::cout << "ds matched by pointer!" << std::endl; 
+               std::cout << "ds vertex before bs loop " << dsFromK1->vx() << std::endl;
+
+               std::cout << "searching for bs resonance .. " << std::endl;
+               std::cout << "loop over ds .. " << std::endl;
+
+               auto bsFromK1 = getAncestor(dsFromK1,531);
+               std::cout << "loop over mu .. " << std::endl;
+
+               auto bsFromMu = getAncestor(muReco,531);
+               if( bsFromK1 == bsFromMu) std::cout << "bs matched by pointer!" << std::endl; 
+
+
+               bool related = hasAncestor(dsFromK1,bsFromK1);
+               std::cout << "Are bs and ds realted? --> " << related << std::endl;
+               std::cout << "bs vertex = " << bsFromK1->vx() << std::endl;
+               std::cout << "ds vertex = " << dsFromK1->vx() << std::endl;
+    
+
+               //auto ds = getAncestor(dummy,333);
+               //auto bs = getAncestor(dummy,333);
+     
                //check that the two kaons come from the same phi, avoid == with float
-               if (fabs(infoAncestor(k1PtrGen,333)[0] - infoAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
+               if( std::isnan(infoAncestor(k1PtrGen,333)[0]) || std::isnan(infoAncestor(k2PtrGen,333)[0]) ) continue; 
+               if(fabs(infoAncestor(k1PtrGen,333)[0] - infoAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
                std::cout << "its a common phi!" << std::endl;
 
                //check that the two kaons and the pi come from the Ds, avoid == with float
+               if( std::isnan(infoAncestor(k1PtrGen,431)[0]) || std::isnan(infoAncestor(piPtrGen,431)[0]) ) continue; 
                if (fabs(infoAncestor(k1PtrGen,431)[0] - infoAncestor(piPtrGen,431)[0]) > 0.00001) continue;
                std::cout << "its a common ds!" << std::endl;
 
                //check that the two kaons and the mu come from the Bs, avoid == with float
+               if( std::isnan(infoAncestor(k1PtrGen,531)[0]) || std::isnan(infoAncestor(muPtrGen,531)[0]) ) continue; 
                if (fabs(infoAncestor(k1PtrGen,531)[0] - infoAncestor(muPtrGen,531)[0]) > 0.00001) continue;
-               std::cout << "its a common bs" << std::endl;
 
+               std::cout << "its a common bs" << std::endl;
+               
                nGenMatches++;
                genMatchSuccess = 1;
 
@@ -609,6 +693,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("gen_bs_vx"  ,infoAncestor(muPtrGen,531)[3]);
                bs.addUserFloat("gen_bs_vy"  ,infoAncestor(muPtrGen,531)[4]);
                bs.addUserFloat("gen_bs_vz"  ,infoAncestor(muPtrGen,531)[5]);
+
+               if(bs.userFloat("gen_bs_vx") ==bs.userFloat("gen_ds_vx")) continue; //CANCEL ME LATER
 
                std::cout << "eta bs is: " << infoAncestor(muPtrGen,531)[1] << std::endl;
                // now find the signal ID
@@ -701,14 +787,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //easy fit as a sanity check
         KinVtxFitter easyFitter(
-        {getTransientTrack(k1Ptr->bestTrack()), getTransientTrack(k2Ptr->bestTrack())},
-        {K_MASS, K_MASS},
-        {0.00005,0.00005} //some small sigma for the lepton mass
+        {getTransientTrack(k1Ptr->bestTrack()), getTransientTrack(k2Ptr->bestTrack()),getTransientTrack(piPtr->bestTrack()),getTransientTrack(muPtr->bestTrack())},
+        {K_MASS, K_MASS,piMass_,muMass_},
+        {0.00005,0.00005,0.00005,0.00005} //some small sigma for the lepton mass
         );
         if(!easyFitter.success()) continue;
-        bs.addUserFloat("easy_phi_vtx_x",easyFitter.fitted_vtx().x());
-        bs.addUserFloat("easy_phi_vtx_y",easyFitter.fitted_vtx().y());
-        bs.addUserFloat("easy_phi_vtx_z",easyFitter.fitted_vtx().z());
+        bs.addUserFloat("easy_bs_vtx_x",easyFitter.fitted_vtx().x());
+        bs.addUserFloat("easy_bs_vtx_y",easyFitter.fitted_vtx().y());
+        bs.addUserFloat("easy_bs_vtx_z",easyFitter.fitted_vtx().z());
 
 
         ////////////////////////////////////////////////
@@ -1025,7 +1111,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedK2.SetXYZM(phiDau2Params(3), phiDau2Params(4), phiDau2Params(5), phiDau2Params(6));
         refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
         refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
-     
+ 
         // first lets do again the coll. approx but now after the fit :)
 
         TLorentzVector refittedCollBs = fittedDs + refittedMu;
@@ -1037,15 +1123,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TVector3 bsFlightDir;
         TVector3 beamAxis;
         TVector3 radialAxis;
+        dsMuTlv.SetXYZM(dsMu.px(),dsMu.py(),dsMu.pz(),dsMu.mass());       
 
         bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
+        bsFlightDir.SetXYZ(sv_x - bs.userFloat("gen_bs_vx"), sv_y - bs.userFloat("gen_bs_vy"), sv_z  -bs.userFloat("gen_bs_vz"));
+
         beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
         radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
 
-        double theta = bsFlightDir.Angle(beamAxis); //angle between beam axis and bs flight dir
+        //double theta = bsFlightDir.Angle(beamAxis); //angle between beam axis and bs flight dir
+        float theta = bsFlightDir.Theta(); //angle between beam axis and bs flight dir
+
         TLorentzVector refittedDsMu = fittedDs + refittedMu;
-        double lhcbPz = refittedDsMu.Pz() * bsMass_ / refittedDsMu.M();  
-        double lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+        float lhcbPz = dsMuTlv.Pz() *bsMass_ / refittedDsMu.M();
+        float lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+
+        bs.addUserFloat("lhcb_pz",lhcbPz);
+        bs.addUserFloat("theta",theta); 
+
         bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
         double lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
 

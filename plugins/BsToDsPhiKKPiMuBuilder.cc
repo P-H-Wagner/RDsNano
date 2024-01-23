@@ -69,6 +69,10 @@
 // - do gen tests, check f.e. refitted p's with gen p's and unfitted p's
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
 // function which checks if a genParticle has a certain ancestor 
 bool isAncestor(const auto dau, const int id){
   //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
@@ -81,6 +85,7 @@ bool isAncestor(const auto dau, const int id){
   return false;
 }
 
+// function which checks ifdau mom is ancestor of dau
 bool hasAncestor(const auto dau, const auto mom){
   //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
   if (dau == mom){ 
@@ -91,9 +96,9 @@ bool hasAncestor(const auto dau, const auto mom){
   }
   return false;
 }
-//function which returns pt eta phi of the ancestor in order to compare
-//ancestors. As far as I know there is no unique index for comparison -.-
 
+//function which returns pt eta phi of the ancestor in order to compare
+//ancestors.
 std::vector<double> infoAncestor(const auto dau, const int id){
 
   if (fabs(dau->pdgId()) == id){
@@ -111,48 +116,48 @@ std::vector<double> infoAncestor(const auto dau, const int id){
 }
 
 
-
+// function which returns ancestor, we can match by pointer! :)
 auto getAncestor(const auto dau, const int id){
 
   //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
-  //we fix it by calling two functions
  
-  std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
   if ((fabs(dau->pdgId()) == id)){
-    std::cout << "sucess!" << std::endl;
+    //std::cout << "sucess!" << std::endl;
     return dau;
   }
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
-    std::cout << "Now I access mom Nr " << momIdx << std::endl;
+    //std::cout << "Now I access mom Nr " << momIdx << std::endl;
     if (isAncestor(dau->mother(momIdx), id)) {
       auto dau2 = getAncestor(dau->mother(momIdx),id);
       return dau2;
     }
   }
-  const reco::Candidate* empty; 
+  const reco::Candidate* empty = nullptr; 
   return empty;
 }
 
-/*
-//function which returns pointer to Ancestor :) Like this we can do exact matching
-//and acces pt eta phi in any case
+// functino which removes the un-oscillated ancestor of dau
+// f.e. dau is -531 and comes from 531 via oscillation, then this function removes oscillation
+// and returns a pointer to the 531 particle, which has the correct vertex!
+const reco::Candidate* removeOscillations(const auto dau){
 
-edm::Ptr<reco::GenParticle> ptrAncestor(const auto dau, const int id){
-
-  if (fabs(dau->pdgId()) == id){
-    return dau;
-  }
+  std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
-    if (isAncestor(dau->mother(momIdx), id)) {
-      std::vector<double> dauPtr = ptrAncestor(dau->mother(momIdx),id);
-      return dau;
+
+    //check if dau has a mother with the same pdg Id but opposite sign
+    if (dau->mother(momIdx)->pdgId() == (-1 * dau->pdgId())) {
+      std::cout << "oscillation!" << std::endl;
+
+      auto dau2 = removeOscillations(dau->mother(momIdx));
+      return dau2;
     }
   }
-  return nullptr;
+  return dau;
 }
-*/
+
 
 // counters for filters
 
@@ -598,68 +603,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //////////////////////////////////////////////////
       
                //Should we pick the best gen match (in terms of dR) only? -> No, like this is better 
-               //TODO: match by pointer
+
                const reco::Candidate* k1Reco = k1PtrGen.get(); 
                const reco::Candidate* k2Reco = k2PtrGen.get(); 
                const reco::Candidate* piReco = piPtrGen.get(); 
                const reco::Candidate* muReco = muPtrGen.get(); 
 
-               std::cout << "searching for phi resonance .. " << std::endl;
-               std::cout << "loop over k1 .. " << std::endl;
-       
+               //std::cout << "searching for phi resonance .. " << std::endl;
                auto phiFromK1 = getAncestor(k1Reco,333);
-               std::cout << "loop over k2 .. " << std::endl;
-
                auto phiFromK2 = getAncestor(k2Reco,333);
-               if( phiFromK1 == phiFromK2) std::cout << "phi matched by pointer!" << std::endl; 
+               if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
+                    
+               //std::cout << "searching for ds resonance .. " << std::endl;
+               auto dsFromPhi = getAncestor(phiFromK1,431);
+               auto dsFromPi  = getAncestor(piReco,431);
+               if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
 
-               std::cout << phiFromK1->pt() << std::endl;
-               std::cout << "vs " <<infoAncestor(k1PtrGen,333)[0] << std::endl;
-
-               std::cout << "searching for ds resonance .. " << std::endl;
-               std::cout << "loop over phi .. " << std::endl;
-
-               auto dsFromK1 = getAncestor(phiFromK1,431);
-               std::cout << "loop over pi .. " << std::endl;
-
-               auto dsFromPi = getAncestor(piReco,431);
-               if( dsFromK1 == dsFromPi) std::cout << "ds matched by pointer!" << std::endl; 
-               std::cout << "ds vertex before bs loop " << dsFromK1->vx() << std::endl;
-
-               std::cout << "searching for bs resonance .. " << std::endl;
-               std::cout << "loop over ds .. " << std::endl;
-
-               auto bsFromK1 = getAncestor(dsFromK1,531);
-               std::cout << "loop over mu .. " << std::endl;
-
+               //std::cout << "searching for bs resonance .. " << std::endl;
+               auto bsFromDs = getAncestor(dsFromPhi,531);
                auto bsFromMu = getAncestor(muReco,531);
-               if( bsFromK1 == bsFromMu) std::cout << "bs matched by pointer!" << std::endl; 
+               if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
 
-
-               bool related = hasAncestor(dsFromK1,bsFromK1);
-               std::cout << "Are bs and ds realted? --> " << related << std::endl;
-               std::cout << "bs vertex = " << bsFromK1->vx() << std::endl;
-               std::cout << "ds vertex = " << dsFromK1->vx() << std::endl;
-    
-
-               //auto ds = getAncestor(dummy,333);
-               //auto bs = getAncestor(dummy,333);
-     
-               //check that the two kaons come from the same phi, avoid == with float
-               if( std::isnan(infoAncestor(k1PtrGen,333)[0]) || std::isnan(infoAncestor(k2PtrGen,333)[0]) ) continue; 
-               if(fabs(infoAncestor(k1PtrGen,333)[0] - infoAncestor(k2PtrGen,333)[0]) > 0.00001) continue;
-               std::cout << "its a common phi!" << std::endl;
-
-               //check that the two kaons and the pi come from the Ds, avoid == with float
-               if( std::isnan(infoAncestor(k1PtrGen,431)[0]) || std::isnan(infoAncestor(piPtrGen,431)[0]) ) continue; 
-               if (fabs(infoAncestor(k1PtrGen,431)[0] - infoAncestor(piPtrGen,431)[0]) > 0.00001) continue;
-               std::cout << "its a common ds!" << std::endl;
-
-               //check that the two kaons and the mu come from the Bs, avoid == with float
-               if( std::isnan(infoAncestor(k1PtrGen,531)[0]) || std::isnan(infoAncestor(muPtrGen,531)[0]) ) continue; 
-               if (fabs(infoAncestor(k1PtrGen,531)[0] - infoAncestor(muPtrGen,531)[0]) > 0.00001) continue;
-
-               std::cout << "its a common bs" << std::endl;
+               //remove oscillations
+               auto bsFromMuWOOsc = removeOscillations(bsFromMu);
+               //bool related = hasAncestor(dsFromK1,bsFromK1);
                
                nGenMatches++;
                genMatchSuccess = 1;
@@ -673,30 +640,27 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserCand("gen_pi",piPtrGen);
 
                //and gen info from the resonances
-               bs.addUserFloat("gen_phi_pt" ,infoAncestor(k1PtrGen,333)[0]);
-               bs.addUserFloat("gen_phi_eta",infoAncestor(k1PtrGen,333)[1]);
-               bs.addUserFloat("gen_phi_phi",infoAncestor(k1PtrGen,333)[2]);
-               bs.addUserFloat("gen_phi_vx" ,infoAncestor(k1PtrGen,333)[3]);
-               bs.addUserFloat("gen_phi_vy" ,infoAncestor(k1PtrGen,333)[4]);
-               bs.addUserFloat("gen_phi_vz" ,infoAncestor(k1PtrGen,333)[5]);
+               bs.addUserFloat("gen_phi_pt" ,phiFromK1->pt());
+               bs.addUserFloat("gen_phi_eta",phiFromK1->eta());
+               bs.addUserFloat("gen_phi_phi",phiFromK1->phi());
+               bs.addUserFloat("gen_phi_vx" ,phiFromK1->vx());
+               bs.addUserFloat("gen_phi_vy" ,phiFromK1->vy());
+               bs.addUserFloat("gen_phi_vz" ,phiFromK1->vz());
 
-               bs.addUserFloat("gen_ds_pt"  ,infoAncestor(piPtrGen,431)[0]);
-               bs.addUserFloat("gen_ds_eta" ,infoAncestor(piPtrGen,431)[1]);
-               bs.addUserFloat("gen_ds_phi" ,infoAncestor(piPtrGen,431)[2]);
-               bs.addUserFloat("gen_ds_vx"  ,infoAncestor(piPtrGen,431)[3]);
-               bs.addUserFloat("gen_ds_vy"  ,infoAncestor(piPtrGen,431)[4]);
-               bs.addUserFloat("gen_ds_vz"  ,infoAncestor(piPtrGen,431)[5]);
+               bs.addUserFloat("gen_ds_pt"  ,dsFromPi->pt());
+               bs.addUserFloat("gen_ds_eta" ,dsFromPi->eta());
+               bs.addUserFloat("gen_ds_phi" ,dsFromPi->phi());
+               bs.addUserFloat("gen_ds_vx"  ,dsFromPi->vx());
+               bs.addUserFloat("gen_ds_vy"  ,dsFromPi->vy());
+               bs.addUserFloat("gen_ds_vz"  ,dsFromPi->vz());
 
-               bs.addUserFloat("gen_bs_pt"  ,infoAncestor(muPtrGen,531)[0]);
-               bs.addUserFloat("gen_bs_eta" ,infoAncestor(muPtrGen,531)[1]);
-               bs.addUserFloat("gen_bs_phi" ,infoAncestor(muPtrGen,531)[2]);
-               bs.addUserFloat("gen_bs_vx"  ,infoAncestor(muPtrGen,531)[3]);
-               bs.addUserFloat("gen_bs_vy"  ,infoAncestor(muPtrGen,531)[4]);
-               bs.addUserFloat("gen_bs_vz"  ,infoAncestor(muPtrGen,531)[5]);
+               bs.addUserFloat("gen_bs_pt"  ,bsFromMuWOOsc->pt());
+               bs.addUserFloat("gen_bs_eta" ,bsFromMuWOOsc->eta());
+               bs.addUserFloat("gen_bs_phi" ,bsFromMuWOOsc->phi());
+               bs.addUserFloat("gen_bs_vx"  ,bsFromMuWOOsc->vx());
+               bs.addUserFloat("gen_bs_vy"  ,bsFromMuWOOsc->vy());
+               bs.addUserFloat("gen_bs_vz"  ,bsFromMuWOOsc->vz());
 
-               if(bs.userFloat("gen_bs_vx") ==bs.userFloat("gen_ds_vx")) continue; //CANCEL ME LATER
-
-               std::cout << "eta bs is: " << infoAncestor(muPtrGen,531)[1] << std::endl;
                // now find the signal ID
                // Ds mu   = 0
                // Ds* mu  = 1
@@ -906,6 +870,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bsTree->movePointerToTheTop();
         RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
         RefCountedKinematicVertex bsDecayVertex = bsTree->currentDecayVertex();
+
         bsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle bsDau1 = bsTree->currentParticle();
         bsTree->movePointerToTheNextChild();
@@ -1125,8 +1090,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TVector3 radialAxis;
         dsMuTlv.SetXYZM(dsMu.px(),dsMu.py(),dsMu.pz(),dsMu.mass());       
 
-        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
-        bsFlightDir.SetXYZ(sv_x - bs.userFloat("gen_bs_vx"), sv_y - bs.userFloat("gen_bs_vy"), sv_z  -bs.userFloat("gen_bs_vz"));
+        //bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
+        bsFlightDir.SetXYZ(bs.userFloat("gen_ds_vx") - pv_x, bs.userFloat("gen_ds_vy") - pv_y , bs.userFloat("gen_ds_vz") - pv_z);
 
         beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
         radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction

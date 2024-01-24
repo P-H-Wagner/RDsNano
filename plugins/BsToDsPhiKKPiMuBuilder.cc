@@ -143,13 +143,13 @@ auto getAncestor(const auto dau, const int id){
 // and returns a pointer to the 531 particle, which has the correct vertex!
 const reco::Candidate* removeOscillations(const auto dau){
 
-  std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
 
     //check if dau has a mother with the same pdg Id but opposite sign
     if (dau->mother(momIdx)->pdgId() == (-1 * dau->pdgId())) {
-      std::cout << "oscillation!" << std::endl;
+      //std::cout << "oscillation!" << std::endl;
 
       auto dau2 = removeOscillations(dau->mother(momIdx));
       return dau2;
@@ -313,25 +313,48 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   std::cout << "---------------- NEW EVENT ---------------" << std::endl;
   nEvents++;
-  int arrived = 0;
-  //define already here :)
-  pat::CompositeCandidate bs;
+  int arrived = -1;
+
   //////////////////////////////////////////////////////
-  // "loop" over muons                                //
-  // (well, we only have 1 trg muon per event due to  //
-  // Trigger.cc, thus muIdx is always 0)              // 
+  // Match the trigger muon with a muon from the      //
+  // packed pat collection. Reminder, we only have one//
+  // unique trigger muon candidate from Trigger.cc    //
   //////////////////////////////////////////////////////
 
-  for(size_t muIdx = 0; muIdx < trgMuons->size(); ++muIdx){
+  /*
+  //define a pointer to the trigger muon called mu_ptr
+  edm::Ptr<reco::Muon> trgMuPtr(trgMuons, 0);
+  std::cout << trgMuPtr->pt() << std::endl;
 
-     
+  std::vector<float> dzMuPV;
+  //Fix the primary vertex to be the one closest to the trg Muon in dz
+  // more accurate for mu than for tau signals
+    
+  for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
+
+    // when do we use bestTrack() and when do we use TransientTracks()?
+    edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, ++vtxIdx);
+    dzMuPV.push_back(fabs(trgMuPtr->bestTrack()->dz(vtxPtr->position())));      
+  }
+    
+  // take as the primary vertex the one which has minimal dz with the muon 
+  auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
+  int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
+  reco::Vertex pv = primaryVtx->at(pvIdx);
+  */
+
+  for(size_t muIdx = 0; muIdx < pcand->size(); ++muIdx){
+
     //define a pointer to the muon called mu_ptr
-    edm::Ptr<reco::Muon> muPtr(trgMuons, muIdx);
+    edm::Ptr<pat::PackedCandidate> muPtr(pcand, muIdx);
+    
+    if (!(muPtr->hasTrackDetails()) || (muPtr->pt() < 6) || (fabs(muPtr->eta()) > 2.4) || (fabs(muPtr->pdgId()) != 13) ) continue;
 
     std::vector<float> dzMuPV;
 
     //Fix the primary vertex to be the one closest to the trg Muon in dz
     // more accurate for mu than for tau signals
+    /*
     for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
 
       // when do we use bestTrack() and when do we use TransientTracks()?
@@ -343,12 +366,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
     int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
     reco::Vertex pv = primaryVtx->at(pvIdx);
+    */
+    auto pvRef = muPtr->vertexRef();
+    GlobalPoint pv(pvRef->x(), pvRef->y(), pvRef->z()); 
 
     //////////////////////////////////////////////////
     // Loop over k1 and select the good tracks      //
     //////////////////////////////////////////////////
 
     for(size_t k1Idx = 0; k1Idx < pcand->size(); ++k1Idx) {
+
+      if(k1Idx == muIdx) continue;
 
       //define a pointer to the kaon at position k1Idx
       edm::Ptr<pat::PackedCandidate> k1Ptr(pcand, k1Idx);
@@ -438,7 +466,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
 
         kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
-        kkPair.addUserFloat("kk_delta_R", reco::deltaR(*k1Ptr, *k2Ptr));
 
         //////////////////////////////////////////////////
         // Build Ds resonance                           //
@@ -451,7 +478,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
 
         ds.setCharge(kkPair.charge() + piPtr->charge());
-        ds.addUserFloat("phi_pi_delta_R", reco::deltaR(kkPair, *piPtr));
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
@@ -461,29 +487,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsMu.setP4(ds.p4() + muPtr->p4()); 
 
         dsMu.setCharge(ds.charge() + muPtr->charge()); //sanity check:shoould be 0
-        dsMu.addUserFloat("ds_mu_delta_R", reco::deltaR(ds, *muPtr));
 
         //build bs with collinear approximation
+        pat::CompositeCandidate bs;
+
         bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 536688 (peak in the histo)
         bs.setCharge(dsMu.charge());
-
-        //save the indices of the final states in the pruned Collection
-        bs.addUserInt("k1_idx",k1Idx);
-        bs.addUserInt("k2_idx",k2Idx);
-        bs.addUserInt("pi_idx",piIdx);
-        //bs.addUserInt("mu_idx",muIdx); //always 0 :)
-
-        //add final states as Candidates
-        bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
-        bs.addUserFloat("k1_mass",kMass_);
-
-        bs.addUserCand("k2",k2Ptr);  // "
-        bs.addUserFloat("k2_mass",kMass_);
-
-        bs.addUserCand("pi",piPtr);
-        bs.addUserFloat("pi_mass",piMass_);
-
-        bs.addUserCand("mu",muPtr); //muon mass is correct -> check
 
 
         ////////////////////////////////////////////////////
@@ -684,7 +693,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
     
         if (genMatchSuccess == 0) continue; 
-        bs.addUserInt("gen_match_success",genMatchSuccess);
+
         /*
         std::cout << iEvent.id() << std::endl;
         if (genMatchSuccess == 0){
@@ -714,40 +723,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         }
         */
-        std::cout << sigId << std::endl; 
-
+        //std::cout << sigId << std::endl; 
+        ////std::cout << "1" << std::endl;
         // save signal Id
-        bs.addUserFloat("sig",sigId);
 
-        //add resonances --> are not part of collection and can thus not be
-        //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
-
-        bs.addUserFloat("phi_pt", kkPair.pt());
-        bs.addUserFloat("phi_eta", kkPair.eta());
-        bs.addUserFloat("phi_phi", kkPair.phi());
-        bs.addUserFloat("phi_mass", kkPair.mass());
-        bs.addUserFloat("phi_charge", kkPair.charge());
-        bs.addUserFloat("phi_deltaR", kkPair.userFloat("kk_delta_R"));
-        bs.addUserInt("kkCharge",kkCharge); 
-
-        bs.addUserFloat("ds_pt", ds.pt());
-        bs.addUserFloat("ds_eta", ds.eta());
-        bs.addUserFloat("ds_phi", ds.phi());
-        bs.addUserFloat("ds_mass", ds.mass());
-        bs.addUserFloat("ds_charge", ds.charge());
-        bs.addUserFloat("ds_deltaR", ds.userFloat("phi_pi_delta_R"));
-
-        bs.addUserFloat("dsMu_pt", dsMu.pt());
-        bs.addUserFloat("dsMu_eta", dsMu.eta());
-        bs.addUserFloat("dsMu_phi", dsMu.phi());
-        bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino mass
-        bs.addUserFloat("dsMu_charge", dsMu.charge());
-        bs.addUserFloat("dsMu_deltaR", dsMu.userFloat("ds_mu_delta_R"));
-
-
-        //rel charges
-        bs.addUserInt("kk_charge",kkCharge); 
-        bs.addUserInt("pi_mu_charge",piMuCharge); 
+        //std::cout << "2" << std::endl;
 
         //easy fit as a sanity check
         KinVtxFitter easyFitter(
@@ -756,10 +736,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         {0.00005,0.00005,0.00005,0.00005} //some small sigma for the lepton mass
         );
         if(!easyFitter.success()) continue;
-        bs.addUserFloat("easy_bs_vtx_x",easyFitter.fitted_vtx().x());
-        bs.addUserFloat("easy_bs_vtx_y",easyFitter.fitted_vtx().y());
-        bs.addUserFloat("easy_bs_vtx_z",easyFitter.fitted_vtx().z());
 
+        //std::cout << "3" << std::endl;
 
         ////////////////////////////////////////////////
         // Now we do a proper fit                     //
@@ -791,6 +769,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         phiToFit.push_back(pFactory.particle(getTransientTrack(k2Ptr->bestTrack()),kMass,chi,ndf,sigma));
         dsToFit.push_back(pFactory.particle(getTransientTrack(piPtr->bestTrack()),piMass,chi,ndf,sigma));
         bsToFit.push_back(pFactory.particle(getTransientTrack(muPtr->bestTrack()),muMass,chi,ndf,sigma));
+
+        //std::cout << "4" << std::endl;
 
         /////////////////////////////// global fitter /////////////////////////////////////////////////////////
         // some remarks: With movePointerToTheFirstChild(), movePointerToTheNextChild() one can
@@ -881,7 +861,74 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
         AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
+        //std::cout << "5" << std::endl;
+
         //////////////////////////////////// end of global fitter /////////////////////////////////////
+
+        ////store basic variables
+
+        bs.addUserInt("gen_match_success",genMatchSuccess);
+
+        //save the indices of the final states in the pruned Collection
+        bs.addUserInt("k1_idx",k1Idx);
+        bs.addUserInt("k2_idx",k2Idx);
+        bs.addUserInt("pi_idx",piIdx);
+
+        //bs.addUserInt("mu_idx",muIdx); //always 0 :)
+
+        //add final states as Candidates
+        bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
+        bs.addUserFloat("k1_mass",kMass_);
+
+        bs.addUserCand("k2",k2Ptr);  // "
+        bs.addUserFloat("k2_mass",kMass_);
+
+        bs.addUserCand("pi",piPtr);
+        bs.addUserFloat("pi_mass",piMass_);
+
+        bs.addUserCand("mu",muPtr); //muon mass is correct -> check
+
+        bs.addUserFloat("sig",sigId);
+
+        //add resonances --> are not part of collection and can thus not be
+        //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
+
+        kkPair.addUserFloat("kk_delta_R", reco::deltaR(*k1Ptr, *k2Ptr));
+
+        bs.addUserFloat("phi_pt", kkPair.pt());
+        bs.addUserFloat("phi_eta", kkPair.eta());
+        bs.addUserFloat("phi_phi", kkPair.phi());
+        bs.addUserFloat("phi_mass", kkPair.mass());
+        bs.addUserFloat("phi_charge", kkPair.charge());
+        bs.addUserFloat("phi_deltaR", kkPair.userFloat("kk_delta_R"));
+        bs.addUserInt("kkCharge",kkCharge); 
+
+        ds.addUserFloat("phi_pi_delta_R", reco::deltaR(kkPair, *piPtr));
+
+        bs.addUserFloat("ds_pt", ds.pt());
+        bs.addUserFloat("ds_eta", ds.eta());
+        bs.addUserFloat("ds_phi", ds.phi());
+        bs.addUserFloat("ds_mass", ds.mass());
+        bs.addUserFloat("ds_charge", ds.charge());
+        bs.addUserFloat("ds_deltaR", ds.userFloat("phi_pi_delta_R"));
+
+        dsMu.addUserFloat("ds_mu_delta_R", reco::deltaR(ds, *muPtr));
+
+        bs.addUserFloat("dsMu_pt", dsMu.pt());
+        bs.addUserFloat("dsMu_eta", dsMu.eta());
+        bs.addUserFloat("dsMu_phi", dsMu.phi());
+        bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino mass
+        bs.addUserFloat("dsMu_charge", dsMu.charge());
+        bs.addUserFloat("dsMu_deltaR", dsMu.userFloat("ds_mu_delta_R"));
+
+        //rel charges
+        bs.addUserInt("kk_charge",kkCharge); 
+        bs.addUserInt("pi_mu_charge",piMuCharge); 
+
+        bs.addUserFloat("easy_bs_vtx_x",easyFitter.fitted_vtx().x());
+        bs.addUserFloat("easy_bs_vtx_y",easyFitter.fitted_vtx().y());
+        bs.addUserFloat("easy_bs_vtx_z",easyFitter.fitted_vtx().z());
+
 
         //AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
         //AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
@@ -939,6 +986,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("fv_x",  fv_x); 
         bs.addUserFloat("fv_y",  fv_y); 
         bs.addUserFloat("fv_z",  fv_z); 
+
+        //std::cout << "6" << std::endl;
 
         ////////////////////////////////////// lxy(z), dxy(z) //////////////////////////////////////////
 
@@ -1026,6 +1075,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dxy_k2_sig", dxyK2Sig);
         bs.addUserFloat("dz_k2_sig", dzK2Sig);
 
+        //std::cout << "7" << std::endl;
+
         ////////////////////////////////////////// deltaR (defined above) /////////////////////////////////////
 
         bs.addUserFloat("muonK1dR",muonK1dR);
@@ -1045,6 +1096,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bsMassCorr = std::sqrt(std::pow(dsMu.mass(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
         bs.addUserFloat("bs_mass_corr", bsMassCorr);
+
+        //std::cout << "8" << std::endl;
 
         ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
         
@@ -1084,6 +1137,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedCollBs *= bsMass_ / refittedDsMuMass; //scale it
         bs.addUserFloat("bs_pt_coll",refittedCollBs.Pt());
 
+        //std::cout << "9" << std::endl;
+
         // now lets use the LHCbs method 
         TVector3 bsFlightDir;
         TVector3 beamAxis;
@@ -1113,6 +1168,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double eta = - std::log(std::tan(theta/2));
         refittedLhcbBs.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
         bs.addUserFloat("bs_pt_lhcb",lhcbPt);
+
+        //std::cout << "10" << std::endl;
 
         //now lets do the reco method
         double neuPar; //neutrino momentum parallel to bs direction
@@ -1151,6 +1208,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //gen level pt
         //bs.addUserFloat("bs_pt_gen", bsPtGen);
+        //std::cout << "11" << std::endl;
 
         ////////////////// Refitted momenta (and masses for consistency, even if constrained /////////////////////////
 
@@ -1216,6 +1274,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_refitted_py", bsDau2Params(4)); 
         bs.addUserFloat("ds_refitted_pz", bsDau2Params(5)); 
         bs.addUserFloat("ds_refitted_m",  bsDau2Params(6)); 
+        //std::cout << "12" << std::endl;
 
         /////////////////////// helicity angles in all possibe variations /////////////////////////
         // = angle between one of the kaons and the pi in the rest frame of the phi
@@ -1268,6 +1327,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //boost phi and pi into rest frame of Ds
         fittedPhi.Boost(-boostDs);
         refittedPi2.Boost(-boostDs);
+        //std::cout << "13" << std::endl;
 
  
         //definition of all helicity angles
@@ -1302,26 +1362,36 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         arrived = 1;
         bs.addUserInt("arrived", arrived);
+        //std::cout << "14" << std::endl;
 
+        //append candidate at the end of our return value :)
+        //ret_value can be a vector!!
         ret_value->emplace_back(bs);
         //ret_value_gen->emplace_back(gen);
- 
+
+        //std::cout << "15" << std::endl;
+        if(arrived >0) break;
         //std::cout << "saved!" << std::endl; 
+        } //closing pi loop
+      if(arrived >0) break;
       } //closing k2 loop
+    if(arrived >0) break;
     } //closing k1 loop
-  } //closing pi loop
+    if(arrived >0) break;
+
+  } //closing mu loop
   //move and store these two new collections in the event 
   //iEvent.put(std::move(ret_value), "bs");
   //evt.put(std::move(dimuon_tt), "KKPiTransientTracks");
-} //closing muon loop
-  if(arrived == 1) iEvent.put(std::move(ret_value), "bs");
-  //iEvent.put(std::move(ret_value_gen), "gen");
+  if(arrived >0){
+  iEvent.put(std::move(ret_value), "bs");
+  }
   else{
-  std::cout << "I am here now!!" << std::endl;
+  pat::CompositeCandidate bs;
   bs.addUserInt("arrived",arrived);
   ret_value->emplace_back(bs);
   iEvent.put(std::move(ret_value), "bs"); 
   }
-}
+}//clsoing event loop
 
 DEFINE_FWK_MODULE(BsToDsPhiKKPiMuBuilder);

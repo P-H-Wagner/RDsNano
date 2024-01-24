@@ -158,6 +158,16 @@ const reco::Candidate* removeOscillations(const auto dau){
   return dau;
 }
 
+double phiDiff(double phi1, double phi2){
+
+  double dPhi = phi1 - phi2;
+  double pi = 3.14159265358979323846;
+  while (fabs(dPhi) > pi) {
+    int sgn = dPhi > 0? 1 : -1;
+    dPhi -= sgn*2*pi;
+  }
+  return dPhi;
+}
 
 // counters for filters
 
@@ -322,10 +332,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //////////////////////////////////////////////////////
 
   /*
-  //define a pointer to the trigger muon called mu_ptr
-  edm::Ptr<reco::Muon> trgMuPtr(trgMuons, 0);
-  std::cout << trgMuPtr->pt() << std::endl;
-
   std::vector<float> dzMuPV;
   //Fix the primary vertex to be the one closest to the trg Muon in dz
   // more accurate for mu than for tau signals
@@ -343,14 +349,27 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   reco::Vertex pv = primaryVtx->at(pvIdx);
   */
 
+  for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
+    //if there is no trg muon, this loop is empty:)
+    edm::Ptr<pat::Muon> trgMuPtr(trgMuons, trgMuIdx);
   for(size_t muIdx = 0; muIdx < pcand->size(); ++muIdx){
 
     //define a pointer to the muon called mu_ptr
     edm::Ptr<pat::PackedCandidate> muPtr(pcand, muIdx);
-    
+   
+  
     if (!(muPtr->hasTrackDetails()) || (muPtr->pt() < 6) || (fabs(muPtr->eta()) > 2.4) || (fabs(muPtr->pdgId()) != 13) ) continue;
+    //if (!(trgMuPtr->isPFMuon())) continue; //move this in trigger.cc
 
-    std::vector<float> dzMuPV;
+    //match it with trgMuon:
+    if (fabs(muPtr->pt() - trgMuPtr->pt())/trgMuPtr->pt() > 5e-3) continue;
+    if (fabs(muPtr->eta() - trgMuPtr->eta()) > 5e-3) continue;
+    if (fabs(phiDiff(muPtr->phi(), trgMuPtr->phi())) > 5e-3) continue;
+
+    auto pvRef = muPtr->vertexRef();
+    const reco::Vertex& pv = *pvRef;
+
+    //std::vector<float> dzMuPV;
 
     //Fix the primary vertex to be the one closest to the trg Muon in dz
     // more accurate for mu than for tau signals
@@ -360,15 +379,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       // when do we use bestTrack() and when do we use TransientTracks()?
       edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, ++vtxIdx);
       dzMuPV.push_back(fabs(muPtr->bestTrack()->dz(vtxPtr->position())));      
+      //check if the verticex we get via Ref is contained in the vtx set --> it is!
+      //if (pv.x() == vtxPtr->position().x()) std::cout << "found a match" << std::endl; 
+ 
     }
-    
     // take as the primary vertex the one which has minimal dz with the muon 
     auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
     int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
-    reco::Vertex pv = primaryVtx->at(pvIdx);
+    reco::Vertex pv2 = primaryVtx->at(pvIdx);
     */
-    auto pvRef = muPtr->vertexRef();
-    GlobalPoint pv(pvRef->x(), pvRef->y(), pvRef->z()); 
 
     //////////////////////////////////////////////////
     // Loop over k1 and select the good tracks      //
@@ -1146,7 +1165,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsMuTlv.SetXYZM(dsMu.px(),dsMu.py(),dsMu.pz(),dsMu.mass());       
 
         //bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
-        bsFlightDir.SetXYZ(bs.userFloat("gen_ds_vx") - pv_x, bs.userFloat("gen_ds_vy") - pv_y , bs.userFloat("gen_ds_vz") - pv_z);
+        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
 
         beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
         radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
@@ -1380,6 +1399,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     if(arrived >0) break;
 
   } //closing mu loop
+  } //closing trg muon loop
   //move and store these two new collections in the event 
   //iEvent.put(std::move(ret_value), "bs");
   //evt.put(std::move(dimuon_tt), "KKPiTransientTracks");

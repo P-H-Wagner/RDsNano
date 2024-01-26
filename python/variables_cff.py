@@ -133,6 +133,12 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         fv_x = Var("userFloat('fv_x')",float),
         fv_y = Var("userFloat('fv_y')",float),
         fv_z = Var("userFloat('fv_z')",float),
+
+        easy_bs_vtx_x = Var("userFloat('easy_bs_vtx_x')",float),
+        easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
+        easy_bs_vtx_z = Var("userFloat('easy_bs_vtx_z')",float),
+
+
         phi_fitted_px = Var("userFloat('phi_fitted_px')",float),
         phi_fitted_py = Var("userFloat('phi_fitted_py')",float),
         phi_fitted_pz = Var("userFloat('phi_fitted_pz')",float),
@@ -267,7 +273,27 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
 
         bs_pt_coll = Var("userFloat('bs_pt_coll')",float),
         bs_pt_lhcb = Var("userFloat('bs_pt_lhcb')",float),
-        bs_pt_gen = Var("userFloat('bs_pt_gen')",float),
+        bs_pt_lhcb_alt = Var("userFloat('bs_pt_lhcb_alt')",float),
+        bs_pt_reco_1 = Var("userFloat('bs_pt_reco_1')",float),
+        bs_pt_reco_2 = Var("userFloat('bs_pt_reco_2')",float),
+
+        lhcb_pz = Var("userFloat('lhcb_pz')",float),
+        theta = Var("userFloat('theta')",float), 
+
+        m2_miss_gen = Var("userFloat('m2_miss_gen')",float),
+        m2_miss_coll = Var("userFloat('m2_miss_coll')",float),
+        m2_miss_lhcb = Var("userFloat('m2_miss_lhcb')",float),
+        m2_miss_lhcb_alt = Var("userFloat('m2_miss_lhcb_alt')",float),
+        m2_miss_reco_1 = Var("userFloat('m2_miss_reco_1')",float),
+        m2_miss_reco_2 = Var("userFloat('m2_miss_reco_2')",float),
+
+        q2_gen = Var("userFloat('q2_gen')",float),
+        q2_coll = Var("userFloat('q2_coll')",float),
+        q2_lhcb = Var("userFloat('q2_lhcb')",float),
+        q2_lhcb_alt = Var("userFloat('q2_lhcb_alt')",float),
+        q2_reco_1 = Var("userFloat('q2_reco_1')",float),
+        q2_reco_2 = Var("userFloat('q2_reco_2')",float),
+
 
         gen_match_success = Var("userInt('gen_match_success')",int),
         arrived = Var("userInt('arrived')",int),

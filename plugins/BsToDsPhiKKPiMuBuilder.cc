@@ -660,7 +660,29 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                genMatchSuccess = 1;
 
                if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
-              
+
+               //get gen 4 momenta
+               TLorentzVector genMuTlv; 
+               TLorentzVector genDsTlv; 
+               TLorentzVector genBsTlv; 
+
+               TLorentzVector genMissTlv; //for m2 miss 
+               TLorentzVector genQTlv;  // for q2
+
+               genMuTlv.SetXYZM(muPtrGen->px(),muPtrGen->py(),muPtrGen->pz(),muMass_);
+               genDsTlv.SetXYZM(dsFromPi->px(),dsFromPi->py(),dsFromPi->pz(),dsMass_);
+               genBsTlv.SetXYZM(bsFromMu->px(),bsFromMu->py(),bsFromMu->pz(),bsMass_);
+
+               genMissTlv = genBsTlv - (genDsTlv + genMuTlv); 
+               genQTlv    = genBsTlv - (genDsTlv); 
+
+               double m2_miss_gen = genMissTlv.M2();
+               double q2_gen = genQTlv.M2();
+
+               bs.addUserFloat("m2_miss_gen",m2_miss_gen);
+               bs.addUserFloat("q2_gen",q2_gen);
+
+  
                //save the gen info by adding gen candidates of final states
                bs.addUserCand("gen_mu",muPtrGen);
                bs.addUserCand("gen_k1",k1PtrGen);
@@ -1148,20 +1170,41 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedK2.SetXYZM(phiDau2Params(3), phiDau2Params(4), phiDau2Params(5), phiDau2Params(6));
         refittedPi.SetXYZM(dsDau1Params(3), dsDau1Params(4), dsDau1Params(5), dsDau1Params(6));
         refittedMu.SetXYZM(bsDau1Params(3), bsDau1Params(4), bsDau1Params(5), bsDau1Params(6));
- 
-        // first lets do again the coll. approx but now after the fit :)
+
+        /////////////////////////
+        // Collinear approx.   //
+        ///////////////////////// 
 
         TLorentzVector refittedCollBs = fittedDs + refittedMu;
+
+        TLorentzVector collMissTlv; // for m2 miss
+        TLorentzVector collQTlv;    // for q2 miss
+
         double refittedDsMuMass = refittedCollBs.M();
         refittedCollBs *= bsMass_ / refittedDsMuMass; //scale it
+
+        collMissTlv = refittedCollBs - (fittedDs + refittedMu); //bs - ds+mu
+        collQTlv = refittedCollBs - fittedDs; // bs - ds
+        double m2_miss_coll = collMissTlv.M2();
+        double q2_coll = collQTlv.M2();
+
         bs.addUserFloat("bs_pt_coll",refittedCollBs.Pt());
+        bs.addUserFloat("m2_miss_coll",m2_miss_coll);
+        bs.addUserFloat("q2_coll",q2_coll);
 
         //std::cout << "9" << std::endl;
+ 
+        //////////////////////////
+        // LHCb method          //
+        //////////////////////////
 
-        // now lets use the LHCbs method 
         TVector3 bsFlightDir;
         TVector3 beamAxis;
         TVector3 radialAxis;
+
+        TLorentzVector lhcbQTlv; // for q2
+        TLorentzVector lhcbMissTlv; // for m2 miss
+
         dsMuTlv.SetXYZM(dsMu.px(),dsMu.py(),dsMu.pz(),dsMu.mass());       
 
         //bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
@@ -1186,47 +1229,142 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TLorentzVector refittedLhcbBs; 
         double eta = - std::log(std::tan(theta/2));
         refittedLhcbBs.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
-        bs.addUserFloat("bs_pt_lhcb",lhcbPt);
+        
+        lhcbMissTlv = refittedLhcbBs - refittedDsMu;
+        lhcbQTlv = refittedLhcbBs - fittedDs;
 
+        double m2_miss_lhcb = lhcbMissTlv.M2();
+        double q2_lhcb = lhcbQTlv.M2();
+
+        bs.addUserFloat("bs_pt_lhcb",lhcbPt);
+        bs.addUserFloat("m2_miss_lhcb",m2_miss_lhcb);
+        bs.addUserFloat("q2_lhcb",q2_lhcb);
+
+
+        ///////////////////////////////////////////
+        // Another Lhcb method                   //
+        ///////////////////////////////////////////
+
+        // reset bs flight direction
+        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
+
+        TVector3 lhcbAltBs;
+        TLorentzVector lhcbAltBsTlv;
+
+        lhcbAltBs = bsFlightDir.Unit();  
+        lhcbAltBs *= refittedDsMu.Vect().Mag() * bsMass_ / refittedDsMu.M(); 
+        lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Py(), bsMass_);      
+
+        TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
+        TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
+
+        bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBs.Pt());
+        bs.addUserFloat("m2_miss_lhcb_alt",lhcbAltMissTlv.M2());
+        bs.addUserFloat("q2_lhcb_alt",lhcbAltQTlv.M2());
+        
         //std::cout << "10" << std::endl;
 
-        //now lets do the reco method
-        double neuPar; //neutrino momentum parallel to bs direction
-        double bAbs; //absolute 3 momentum of bs
-        double bs_pt_reco;
+        ///////////////////////////////////////////////////////////
+        // RECO METHOD -> 2 Solutions                            //
+        // This method is exact in the 1-neutrino final state :) //
+        ///////////////////////////////////////////////////////////
 
-        bsFlightDir.SetZ(sv_z - pv_z); //reset bs flight direction
-        // First define the solution for the parallel neutrino momentum
-        
-        double par1 = refittedDsMu.Vect().Mag();
-        double recoAng = refittedDsMu.Vect().Angle(bsFlightDir); 
-        double par2 = std::cos(recoAng);
-        double par3 = std::sin(recoAng);
-        double par4 = refittedDsMu.E(); 
+        TLorentzVector recoBsTlv1;
+        TLorentzVector recoBsTlv2;
 
-        //solution according to mitternachtsformel 
+        TLorentzVector miss_1; // for m2 miss
+        TLorentzVector miss_2; // "
+        TLorentzVector Q_1; // for q2
+        TLorentzVector Q_2; // "
 
-        double a = 1.0;
-        double b = 2*par1*par2 - 2*par4;
-        double c = std::pow(par1,2)*std::pow(par2,2) + std::pow(par1*par3,2) - std::pow(par4,2) + std::pow(bsMass_,2);
+        double recoNeutPll_1; // neutrino momentum parallel to bs direction
+        double recoNeutPll_2; // "
+
+        double recoBsAbs_1; // absolute 3 momentum of bs
+        double recoBsAbs_2; // "
+
+        double bs_pt_reco_1; // the pt 
+        double bs_pt_reco_2; // " 
+
+        // reset bs flight direction
+        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
+ 
+        // angle between the bs flight direction and the Dsmu system (visible)
+        double recoAngle = refittedDsMu.Angle(bsFlightDir); 
+                    
+        //define parameters 
+        // momentum of DsMu system parallel to the bs
+        double recoDsMuPll = std::cos(recoAngle) * refittedDsMu.Vect().Mag();
+        // momentum of DsMu system orthogonal to the bs
+        double recoDsMuT = std::sin(recoAngle) * refittedDsMu.Vect().Mag();
+        // energy of Dsmu system
+        double recoDsMuE = refittedDsMu.E(); 
+        // cocktail, drops out of equation
+        double recoMix = std::pow(bsMass_,2) + std::pow(recoDsMuPll,2) - std::pow(recoDsMuT,2) - std::pow(recoDsMuE,2);
+
+        // define a,b,c, to give to mitternachtsformel
+        double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
+        double b = 4*recoDsMuPll*recoMix;
+        double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
+        // discriminant
         double disc = std::pow(b,2) - 4*a*c;      
-        if(disc>0) {
-          //non complex root 
-          neuPar = (-b + std::sqrt(disc)) / (2*a);
-          bAbs = par1*par2 + neuPar; 
-          TVector3 bsReco = bsFlightDir;
-          bsReco *= bAbs; 
-          bs_pt_reco = bsReco.Pt();
+
+        //prepare m2miss and q2 variables
+        double m2_miss_reco_1;
+        double q2_reco_1;
+        double m2_miss_reco_2;
+        double q2_reco_2;
+
+        if( disc >= 0) {
+
+          //non complex root -> nice! 
+          recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
+          recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
+
+          recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
+          recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
+
+          TVector3 recoBs_1 = bsFlightDir.Unit();
+          TVector3 recoBs_2 = bsFlightDir.Unit();
+
+          recoBs_1 *= recoBsAbs_1; 
+          recoBs_2 *= recoBsAbs_2; 
+
+          recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bsMass_);
+          recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bsMass_);
+
+          bs_pt_reco_1 = recoBsTlv1.Pt();
+          bs_pt_reco_2 = recoBsTlv2.Pt();
+
+          miss_1 = recoBsTlv1 - refittedDsMu;  
+          miss_2 = recoBsTlv2 - refittedDsMu;  
+          Q_1 = recoBsTlv1 - fittedDs;  
+          Q_2 = recoBsTlv2 - fittedDs;  
+
+          m2_miss_reco_1 = miss_1.M2();
+          m2_miss_reco_2 = miss_2.M2();
+          q2_reco_1 = Q_1.M2();
+          q2_reco_2 = Q_2.M2();
+
 
         }
         else{ 
-        bs_pt_reco = std::nan("");
+        //complex root, save nans
+        bs_pt_reco_1 = std::nan("");
+        bs_pt_reco_2 = std::nan("");
+        m2_miss_reco_1 = std::nan("");
+        m2_miss_reco_2 = std::nan("");
+        q2_reco_1 = std::nan("");
+        q2_reco_2 = std::nan("");
         }
 
-        bs.addUserFloat("bs_pt_reco",bs_pt_reco); 
+        bs.addUserFloat("bs_pt_reco_1",bs_pt_reco_1); 
+        bs.addUserFloat("bs_pt_reco_2",bs_pt_reco_2); 
+        bs.addUserFloat("m2_miss_reco_1",m2_miss_reco_1); 
+        bs.addUserFloat("m2_miss_reco_2",m2_miss_reco_2); 
+        bs.addUserFloat("q2_reco_1",q2_reco_1); 
+        bs.addUserFloat("q2_reco_2",q2_reco_2); 
 
-        //gen level pt
-        //bs.addUserFloat("bs_pt_gen", bsPtGen);
         //std::cout << "11" << std::endl;
 
         ////////////////// Refitted momenta (and masses for consistency, even if constrained /////////////////////////
@@ -1389,15 +1527,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //ret_value_gen->emplace_back(gen);
 
         //std::cout << "15" << std::endl;
-        if(arrived >0) break;
         //std::cout << "saved!" << std::endl; 
         } //closing pi loop
-      if(arrived >0) break;
       } //closing k2 loop
-    if(arrived >0) break;
     } //closing k1 loop
-    if(arrived >0) break;
-
   } //closing mu loop
   } //closing trg muon loop
   //move and store these two new collections in the event 

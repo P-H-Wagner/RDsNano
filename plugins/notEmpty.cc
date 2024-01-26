@@ -41,7 +41,7 @@ bool notEmpty::filter(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         const int arrivedValue = myCandidate.userInt("arrived");
 
         // Check the condition: Only pass events where arrived == 1
-        if (arrivedValue == 1) {
+        if (arrivedValue >0) {
             return true;  // Event passes the filter
         }
     }

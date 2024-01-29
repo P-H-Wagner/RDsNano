@@ -53,17 +53,17 @@
 // TODOS:
 //
 // - move gen matching in separate module?
-// - remove hardcoded numbers
-// - helicity plane angles
-// - redefine all variables after the fit? save both ?
-// - beautify the bs.addUserFloat (...)
+// - remove hardcoded numbers - DONE
+// - helicity plane angles    
+// - redefine all variables after the fit? save both ? -YES
+// - beautify the bs.addUserFloat (...) - DONE
 // - pos. def. cov matrix 
-// - pruned vs packed -> discuss
+// - pruned vs packed -> discuss - DONE
 // - output tree has now empty entries when there is no trigger/signal -> how to avoid this?
 // - adapt for Hb background sample
-// - how to save kk same sign pair? --> I have an idea, done
-// - generally: save only gen matched signals?
-// - what if an event has two signals?  
+// - how to save kk same sign pair? --> DONE
+// - generally: save only gen matched signals? --> NO
+// - what if an event has two signals?  -> SAFE BOTH!
 // - divide into submitter chunks
 // - save gen information!! 
 // - do gen tests, check f.e. refitted p's with gen p's and unfitted p's
@@ -331,71 +331,42 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   // unique trigger muon candidate from Trigger.cc    //
   //////////////////////////////////////////////////////
 
-  /*
-  std::vector<float> dzMuPV;
-  //Fix the primary vertex to be the one closest to the trg Muon in dz
-  // more accurate for mu than for tau signals
-    
-  for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
-
-    // when do we use bestTrack() and when do we use TransientTracks()?
-    edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, ++vtxIdx);
-    dzMuPV.push_back(fabs(trgMuPtr->bestTrack()->dz(vtxPtr->position())));      
-  }
-    
-  // take as the primary vertex the one which has minimal dz with the muon 
-  auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
-  int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
-  reco::Vertex pv = primaryVtx->at(pvIdx);
-  */
-
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
     //if there is no trg muon, this loop is empty:)
-    edm::Ptr<pat::Muon> trgMuPtr(trgMuons, trgMuIdx);
-  for(size_t muIdx = 0; muIdx < pcand->size(); ++muIdx){
+    edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
-    //define a pointer to the muon called mu_ptr
-    edm::Ptr<pat::PackedCandidate> muPtr(pcand, muIdx);
-   
-  
-    if (!(muPtr->hasTrackDetails()) || (muPtr->pt() < 6) || (fabs(muPtr->eta()) > 2.4) || (fabs(muPtr->pdgId()) != 13) ) continue;
-    //if (!(trgMuPtr->isPFMuon())) continue; //move this in trigger.cc
-
-    //match it with trgMuon:
-    if (fabs(muPtr->pt() - trgMuPtr->pt())/trgMuPtr->pt() > 5e-3) continue;
-    if (fabs(muPtr->eta() - trgMuPtr->eta()) > 5e-3) continue;
-    if (fabs(phiDiff(muPtr->phi(), trgMuPtr->phi())) > 5e-3) continue;
-
-    auto pvRef = muPtr->vertexRef();
-    const reco::Vertex& pv = *pvRef;
-
-    //std::vector<float> dzMuPV;
+    std::vector<float> dzMuPV;
 
     //Fix the primary vertex to be the one closest to the trg Muon in dz
     // more accurate for mu than for tau signals
-    /*
+
+    float dummy = 1.0;
+    int goldenIdx = -1;
+    reco::Vertex pv;
     for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
 
-      // when do we use bestTrack() and when do we use TransientTracks()?
-      edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, ++vtxIdx);
-      dzMuPV.push_back(fabs(muPtr->bestTrack()->dz(vtxPtr->position())));      
-      //check if the verticex we get via Ref is contained in the vtx set --> it is!
-      //if (pv.x() == vtxPtr->position().x()) std::cout << "found a match" << std::endl; 
- 
+      edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
+      float minDz = fabs(muPtr->bestTrack()->dz(vtxPtr->position())); 
+      if(minDz < dummy){
+        dummy = minDz;
+        goldenIdx = vtxIdx;
+      }
+
     }
     // take as the primary vertex the one which has minimal dz with the muon 
-    auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
-    int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
-    reco::Vertex pv2 = primaryVtx->at(pvIdx);
-    */
+    //auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
+    //int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
+
+    if (goldenIdx<0) continue;
+    if (goldenIdx >= 0){
+    pv = primaryVtx->at(goldenIdx);
+    }
 
     //////////////////////////////////////////////////
     // Loop over k1 and select the good tracks      //
     //////////////////////////////////////////////////
 
     for(size_t k1Idx = 0; k1Idx < pcand->size(); ++k1Idx) {
-
-      if(k1Idx == muIdx) continue;
 
       //define a pointer to the kaon at position k1Idx
       edm::Ptr<pat::PackedCandidate> k1Ptr(pcand, k1Idx);
@@ -1531,7 +1502,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         } //closing pi loop
       } //closing k2 loop
     } //closing k1 loop
-  } //closing mu loop
   } //closing trg muon loop
   //move and store these two new collections in the event 
   //iEvent.put(std::move(ret_value), "bs");

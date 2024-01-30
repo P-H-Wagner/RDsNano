@@ -134,9 +134,9 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         fv_y = Var("userFloat('fv_y')",float),
         fv_z = Var("userFloat('fv_z')",float),
 
-        easy_bs_vtx_x = Var("userFloat('easy_bs_vtx_x')",float),
-        easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
-        easy_bs_vtx_z = Var("userFloat('easy_bs_vtx_z')",float),
+        #easy_bs_vtx_x = Var("userFloat('easy_bs_vtx_x')",float),
+        #easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
+        #easy_bs_vtx_z = Var("userFloat('easy_bs_vtx_z')",float),
 
 
         phi_fitted_px = Var("userFloat('phi_fitted_px')",float),
@@ -215,13 +215,23 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         ds_refitted_m =  Var("userFloat('ds_refitted_m')",float),
 
         cosPiK1 = Var("userFloat('cosPiK1')",float),
+
         cosPiK2 = Var("userFloat('cosPiK2')",float),
-        cosMuW = Var("userFloat('cosMuW')",float),
+
+        cosMuWColl = Var("userFloat('cosMuWColl')",float),
+        cosMuWLhcb = Var("userFloat('cosMuWLhcb')",float),
+        cosMuWLhcbAlt = Var("userFloat('cosMuWLhcbAlt')",float),
+        cosMuWReco1 = Var("userFloat('cosMuWReco1')",float),
+        cosMuWReco2 = Var("userFloat('cosMuWReco1')",float),
+        cosMuWGen = Var("userFloat('cosMuWGen')",float),
+
         cosPhiDs = Var("userFloat('cosPhiDs')",float),
         cosPiDs = Var("userFloat('cosPiDs')",float),
         angPiK1 = Var("userFloat('angPiK1')",float),
         angPiK2 = Var("userFloat('angPiK2')",float),
-        angMuW = Var("userFloat('angMuW')",float),
+
+        angMuWColl = Var("userFloat('angMuWColl')",float),
+
         angPhiDs = Var("userFloat('angPhiDs')",float),
         angPiDs = Var("userFloat('angPiDs')",float),
 
@@ -272,10 +282,23 @@ BsToDsPhiKKPiMuVariables = cms.PSet(
         kk_charge = Var("userInt('kk_charge')",int),
 
         bs_pt_coll = Var("userFloat('bs_pt_coll')",float),
+        bs_eta_coll = Var("userFloat('bs_eta_coll')",float),
+        bs_phi_coll = Var("userFloat('bs_phi_coll')",float),
+
         bs_pt_lhcb = Var("userFloat('bs_pt_lhcb')",float),
+        bs_eta_lhcb = Var("userFloat('bs_eta_lhcb')",float),
+        bs_phi_lhcb = Var("userFloat('bs_phi_lhcb')",float),
+
         bs_pt_lhcb_alt = Var("userFloat('bs_pt_lhcb_alt')",float),
+        bs_eta_lhcb_alt = Var("userFloat('bs_eta_lhcb_alt')",float),
+        bs_phi_lhcb_alt = Var("userFloat('bs_phi_lhcb_alt')",float),
+
         bs_pt_reco_1 = Var("userFloat('bs_pt_reco_1')",float),
         bs_pt_reco_2 = Var("userFloat('bs_pt_reco_2')",float),
+        bs_eta_reco_1 = Var("userFloat('bs_eta_reco_1')",float),
+        bs_eta_reco_2 = Var("userFloat('bs_eta_reco_2')",float),
+        bs_phi_reco_1 = Var("userFloat('bs_phi_reco_1')",float),
+        bs_phi_reco_2 = Var("userFloat('bs_phi_reco_2')",float),
 
         lhcb_pz = Var("userFloat('lhcb_pz')",float),
         theta = Var("userFloat('theta')",float), 

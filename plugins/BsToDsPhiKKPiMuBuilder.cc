@@ -640,6 +640,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                TLorentzVector genMissTlv; //for m2 miss 
                TLorentzVector genQTlv;  // for q2
 
+
                genMuTlv.SetXYZM(muPtrGen->px(),muPtrGen->py(),muPtrGen->pz(),muMass_);
                genDsTlv.SetXYZM(dsFromPi->px(),dsFromPi->py(),dsFromPi->pz(),dsMass_);
                genBsTlv.SetXYZM(bsFromMu->px(),bsFromMu->py(),bsFromMu->pz(),bsMass_);
@@ -653,7 +654,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("m2_miss_gen",m2_miss_gen);
                bs.addUserFloat("q2_gen",q2_gen);
 
-  
                //save the gen info by adding gen candidates of final states
                bs.addUserCand("gen_mu",muPtrGen);
                bs.addUserCand("gen_k1",k1PtrGen);
@@ -696,6 +696,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                // TODO: stupid question: this (433) is the only resonance we look at right?
                if(isAncestor(piPtrGen, 433)) sigId += 1; 
 
+
+               //define helicity angles
+ 
+               TVector3 genBsBoost = genBsTlv.BoostVector();
+               genDsTlv.Boost(-genBsBoost);
+               TLorentzVector wGen;
+               wGen.SetVectM(-genDsTlv.Vect(),std::sqrt(q2_gen));
+               TVector3 boostWGen= wGen.BoostVector();
+               genMuTlv.Boost(-boostWGen);
+               float cosMuWGen  = cos(genMuTlv.Angle(wGen.Vect()));
+               bs.addUserFloat("cosMuWGen",cosMuWGen);
                //////////////////////////////////////////////////
 
              }//close gen matching pi loop 
@@ -1146,20 +1157,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // Collinear approx.   //
         ///////////////////////// 
 
-        TLorentzVector refittedCollBs = fittedDs + refittedMu;
+        TLorentzVector collBsTlv = fittedDs + refittedMu;
 
         TLorentzVector collMissTlv; // for m2 miss
         TLorentzVector collQTlv;    // for q2 miss
 
-        double refittedDsMuMass = refittedCollBs.M();
-        refittedCollBs *= bsMass_ / refittedDsMuMass; //scale it
+        double refittedDsMuMass = collBsTlv.M();
+        collBsTlv *= bsMass_ / refittedDsMuMass; //scale it
 
-        collMissTlv = refittedCollBs - (fittedDs + refittedMu); //bs - ds+mu
-        collQTlv = refittedCollBs - fittedDs; // bs - ds
+        collMissTlv = collBsTlv - (fittedDs + refittedMu); //bs - ds+mu
+        collQTlv = collBsTlv - fittedDs; // bs - ds
         double m2_miss_coll = collMissTlv.M2();
         double q2_coll = collQTlv.M2();
 
-        bs.addUserFloat("bs_pt_coll",refittedCollBs.Pt());
+        bs.addUserFloat("bs_pt_coll",collBsTlv.Pt());
+        bs.addUserFloat("bs_eta_coll",collBsTlv.Eta());
+        bs.addUserFloat("bs_phi_coll",collBsTlv.Phi());
+
         bs.addUserFloat("m2_miss_coll",m2_miss_coll);
         bs.addUserFloat("q2_coll",q2_coll);
 
@@ -1197,17 +1211,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
         double lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
 
-        TLorentzVector refittedLhcbBs; 
+        TLorentzVector lhcbBsTlv; 
         double eta = - std::log(std::tan(theta/2));
-        refittedLhcbBs.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
+        lhcbBsTlv.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
         
-        lhcbMissTlv = refittedLhcbBs - refittedDsMu;
-        lhcbQTlv = refittedLhcbBs - fittedDs;
+        lhcbMissTlv = lhcbBsTlv - refittedDsMu;
+        lhcbQTlv = lhcbBsTlv - fittedDs;
 
         double m2_miss_lhcb = lhcbMissTlv.M2();
         double q2_lhcb = lhcbQTlv.M2();
 
-        bs.addUserFloat("bs_pt_lhcb",lhcbPt);
+        bs.addUserFloat("bs_pt_lhcb",lhcbBsTlv.Pt());
+        bs.addUserFloat("bs_eta_lhcb",lhcbBsTlv.Eta());
+        bs.addUserFloat("bs_phi_lhcb",lhcbBsTlv.Phi());
+
         bs.addUserFloat("m2_miss_lhcb",m2_miss_lhcb);
         bs.addUserFloat("q2_lhcb",q2_lhcb);
 
@@ -1224,12 +1241,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         lhcbAltBs = bsFlightDir.Unit();  
         lhcbAltBs *= refittedDsMu.Vect().Mag() * bsMass_ / refittedDsMu.M(); 
-        lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Py(), bsMass_);      
+        lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bsMass_);      
 
         TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
         TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
 
         bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBs.Pt());
+        bs.addUserFloat("bs_eta_lhcb_alt",lhcbAltBs.Eta());
+        bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBs.Phi());
+
         bs.addUserFloat("m2_miss_lhcb_alt",lhcbAltMissTlv.M2());
         bs.addUserFloat("q2_lhcb_alt",lhcbAltQTlv.M2());
         
@@ -1254,8 +1274,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double recoBsAbs_1; // absolute 3 momentum of bs
         double recoBsAbs_2; // "
 
-        double bs_pt_reco_1; // the pt 
-        double bs_pt_reco_2; // " 
+        //double bs_pt_reco_1; // the pt 
+        //double bs_pt_reco_2; // " 
 
         // reset bs flight direction
         bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
@@ -1304,8 +1324,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bsMass_);
           recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bsMass_);
 
-          bs_pt_reco_1 = recoBsTlv1.Pt();
-          bs_pt_reco_2 = recoBsTlv2.Pt();
+          //bs_pt_reco_1 = recoBsTlv1.Pt();
+          //bs_pt_reco_2 = recoBsTlv2.Pt();
 
           miss_1 = recoBsTlv1 - refittedDsMu;  
           miss_2 = recoBsTlv2 - refittedDsMu;  
@@ -1321,16 +1341,27 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         }
         else{ 
         //complex root, save nans
-        bs_pt_reco_1 = std::nan("");
-        bs_pt_reco_2 = std::nan("");
+        //bs_pt_reco_1 = std::nan("");
+        //bs_pt_reco_2 = std::nan("");
+
+        recoBsTlv1.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+        recoBsTlv2.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+
         m2_miss_reco_1 = std::nan("");
         m2_miss_reco_2 = std::nan("");
         q2_reco_1 = std::nan("");
         q2_reco_2 = std::nan("");
         }
 
-        bs.addUserFloat("bs_pt_reco_1",bs_pt_reco_1); 
-        bs.addUserFloat("bs_pt_reco_2",bs_pt_reco_2); 
+        bs.addUserFloat("bs_pt_reco_1",recoBsTlv1.Pt()); 
+        bs.addUserFloat("bs_pt_reco_2",recoBsTlv2.Pt()); 
+
+        bs.addUserFloat("bs_eta_reco_1",recoBsTlv1.Eta()); 
+        bs.addUserFloat("bs_eta_reco_2",recoBsTlv2.Eta()); 
+ 
+        bs.addUserFloat("bs_phi_reco_1",recoBsTlv1.Phi()); 
+        bs.addUserFloat("bs_phi_reco_2",recoBsTlv2.Phi()); 
+
         bs.addUserFloat("m2_miss_reco_1",m2_miss_reco_1); 
         bs.addUserFloat("m2_miss_reco_2",m2_miss_reco_2); 
         bs.addUserFloat("q2_reco_1",q2_reco_1); 
@@ -1406,26 +1437,46 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         /////////////////////// helicity angles in all possibe variations /////////////////////////
         // = angle between one of the kaons and the pi in the rest frame of the phi
-  
-        TLorentzVector fittedCollDs = fittedDs; //need ds twice
+ 
+        //prepare the ds vector to be boosted 
+        TLorentzVector fittedDsColl = fittedDs;    
+        TLorentzVector fittedDsLhcb = fittedDs;    
+        TLorentzVector fittedDsLhcbAlt = fittedDs; 
+        TLorentzVector fittedDsReco1 = fittedDs;  
+        TLorentzVector fittedDsReco2 = fittedDs;  
 
         // energy transferred
-        TLorentzVector q = fittedBs - fittedDs; //sign is irrelevant, only needed for q2 in next line
-        double q2 = q.M2(); 
-        TLorentzVector qColl = collBs - fittedCollDs; //sign is irrelevant, only needed for q2 in next line
+        TLorentzVector qColl = collBsTlv - fittedDs; //sign is irrelevant, only needed for q2 in next line
+        TLorentzVector qLhcb = lhcbBsTlv - fittedDs; //sign is irrelevant, only needed for q2 in next line
+        TLorentzVector qLhcbAlt = lhcbAltBsTlv - fittedDs; //sign is irrelevant, only needed for q2 in next line
+        TLorentzVector qReco1 = recoBsTlv1 - fittedDs; //sign is irrelevant, only needed for q2 in next line
+        TLorentzVector qReco2 = recoBsTlv2 - fittedDs; //sign is irrelevant, only needed for q2 in next line
+
+        
         double q2Coll = qColl.M2(); 
+        double q2Lhcb = qLhcb.M2(); 
+        double q2LhcbAlt = qLhcbAlt.M2(); 
+        double q2Reco1 = qReco1.M2(); 
+        double q2Reco2 = qReco2.M2(); 
 
         //boost vector of the phi rest frame
         TVector3 boostPhi = fittedPhi.BoostVector();
         //boost vector of the Ds rest frame
         TVector3 boostDs = fittedDs.BoostVector();
         //boost vector of the bs rest frame
-        TVector3 boostBs = fittedBs.BoostVector();
-        //check the collinear approx as well!
-        TVector3 boostCollBs = collBs.BoostVector();
+        TVector3 boostBsColl = collBsTlv.BoostVector();
+        TVector3 boostBsLhcb = lhcbBsTlv.BoostVector();
+        TVector3 boostBsLhcbAlt = lhcbAltBsTlv.BoostVector();
+        TVector3 boostBsReco1 = recoBsTlv1.BoostVector();
+        TVector3 boostBsReco2 = recoBsTlv2.BoostVector();
 
         TLorentzVector refittedPi2 = refittedPi; //need pion twice
+
         TLorentzVector refittedMuColl = refittedMu; //need muon twice
+        TLorentzVector refittedMuLhcb = refittedMu; //need muon twice
+        TLorentzVector refittedMuLhcbAlt = refittedMu; //need muon twice
+        TLorentzVector refittedMuReco1 = refittedMu; //need muon twice
+        TLorentzVector refittedMuReco2 = refittedMu; //need muon twice
 
         //TODO: get refitted phi mass from (refittedK1 + refittedK2).Mag() ?
 
@@ -1434,23 +1485,39 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedK2.Boost(-boostPhi);
         refittedPi.Boost(-boostPhi);
 
-        //boost Ds in the rest frame of the Bs, once via coll approx
-        fittedDs.Boost(-boostBs);
-        fittedCollDs.Boost(-boostCollBs);
+        //boost Ds in the rest frame of the Bs
+        fittedDsColl.Boost(-boostBsColl);
+        fittedDsLhcb.Boost(-boostBsLhcb);
+        fittedDsLhcbAlt.Boost(-boostBsLhcbAlt);
+        fittedDsReco1.Boost(-boostBsReco1);
+        fittedDsReco2.Boost(-boostBsReco2);
 
         //boost muon in the rest frame of the W
         //for this we have to define a TLorentzVector for the W
-        TLorentzVector w;
-        w.SetVectM(-fittedDs.Vect(),std::sqrt(q2)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
-        TVector3 boostW= w.BoostVector();       
- 
-        refittedMu.Boost(-boostW);
-
         TLorentzVector wColl;
-        wColl.SetVectM(-fittedCollDs.Vect(),std::sqrt(q2Coll)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+        TLorentzVector wLhcb;
+        TLorentzVector wLhcbAlt;
+        TLorentzVector wReco1;
+        TLorentzVector wReco2;
+
+        wColl.SetVectM(-fittedDsColl.Vect(),std::sqrt(q2Coll)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+        wLhcb.SetVectM(-fittedDsLhcb.Vect(),std::sqrt(q2Lhcb)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+        wLhcbAlt.SetVectM(-fittedDsLhcbAlt.Vect(),std::sqrt(q2LhcbAlt)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+        wReco1.SetVectM(-fittedDsReco1.Vect(),std::sqrt(q2Reco1)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+        wReco2.SetVectM(-fittedDsReco2.Vect(),std::sqrt(q2Reco2)); //the W is back to back with the Ds in the rest frame of the Bs and has mass q2
+
+
         TVector3 boostWColl= wColl.BoostVector();       
- 
+        TVector3 boostWLhcb= wLhcb.BoostVector();       
+        TVector3 boostWLhcbAlt= wLhcbAlt.BoostVector();       
+        TVector3 boostWReco1= wReco1.BoostVector();       
+        TVector3 boostWReco2= wReco2.BoostVector();       
+
         refittedMuColl.Boost(-boostWColl);
+        refittedMuLhcb.Boost(-boostWLhcb);
+        refittedMuLhcbAlt.Boost(-boostWLhcbAlt);
+        refittedMuReco1.Boost(-boostWReco1);
+        refittedMuReco2.Boost(-boostWReco2);
 
         //boost phi and pi into rest frame of Ds
         fittedPhi.Boost(-boostDs);
@@ -1461,32 +1528,53 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //definition of all helicity angles
         float angPiK1  = refittedK1.Angle(refittedPi.Vect()); 
         float angPiK2  = refittedK2.Angle(refittedPi.Vect()); 
-        float angMuW   = refittedMu.Angle(w.Vect()); 
+
         float angMuWColl   = refittedMuColl.Angle(wColl.Vect()); 
+        float angMuWLhcb   = refittedMuLhcb.Angle(wLhcb.Vect()); 
+        float angMuWLhcbAlt   = refittedMuLhcbAlt.Angle(wLhcbAlt.Vect()); 
+        float angMuWReco1   = refittedMuReco1.Angle(wReco1.Vect()); 
+        float angMuWReco2   = refittedMuReco2.Angle(wReco2.Vect()); 
+
         float angPhiDs = fittedDs.Angle(fittedPhi.Vect()); 
         float angPiDs  = fittedDs.Angle(refittedPi2.Vect()); 
 
         float cosPiK1  = cos(angPiK1);
         float cosPiK2  = cos(angPiK2);
-        float cosMuW   = cos(angMuW);
+
+
         float cosMuWColl   = cos(angMuWColl);
+        float cosMuWLhcb   = cos(angMuWLhcb);
+        float cosMuWLhcbAlt   = cos(angMuWLhcbAlt);
+        float cosMuWReco1   = cos(angMuWReco1);
+        float cosMuWReco2   = cos(angMuWReco2);
+
         float cosPhiDs = cos(angPhiDs);
         float cosPiDs  = cos(angPiDs);
 
         //add them to save
         bs.addUserFloat("angPiK1",  angPiK1); 
         bs.addUserFloat("angPiK2",  angPiK2); 
-        bs.addUserFloat("angMuW",   angMuW); 
+
+        bs.addUserFloat("angMuWColl",   angMuWColl); 
+        bs.addUserFloat("angMuWLhcb",   angMuWLhcb); 
+        bs.addUserFloat("angMuWLhcbAlt",   angMuWLhcbAlt); 
+        bs.addUserFloat("angMuWReco1",   angMuWReco1); 
+        bs.addUserFloat("angMuWReco2",   angMuWReco2); 
+
         bs.addUserFloat("angPhiDs", angPhiDs); 
         bs.addUserFloat("angPiDs",  angPiDs); 
 
         bs.addUserFloat("cosPiK1",  cosPiK1); 
         bs.addUserFloat("cosPiK2",  cosPiK2); 
-        bs.addUserFloat("cosMuW",   cosMuW); 
+
+        bs.addUserFloat("cosMuWColl",   cosMuWColl); 
+        bs.addUserFloat("cosMuWLhcb",   cosMuWLhcb); 
+        bs.addUserFloat("cosMuWLhcbAlt",   cosMuWLhcbAlt); 
+        bs.addUserFloat("cosMuWReco1",   cosMuWReco1); 
+        bs.addUserFloat("cosMuWReco2",   cosMuWReco2); 
+
         bs.addUserFloat("cosPhiDs", cosPhiDs); 
         bs.addUserFloat("cosPiDs",  cosPiDs); 
-
-
 
         arrived = 1;
         bs.addUserInt("arrived", arrived);

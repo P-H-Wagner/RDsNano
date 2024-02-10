@@ -2,7 +2,8 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import Var, CandVars
 from PhysicsTools.RDsNano.common_cff import RDsCandVars, ufloat, uint, ubool
 from PhysicsTools.RDsNano.rds_common_cff import TableDefaultVariables, TableDefault
-from PhysicsTools.RDsNano.variables_cff import BsToDsPhiKKPiMuVariables, empty
+from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, genVariables, vertexVariables, postfitBasicVariables, helicityVariables, bsMomentumVariables, empty
+
 #from PhysicsTools.RDsNano.primaryVertices_cff import *
 
 #BsToDsPhiKKPiMuCfg = BuilderDefaultCfg.clone()
@@ -58,7 +59,17 @@ BsToDsPhiKKPiMuTable.extension = cms.bool(False)
 BsToDsPhiKKPiMuTable.variables = BsToDsPhiKKPiMuTableVariables
 """
 
+#BsToDsPhiKKPiMuVariables.extend(vertexVariables)
+combined_variables = cms.PSet(
+  prefitBasicVariables,
+  genVariables,
+  vertexVariables,
+  postfitBasicVariables,
+  helicityVariables,
+  bsMomentumVariables
 
+)
+  
 BsToDsPhiKKPiMuTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer',
 
     src = cms.InputTag("BsToDsPhiKKPiMu:bs"),
@@ -67,9 +78,23 @@ BsToDsPhiKKPiMuTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer
     doc  = cms.string("BsToDsPhiKKPiMu"),
     singleton = cms.bool(False), # the number of entries is variable
     extension = cms.bool(False), # this is the main table for the muons
-    variables = cms.PSet(BsToDsPhiKKPiMuVariables)
+    variables = combined_variables
 
 )
+
+#vertexTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer',
+#
+#    src = cms.InputTag("BsToDsPhiKKPiMu:bs"),
+#    cut = cms.string(""),
+#    name = cms.string("table 2"),
+#    doc  = cms.string("BsToDsPhiKKPiMu"),
+#    singleton = cms.bool(False), # the number of entries is variable
+#    extension = cms.bool(True), # this is the main table for the muons
+#    variables = cms.PSet(vertexVariables)
+
+#)
+
+#BsToDsPhiKKPiMuTable = BsToDsPhiKKPiMuTable + vertexTable
 
 #?? why needed
 CountBsToDsPhiKKPiMu = cms.EDFilter(
@@ -84,5 +109,6 @@ arrived = cms.EDFilter(
     bs = cms.InputTag('BsToDsPhiKKPiMu', 'bs'),
 )
 
+#tables = cms.Sequence(BsToDsPhiKKPiMuTable) # * vertexTable)
 BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + arrived + BsToDsPhiKKPiMuTable)
 

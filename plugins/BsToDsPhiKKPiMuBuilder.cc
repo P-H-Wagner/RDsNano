@@ -52,14 +52,15 @@
 ////////////////////////////////////////////////////////////////////////////////////////////
 // TODOS:
 //
-// - move gen matching in separate module?
+// - move gen matching in separate module? NO
 // - remove hardcoded numbers - DONE
 // - helicity plane angles    
-// - redefine all variables after the fit? save both ? -YES
+// - redefine all variables after the fit? save both ? -YES 
 // - beautify the bs.addUserFloat (...) - DONE
-// - pos. def. cov matrix 
+// - pos. def. cov matrix
+// - add counters before every selection  
 // - pruned vs packed -> discuss - DONE
-// - output tree has now empty entries when there is no trigger/signal -> how to avoid this?
+// - output tree has now empty entries when there is no trigger/signal -> how to avoid this? DONE (ed filter)
 // - adapt for Hb background sample
 // - how to save kk same sign pair? --> DONE
 // - generally: save only gen matched signals? --> NO
@@ -71,9 +72,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
-///////////////////////////////////////////////////////////////////////////////////////////
 
-
+///////////////////////////////////////////////////////////////////////////////////
 // function which checks if a genParticle has a certain ancestor 
 
 bool isAncestor(const auto dau, const int id){
@@ -86,7 +86,7 @@ bool isAncestor(const auto dau, const int id){
   }
   return false;
 }
-
+///////////////////////////////////////////////////////////////////////////////////
 // function which checks if mom is ancestor of dau
 
 bool hasAncestor(const auto dau, const auto mom){
@@ -99,7 +99,7 @@ bool hasAncestor(const auto dau, const auto mom){
   }
   return false;
 }
-
+///////////////////////////////////////////////////////////////////////////////////
 // function which returns pt eta phi of the ancestor in order to compare ancestors.
 
 std::vector<double> infoAncestor(const auto dau, const int id){
@@ -118,13 +118,12 @@ std::vector<double> infoAncestor(const auto dau, const int id){
   return failedVector;
 }
 
-
+///////////////////////////////////////////////////////////////////////////////////
 // function which returns pointer to ancestor such that we can match by pointer! :)
 
 auto getAncestor(const auto dau, const int id){
 
   //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
- 
   //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
   if ((fabs(dau->pdgId()) == id)){
     //std::cout << "sucess!" << std::endl;
@@ -142,7 +141,8 @@ auto getAncestor(const auto dau, const int id){
   return empty;
 }
 
-// functino which removes the un-oscillated ancestor of dau
+///////////////////////////////////////////////////////////////////////////////////
+// function which removes the un-oscillated ancestor of dau
 // f.e. dau is -531 and comes from 531 via oscillation, then this function removes oscillation
 // and returns a pointer to the 531 particle, which has the correct vertex!
 
@@ -162,7 +162,7 @@ const reco::Candidate* removeOscillations(const auto dau){
   }
   return dau;
 }
-
+///////////////////////////////////////////////////////////////////////////////////
 //function which gets the hel angle between the mu and W
 float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){       
 
@@ -181,8 +181,9 @@ float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   return mu.Angle(w.Vect());
 
 }
-
+///////////////////////////////////////////////////////////////////////////////////
 //function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
+
 float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLorentzVector dau2) {
   TVector3 restBoost = restFrame.BoostVector();
   dau1.Boost(-restBoost);
@@ -190,8 +191,8 @@ float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLorentzVec
   return dau1.Angle(dau2.Vect());
 }
 
-
-//funnction which returns the phi difference of two phi variables (in cms coordinate system)
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns the phi difference of two phi variables (in cms coordinate system)
 double phiDiff(double phi1, double phi2){
 
   double dPhi = phi1 - phi2;
@@ -204,15 +205,16 @@ double phiDiff(double phi1, double phi2){
 }
 
 
-
-
 ///////////////////////////////////////////////////////////////////////////////////
-
 // counters for filters to know when we lose how many particles
-// TODO
-//
-int nEvents = 0;
-int k1Sel1Counter = 0;
+
+int nEvents = 0;        // counts the nr of events in total
+int nMuons  = 0;        // counts the nr of muons
+int nPacked = 0;        // counts the nr of packed candidates in total
+
+int nMuonsPassed = 0;   // how many muons pass (i.e. when we find a pv)
+
+int k1Sel1Counter = 0;   
 int k1Sel2Counter = 0;
 
 int k2Sel1Counter = 0;
@@ -372,6 +374,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //////////////////////////////////////////////////////
 
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
+    nMuons++;
+
     //if there is no trg muon, this loop is empty:)
     edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
@@ -407,6 +411,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     //////////////////////////////////////////////////
 
     for(size_t k1Idx = 0; k1Idx < pcand->size(); ++k1Idx) {
+
+      nPacked++;
 
       //define a pointer to the kaon at position k1Idx
       edm::Ptr<pat::PackedCandidate> k1Ptr(pcand, k1Idx);
@@ -483,40 +489,40 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //////////////////////////////////////////////////
 
         //define a composite candidate pair 
-        pat::CompositeCandidate kkPair;
+        pat::CompositeCandidate kk;
 
         //PF canidates are always assigned with the pi mass, we have to force the kaon mass
         math::PtEtaPhiMLorentzVector k1P4(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), K_MASS);
         math::PtEtaPhiMLorentzVector k2P4(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), K_MASS);
         math::PtEtaPhiMLorentzVector piP4(piPtr->pt(), piPtr->eta(), piPtr->phi(), PI_MASS); //just to be sure lets also force the pi mass
  
-        kkPair.setP4(k1P4 + k2P4);
+        kk.setP4(k1P4 + k2P4);
       
         //only continue when they build a phi resonance, allow 15MeV:
-        if (fabs(kkPair.mass() - phiMass_) > phiMassAllowance_) continue;     
+        if (fabs(kk.mass() - phiMass_) > phiMassAllowance_) continue;     
 
-        kkPair.setCharge(k1Ptr->charge() + k2Ptr->charge());
+        kk.setCharge(k1Ptr->charge() + k2Ptr->charge());
 
         //////////////////////////////////////////////////
         // Build Ds resonance                           //
         // ///////////////////////////////////////////////
 
-        pat::CompositeCandidate ds;
-        ds.setP4(kkPair.p4() + piP4); 
+        pat::CompositeCandidate phiPi;
+        phiPi.setP4(kk.p4() + piP4); 
 
         //only continue when they build a ds resonance, allow 50MeV:
-        if (fabs(ds.mass() - dsMass_) > dsMassAllowance_) continue;
+        if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
 
-        ds.setCharge(kkPair.charge() + piPtr->charge());
+        phiPi.setCharge(kk.charge() + piPtr->charge());
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
         //////////////////////////////////////////////////
 
         pat::CompositeCandidate dsMu;
-        dsMu.setP4(ds.p4() + muPtr->p4()); 
+        dsMu.setP4(phiPi.p4() + muPtr->p4()); 
 
-        dsMu.setCharge(ds.charge() + muPtr->charge()); //sanity check:shoould be 0
+        dsMu.setCharge(phiPi.charge() + muPtr->charge()); //sanity check:shoould be 0
 
         //build bs with collinear approximation
         pat::CompositeCandidate bs;
@@ -673,53 +679,82 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
                //get gen 4 momenta
                TLorentzVector genMuTlv; 
+               TLorentzVector genK1Tlv; 
+               TLorentzVector genK2Tlv; 
+               TLorentzVector genPiTlv; 
+               TLorentzVector genPhiTlv; 
                TLorentzVector genDsTlv; 
                TLorentzVector genBsTlv; 
 
                TLorentzVector genMissTlv; //for m2 miss 
                TLorentzVector genQTlv;  // for q2
 
+               genMuTlv.SetXYZM(  muPtrGen->px(),      muPtrGen->py(),      muPtrGen->pz(),      muMass_);
+               genK1Tlv.SetXYZM(  k1PtrGen->px(),      k1PtrGen->py(),      k1PtrGen->pz(),      kMass_);
+               genK2Tlv.SetXYZM(  k2PtrGen->px(),      k2PtrGen->py(),      k2PtrGen->pz(),      kMass_);
+               genPiTlv.SetXYZM(  piPtrGen->px(),      piPtrGen->py(),      piPtrGen->pz(),      piMass_);
 
-               genMuTlv.SetXYZM(muPtrGen->px(),muPtrGen->py(),muPtrGen->pz(),muMass_);
-               genDsTlv.SetXYZM(dsFromPi->px(),dsFromPi->py(),dsFromPi->pz(),dsMass_);
-               genBsTlv.SetXYZM(bsFromMu->px(),bsFromMu->py(),bsFromMu->pz(),bsMass_);
+               genPhiTlv.SetXYZM( phiFromK1->px(),     phiFromK1->py(),     phiFromK1->pz(),     phiMass_);
+               genDsTlv.SetXYZM(  dsFromPi->px(),      dsFromPi->py(),      dsFromPi->pz(),      dsMass_);
+               genBsTlv.SetXYZM(  bsFromMuWOOsc->px(), bsFromMuWOOsc->py(), bsFromMuWOOsc->pz(), bsMass_); //changed
 
                genMissTlv = genBsTlv - (genDsTlv + genMuTlv); 
                genQTlv    = genBsTlv - (genDsTlv); 
 
-               double m2_miss_gen = genMissTlv.M2();
-               double q2_gen = genQTlv.M2();
+               float m2_miss_gen = genMissTlv.M2();
+               float q2_gen = genQTlv.M2();
 
                bs.addUserFloat("m2_miss_gen",m2_miss_gen);
                bs.addUserFloat("q2_gen",q2_gen);
 
                //save the gen info by adding gen candidates of final states
-               bs.addUserCand("gen_mu",muPtrGen);
-               bs.addUserCand("gen_k1",k1PtrGen);
-               bs.addUserCand("gen_k2",k2PtrGen);
-               bs.addUserCand("gen_pi",piPtrGen);
+               bs.addUserCand("mu_gen",muPtrGen);
+               bs.addUserCand("k1_gen",k1PtrGen);
+               bs.addUserCand("k2_gen",k2PtrGen);
+               bs.addUserCand("pi_gen",piPtrGen);
+
 
                //and gen info from the resonances
-               bs.addUserFloat("gen_phi_pt" ,phiFromK1->pt());
-               bs.addUserFloat("gen_phi_eta",phiFromK1->eta());
-               bs.addUserFloat("gen_phi_phi",phiFromK1->phi());
-               bs.addUserFloat("gen_phi_vx" ,phiFromK1->vx());
-               bs.addUserFloat("gen_phi_vy" ,phiFromK1->vy());
-               bs.addUserFloat("gen_phi_vz" ,phiFromK1->vz());
+               bs.addUserFloat("phi_gen_px"     ,phiFromK1->px());
+               bs.addUserFloat("phi_gen_py"     ,phiFromK1->py());
+               bs.addUserFloat("phi_gen_pz"     ,phiFromK1->pz());
+               bs.addUserFloat("phi_gen_pt"     ,phiFromK1->pt());
+               bs.addUserFloat("phi_gen_eta"    ,phiFromK1->eta());
+               bs.addUserFloat("phi_gen_phi"    ,phiFromK1->phi());
+               bs.addUserFloat("tv_x_gen"       ,phiFromK1->vx());//This is the phi production vertex!
+               bs.addUserFloat("tv_y_gen"       ,phiFromK1->vy());
+               bs.addUserFloat("tv_z_gen"       ,phiFromK1->vz());
+               bs.addUserFloat("phi_gen_charge" ,phiFromK1->charge());
+               bs.addUserInt(  "phi_gen_pdgid"  ,phiFromK1->pdgId());
 
-               bs.addUserFloat("gen_ds_pt"  ,dsFromPi->pt());
-               bs.addUserFloat("gen_ds_eta" ,dsFromPi->eta());
-               bs.addUserFloat("gen_ds_phi" ,dsFromPi->phi());
-               bs.addUserFloat("gen_ds_vx"  ,dsFromPi->vx());
-               bs.addUserFloat("gen_ds_vy"  ,dsFromPi->vy());
-               bs.addUserFloat("gen_ds_vz"  ,dsFromPi->vz());
+               bs.addUserFloat("ds_gen_px"     ,dsFromPi->px());
+               bs.addUserFloat("ds_gen_py"     ,dsFromPi->py());
+               bs.addUserFloat("ds_gen_pz"     ,dsFromPi->pz());
+               bs.addUserFloat("ds_gen_pt"     ,dsFromPi->pt());
+               bs.addUserFloat("ds_gen_eta"    ,dsFromPi->eta());
+               bs.addUserFloat("ds_gen_phi"    ,dsFromPi->phi());
+               bs.addUserFloat("sv_x_gen"      ,dsFromPi->vx());//This is the ds production vertex!
+               bs.addUserFloat("sv_y_gen"      ,dsFromPi->vy());
+               bs.addUserFloat("sv_z_gen"      ,dsFromPi->vz());
+               bs.addUserFloat("ds_gen_charge" ,dsFromPi->charge());
+               bs.addUserInt(  "ds_gen_pdgid"  ,dsFromPi->pdgId());
 
-               bs.addUserFloat("gen_bs_pt"  ,bsFromMuWOOsc->pt());
-               bs.addUserFloat("gen_bs_eta" ,bsFromMuWOOsc->eta());
-               bs.addUserFloat("gen_bs_phi" ,bsFromMuWOOsc->phi());
-               bs.addUserFloat("gen_bs_vx"  ,bsFromMuWOOsc->vx());
-               bs.addUserFloat("gen_bs_vy"  ,bsFromMuWOOsc->vy());
-               bs.addUserFloat("gen_bs_vz"  ,bsFromMuWOOsc->vz());
+               bs.addUserFloat("bs_gen_px"     ,bsFromMuWOOsc->px());
+               bs.addUserFloat("bs_gen_py"     ,bsFromMuWOOsc->py());
+               bs.addUserFloat("bs_gen_pz"     ,bsFromMuWOOsc->pz());
+               bs.addUserFloat("bs_gen_pt"     ,bsFromMuWOOsc->pt());
+               bs.addUserFloat("bs_gen_eta"    ,bsFromMuWOOsc->eta());
+               bs.addUserFloat("bs_gen_phi"    ,bsFromMuWOOsc->phi());
+               bs.addUserFloat("pv_x_gen"      ,bsFromMuWOOsc->vx()); //This is the bs production vertex!
+               bs.addUserFloat("pv_y_gen"      ,bsFromMuWOOsc->vy());
+               bs.addUserFloat("pv_z_gen"      ,bsFromMuWOOsc->vz());
+               bs.addUserFloat("bs_gen_charge" ,bsFromMuWOOsc->charge());
+               bs.addUserInt(  "bs_gen_pdgid"  ,bsFromMuWOOsc->pdgId());
+
+               //lets also store the fourth vertex ( the k production vertex)
+               bs.addUserFloat("fv_x_gen"       ,k1PtrGen->vx());//This is the kaon production vertex!
+               bs.addUserFloat("fv_y_gen"       ,k1PtrGen->vy());
+               bs.addUserFloat("fv_z_gen"       ,k1PtrGen->vz());
 
                // now find the signal ID
                // Ds mu   = 0
@@ -735,16 +770,27 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                if(isAncestor(piPtrGen, 433)) sigId += 1; 
 
                //define helicity angles
- 
-               TVector3 genBsBoost = genBsTlv.BoostVector();
-               genDsTlv.Boost(-genBsBoost);
-               TLorentzVector wGen;
-               wGen.SetVectM(-genDsTlv.Vect(),std::sqrt(q2_gen));
-               TVector3 boostWGen= wGen.BoostVector();
-               genMuTlv.Boost(-boostWGen);
-               float angMuWGen = genMuTlv.Angle(wGen.Vect());
-               float cosMuWGen  = cos(angMuWGen);
-               bs.addUserFloat("cosMuWGen",cosMuWGen);
+
+               //angle between Mu and W
+               float angMuWGen = angMuW(genDsTlv,genBsTlv,genMuTlv); 
+               bs.addUserFloat("angMuWGen",angMuWGen);
+               bs.addUserFloat("cosMuWGen",cos(angMuWGen));
+
+               //angle between k1(k2) and pion in phi rest frame
+               float angPiK1Gen  = angDoubleDecay(genPhiTlv, genK1Tlv,  genPiTlv);
+               float angPiK2Gen  = angDoubleDecay(genPhiTlv, genK2Tlv,  genPiTlv);
+               bs.addUserFloat("angPiK1Gen", angPiK1Gen);
+               bs.addUserFloat("angPiK2Gen", angPiK2Gen);
+               bs.addUserFloat("cosPiK1Gen", cos(angPiK1Gen));
+               bs.addUserFloat("cosPiK2Gen", cos(angPiK2Gen));
+
+               // equivalently, angle between phi(pi) and bs in ds rest frame
+               float angPhiDsGen = angDoubleDecay(genDsTlv,  genPhiTlv, genBsTlv);
+               float angPiDsGen  = angDoubleDecay(genDsTlv,  genPiTlv,  genBsTlv);
+               bs.addUserFloat("angPhiDsGen", angPhiDsGen);
+               bs.addUserFloat("angPiDsGen",  angPiDsGen);
+               bs.addUserFloat("cosPhiDsGen", cos(angPhiDsGen));
+               bs.addUserFloat("cosPiDsGen",  cos(angPiDsGen));
 
                //////////////////////////////////////////////////
 
@@ -941,39 +987,34 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pi_mass",piMass_);
 
         bs.addUserCand("mu",muPtr); //muon mass is correct -> check
+        bs.addUserFloat("mu_mass",muMass_);
 
         bs.addUserFloat("sig",sigId);
 
-        //add resonances --> are not part of collection and can thus not be
+        //add prefit resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
 
-        kkPair.addUserFloat("kk_delta_R", reco::deltaR(*k1Ptr, *k2Ptr));
-
-        bs.addUserFloat("phi_pt", kkPair.pt());
-        bs.addUserFloat("phi_eta", kkPair.eta());
-        bs.addUserFloat("phi_phi", kkPair.phi());
-        bs.addUserFloat("phi_mass", kkPair.mass());
-        bs.addUserFloat("phi_charge", kkPair.charge());
-        bs.addUserFloat("phi_deltaR", kkPair.userFloat("kk_delta_R"));
+        bs.addUserFloat("kk_pt", kk.pt());
+        bs.addUserFloat("kk_eta", kk.eta());
+        bs.addUserFloat("kk_phi", kk.phi());
+        bs.addUserFloat("kk_mass", kk.mass());
+        bs.addUserFloat("kk_charge", kk.charge());
         bs.addUserInt("kkCharge",kkCharge); 
+        bs.addUserFloat("kk_deltaR", reco::deltaR(*k1Ptr, *k2Ptr));
 
-        ds.addUserFloat("phi_pi_delta_R", reco::deltaR(kkPair, *piPtr));
-
-        bs.addUserFloat("ds_pt", ds.pt());
-        bs.addUserFloat("ds_eta", ds.eta());
-        bs.addUserFloat("ds_phi", ds.phi());
-        bs.addUserFloat("ds_mass", ds.mass());
-        bs.addUserFloat("ds_charge", ds.charge());
-        bs.addUserFloat("ds_deltaR", ds.userFloat("phi_pi_delta_R"));
-
-        dsMu.addUserFloat("ds_mu_delta_R", reco::deltaR(ds, *muPtr));
+        bs.addUserFloat("phiPi_pt", phiPi.pt());
+        bs.addUserFloat("phiPi_eta", phiPi.eta());
+        bs.addUserFloat("phiPi_phi", phiPi.phi());
+        bs.addUserFloat("phiPi_mass", phiPi.mass());
+        bs.addUserFloat("phiPi_charge", phiPi.charge());
+        bs.addUserFloat("phiPi_deltaR", reco::deltaR(kk, *piPtr));
 
         bs.addUserFloat("dsMu_pt", dsMu.pt());
         bs.addUserFloat("dsMu_eta", dsMu.eta());
         bs.addUserFloat("dsMu_phi", dsMu.phi());
         bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino mass
         bs.addUserFloat("dsMu_charge", dsMu.charge());
-        bs.addUserFloat("dsMu_deltaR", dsMu.userFloat("ds_mu_delta_R"));
+        bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPi, *muPtr));
 
         //rel charges
         bs.addUserInt("kk_charge",kkCharge); 
@@ -1190,10 +1231,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double m2_miss_coll = collMissTlv.M2();
         double q2_coll = collQTlv.M2();
 
+        bs.addUserFloat("bs_px_coll",collBsTlv.Px());
+        bs.addUserFloat("bs_py_coll",collBsTlv.Py());
+        bs.addUserFloat("bs_pz_coll",collBsTlv.Pz());
         bs.addUserFloat("bs_pt_coll",collBsTlv.Pt());
         bs.addUserFloat("bs_eta_coll",collBsTlv.Eta());
         bs.addUserFloat("bs_phi_coll",collBsTlv.Phi());
-
         bs.addUserFloat("m2_miss_coll",m2_miss_coll);
         bs.addUserFloat("q2_coll",q2_coll);
 
@@ -1239,6 +1282,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double m2_miss_lhcb = lhcbMissTlv.M2();
         double q2_lhcb = lhcbQTlv.M2();
 
+        bs.addUserFloat("bs_px_lhcb",lhcbBsTlv.Px());
+        bs.addUserFloat("bs_py_lhcb",lhcbBsTlv.Py());
+        bs.addUserFloat("bs_pz_lhcb",lhcbBsTlv.Pz());
         bs.addUserFloat("bs_pt_lhcb",lhcbBsTlv.Pt());
         bs.addUserFloat("bs_eta_lhcb",lhcbBsTlv.Eta());
         bs.addUserFloat("bs_phi_lhcb",lhcbBsTlv.Phi());
@@ -1264,6 +1310,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
         TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
 
+        bs.addUserFloat("bs_px_lhcb_alt",lhcbAltBsTlv.Px());
+        bs.addUserFloat("bs_py_lhcb_alt",lhcbAltBsTlv.Py());
+        bs.addUserFloat("bs_pz_lhcb_alt",lhcbAltBsTlv.Pz());
         bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBs.Pt());
         bs.addUserFloat("bs_eta_lhcb_alt",lhcbAltBs.Eta());
         bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBs.Phi());
@@ -1360,13 +1409,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         q2_reco_2 = std::nan("");
         }
 
+        bs.addUserFloat("bs_px_reco_1",recoBsTlv1.Px());
+        bs.addUserFloat("bs_py_reco_1",recoBsTlv1.Py());
+        bs.addUserFloat("bs_pz_reco_1",recoBsTlv1.Pz());
         bs.addUserFloat("bs_pt_reco_1",recoBsTlv1.Pt()); 
-        bs.addUserFloat("bs_pt_reco_2",recoBsTlv2.Pt()); 
-
         bs.addUserFloat("bs_eta_reco_1",recoBsTlv1.Eta()); 
-        bs.addUserFloat("bs_eta_reco_2",recoBsTlv2.Eta()); 
- 
         bs.addUserFloat("bs_phi_reco_1",recoBsTlv1.Phi()); 
+
+        bs.addUserFloat("bs_px_reco_2",recoBsTlv2.Px());
+        bs.addUserFloat("bs_py_reco_2",recoBsTlv2.Py());
+        bs.addUserFloat("bs_pz_reco_2",recoBsTlv2.Pz());
+        bs.addUserFloat("bs_pt_reco_2",recoBsTlv2.Pt()); 
+        bs.addUserFloat("bs_eta_reco_2",recoBsTlv2.Eta()); 
         bs.addUserFloat("bs_phi_reco_2",recoBsTlv2.Phi()); 
 
         bs.addUserFloat("m2_miss_reco_1",m2_miss_reco_1); 
@@ -1526,6 +1580,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   ret_value->emplace_back(bs);
   iEvent.put(std::move(ret_value), "bs"); 
   }
-}//clsoing event loop
+}//closing event loop
 
 DEFINE_FWK_MODULE(BsToDsPhiKKPiMuBuilder);

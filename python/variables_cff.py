@@ -362,10 +362,29 @@ helicityVariables = cms.PSet(
         cosPiK1          = Var("userFloat('cosPiK1')",float),
         cosPiK2          = Var("userFloat('cosPiK2')",float),
 
-        angPhiDs         = Var("userFloat('angPhiDs')",float),
-        angPiDs          = Var("userFloat('angPiDs')",float),
-        cosPhiDs         = Var("userFloat('cosPhiDs')",float),
-        cosPiDs          = Var("userFloat('cosPiDs')",float),
+        angPhiDsColl     = Var("userFloat('angPhiDsColl')",float),
+        angPhiDsLhcb     = Var("userFloat('angPhiDsLhcb')",float),
+        angPhiDsLhcbAlt  = Var("userFloat('angPhiDsLhcbAlt')",float),
+        angPhiDsReco1    = Var("userFloat('angPhiDsReco1')",float),
+        angPhiDsReco2    = Var("userFloat('angPhiDsReco2')",float),
+
+        angPiDsColl     = Var("userFloat('angPiDsColl')",float),
+        angPiDsLhcb     = Var("userFloat('angPiDsLhcb')",float),
+        angPiDsLhcbAlt  = Var("userFloat('angPiDsLhcbAlt')",float),
+        angPiDsReco1    = Var("userFloat('angPiDsReco1')",float),
+        angPiDsReco2    = Var("userFloat('angPiDsReco2')",float),
+
+        cosPhiDsColl     = Var("userFloat('cosPhiDsColl')",float),
+        cosPhiDsLhcb     = Var("userFloat('cosPhiDsLhcb')",float),
+        cosPhiDsLhcbAlt  = Var("userFloat('cosPhiDsLhcbAlt')",float),
+        cosPhiDsReco1    = Var("userFloat('cosPhiDsReco1')",float),
+        cosPhiDsReco2    = Var("userFloat('cosPhiDsReco2')",float),
+
+        cosPiDsColl     = Var("userFloat('cosPiDsColl')",float),
+        cosPiDsLhcb     = Var("userFloat('cosPiDsLhcb')",float),
+        cosPiDsLhcbAlt  = Var("userFloat('cosPiDsLhcbAlt')",float),
+        cosPiDsReco1    = Var("userFloat('cosPiDsReco1')",float),
+        cosPiDsReco2    = Var("userFloat('cosPiDsReco2')",float),
 
         angMuWColl       = Var("userFloat('angMuWColl')",float),
         angMuWLhcb       = Var("userFloat('angMuWLhcb')",float),
@@ -377,7 +396,7 @@ helicityVariables = cms.PSet(
         cosMuWLhcb       = Var("userFloat('cosMuWLhcb')",float),
         cosMuWLhcbAlt    = Var("userFloat('cosMuWLhcbAlt')",float),
         cosMuWReco1      = Var("userFloat('cosMuWReco1')",float),
-        cosMuWReco2      = Var("userFloat('cosMuWReco1')",float),
+        cosMuWReco2      = Var("userFloat('cosMuWReco2')",float),
 
 
 )

@@ -69,6 +69,7 @@
 // - save gen information!! DONE 
 // - do gen tests, check f.e. refitted p's with gen p's and unfitted p's
 // - put hel angle calc. etc into functions! DONE
+// - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -166,19 +167,28 @@ const reco::Candidate* removeOscillations(const auto dau){
 //function which gets the hel angle between the mu and W
 float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){       
 
+  //get q2
   TLorentzVector q = b - d;
   double q2 = q.M2();
 
+  //boost Ds into Bs rest frame
   TVector3 bBoost = b.BoostVector();
   d.Boost(-bBoost);
 
+  //get W via Ds 
   TLorentzVector w;
   w.SetVectM(-d.Vect(),std::sqrt(q2));           
+  // boost it back into lab frame
+  w.Boost(bBoost);
+  // now take the boost vector of w
   TVector3 wBoost = w.BoostVector();
-
+  //boost the muon into the w rest frame
   mu.Boost(-wBoost); 
-
-  return mu.Angle(w.Vect());
+  //boost the W back into the bs rest frame
+  w.Boost(-bBoost);
+ 
+  //now take the angle
+  return w.Angle(mu.Vect());
 
 }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -191,6 +201,44 @@ float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLorentzVec
   return dau1.Angle(dau2.Vect());
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
+
+float angPlane (TLorentzVector d, TLorentzVector b, TLorentzVector mu, TLorentzVector pi) {
+
+  //get q2
+  TLorentzVector q = b - d;
+  double q2 = q.M2();
+
+  //get Ds boost vector in the lab frame (to boost pi)
+  TVector3 dBoost = d.BoostVector();
+
+  //boost Ds into Bs rest frame
+  TVector3 bBoost = b.BoostVector();
+  d.Boost(-bBoost);
+
+  //get W via Ds 
+  TLorentzVector w;
+  w.SetVectM(-d.Vect(),std::sqrt(q2));           
+  // boost it back into lab frame
+  w.Boost(bBoost);
+  // now take the boost vector of w
+  TVector3 wBoost = w.BoostVector();
+  //boost the muon into the w rest frame
+  mu.Boost(-wBoost);
+  //boost the W back into the bs rest frame
+  w.Boost(-bBoost);
+
+  //now boost the pi into the ds rest frame, ds is already in Bs rest frame
+  pi.Boost(-dBoost);
+
+  // normal vector on lepton-W plane
+  TVector3 n1 = mu.Vect().Cross(w.Vect());
+  // normal vector on ds-pi plane
+  TVector3 n2 = d.Vect().Cross(pi.Vect()); 
+
+  return n1.Angle(n2);
+}
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns the phi difference of two phi variables (in cms coordinate system)
 double phiDiff(double phi1, double phi2){
@@ -659,7 +707,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
                     
                //std::cout << "searching for ds resonance .. " << std::endl;
+
+               //std::cout << "before getAncestor" << phiFromK1->pt() << std::endl;
                auto dsFromPhi = getAncestor(phiFromK1,431);
+              //std::cout << "after getAncestor" << phiFromK1->pt() << std::endl;
+
                auto dsFromPi  = getAncestor(piReco,431);
                if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
 
@@ -764,10 +816,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                sigId = 0; //default
 
                // look for tau in signal 
+               //std::cout << "before isAncestor" << muPtrGen->pt() << std::endl;
                if(isAncestor(muPtrGen, 15)) sigId = 2;               
+               //std::cout << "after isAncestor" << muPtrGen->pt() << std::endl;
 
                // now look for possible Ds*
+               //std::cout << "before isAncestor" << piPtrGen->pt() << std::endl;
                if(isAncestor(piPtrGen, 433)) sigId += 1; 
+               //std::cout << "after isAncestor" << piPtrGen->pt() << std::endl;
 
                //define helicity angles
 
@@ -1514,46 +1570,64 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float angMuWReco1   = angMuW(fittedDs,recoBsTlv1,  refittedMu);
         float angMuWReco2   = angMuW(fittedDs,recoBsTlv2,  refittedMu);
 
-        float cosMuWColl    = cos(angMuWColl);
-        float cosMuWLhcb    = cos(angMuWLhcb);
-        float cosMuWLhcbAlt = cos(angMuWLhcbAlt);
-        float cosMuWReco1   = cos(angMuWReco1);
-        float cosMuWReco2   = cos(angMuWReco2);
-
         bs.addUserFloat("angMuWColl",       angMuWColl); 
         bs.addUserFloat("angMuWLhcb",       angMuWLhcb); 
         bs.addUserFloat("angMuWLhcbAlt",    angMuWLhcbAlt); 
         bs.addUserFloat("angMuWReco1",      angMuWReco1); 
         bs.addUserFloat("angMuWReco2",      angMuWReco2); 
 
-        bs.addUserFloat("cosMuWColl",       cosMuWColl); 
-        bs.addUserFloat("cosMuWLhcb",       cosMuWLhcb); 
-        bs.addUserFloat("cosMuWLhcbAlt",    cosMuWLhcbAlt); 
-        bs.addUserFloat("cosMuWReco1",      cosMuWReco1); 
-        bs.addUserFloat("cosMuWReco2",      cosMuWReco2); 
+        bs.addUserFloat("cosMuWColl",       cos(angMuWColl)); 
+        bs.addUserFloat("cosMuWLhcb",       cos(angMuWLhcb)); 
+        bs.addUserFloat("cosMuWLhcbAlt",    cos(angMuWLhcbAlt)); 
+        bs.addUserFloat("cosMuWReco1",      cos(angMuWReco1)); 
+        bs.addUserFloat("cosMuWReco2",      cos(angMuWReco2)); 
 
 
         //angle between k1(k2) and pion in phi rest frame
         float angPiK1  = angDoubleDecay(fittedPhi,refittedK1, refittedPi);
         float angPiK2  = angDoubleDecay(fittedPhi,refittedK2, refittedPi);
         // equivalently, angle between phi(pi) and bs in ds rest frame
-        float angPhiDs = angDoubleDecay(fittedDs, fittedPhi,  recoBsTlv1);
-        float angPiDs  = angDoubleDecay(fittedDs, refittedPi, recoBsTlv1);
+        float angPhiDsColl    = angDoubleDecay(fittedDs, fittedPhi,  collBsTlv);
+        float angPhiDsLhcb    = angDoubleDecay(fittedDs, fittedPhi,  lhcbBsTlv);
+        float angPhiDsLhcbAlt = angDoubleDecay(fittedDs, fittedPhi,  lhcbAltBsTlv);
+        float angPhiDsReco1   = angDoubleDecay(fittedDs, fittedPhi,  recoBsTlv1);
+        float angPhiDsReco2   = angDoubleDecay(fittedDs, fittedPhi,  recoBsTlv2);
 
-        float cosPiK1  = cos(angPiK1);
-        float cosPiK2  = cos(angPiK2);
-        float cosPhiDs = cos(angPhiDs);
-        float cosPiDs  = cos(angPiDs);
+        float angPiDsColl    = angDoubleDecay(fittedDs, refittedPi,  collBsTlv);
+        float angPiDsLhcb    = angDoubleDecay(fittedDs, refittedPi,  lhcbBsTlv);
+        float angPiDsLhcbAlt = angDoubleDecay(fittedDs, refittedPi,  lhcbAltBsTlv);
+        float angPiDsReco1   = angDoubleDecay(fittedDs, refittedPi,  recoBsTlv1);
+        float angPiDsReco2   = angDoubleDecay(fittedDs, refittedPi,  recoBsTlv2);
 
-        bs.addUserFloat("angPiK1",  angPiK1); 
-        bs.addUserFloat("angPiK2",  angPiK2); 
-        bs.addUserFloat("angPhiDs", angPhiDs); 
-        bs.addUserFloat("angPiDs",  angPiDs); 
+        bs.addUserFloat("angPiK1",         angPiK1); 
+        bs.addUserFloat("angPiK2",         angPiK2); 
 
-        bs.addUserFloat("cosPiK1",  cosPiK1); 
-        bs.addUserFloat("cosPiK2",  cosPiK2); 
-        bs.addUserFloat("cosPhiDs", cosPhiDs); 
-        bs.addUserFloat("cosPiDs",  cosPiDs); 
+        bs.addUserFloat("angPhiDsColl",    angPhiDsColl); 
+        bs.addUserFloat("angPhiDsLhcb",    angPhiDsLhcb); 
+        bs.addUserFloat("angPhiDsLhcbAlt", angPhiDsLhcbAlt); 
+        bs.addUserFloat("angPhiDsReco1",   angPhiDsReco1); 
+        bs.addUserFloat("angPhiDsReco2",   angPhiDsReco2); 
+
+        bs.addUserFloat("angPiDsColl",     angPiDsColl); 
+        bs.addUserFloat("angPiDsLhcb",     angPiDsLhcb); 
+        bs.addUserFloat("angPiDsLhcbAlt",  angPiDsLhcbAlt); 
+        bs.addUserFloat("angPiDsReco1",    angPiDsReco1); 
+        bs.addUserFloat("angPiDsReco2",    angPiDsReco2); 
+
+        bs.addUserFloat("cosPiK1",         cos(angPiK1)); 
+        bs.addUserFloat("cosPiK2",         cos(angPiK2)); 
+
+        bs.addUserFloat("cosPhiDsColl",    cos(angPhiDsColl)); 
+        bs.addUserFloat("cosPhiDsLhcb",    cos(angPhiDsLhcb)); 
+        bs.addUserFloat("cosPhiDsLhcbAlt", cos(angPhiDsLhcbAlt)); 
+        bs.addUserFloat("cosPhiDsReco1",   cos(angPhiDsReco1)); 
+        bs.addUserFloat("cosPhiDsReco2",   cos(angPhiDsReco2)); 
+
+        bs.addUserFloat("cosPiDsColl",     cos(angPiDsColl)); 
+        bs.addUserFloat("cosPiDsLhcb",     cos(angPiDsLhcb)); 
+        bs.addUserFloat("cosPiDsLhcbAlt",  cos(angPiDsLhcbAlt)); 
+        bs.addUserFloat("cosPiDsReco1",    cos(angPiDsReco1)); 
+        bs.addUserFloat("cosPiDsReco2",    cos(angPiDsReco2)); 
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////

@@ -527,7 +527,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
-      if (kkCharge > 0) continue; //To be commented out 
+      //if (kkCharge > 0) continue; //To be commented out 
 
 
       if (!k2Sel) continue;
@@ -554,7 +554,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //pi and mu must have opposite charge -> only for signal tests, later we keep everything
         int piMuCharge = piPtr->charge() * muPtr->charge();
-        if (piMuCharge > 0) continue; //To be commented out
+        
+        //if (piMuCharge > 0) continue; //To be commented out
 
         if (!piSel) continue;
 
@@ -746,17 +747,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                auto bsFromMu = getAncestor(muReco,531);
                if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
  
-               std::cout << "(px,vx) before oscillations " << bsFromMu->px() << ", " << bsFromMu->vx() << std::endl;
+               //std::cout << "(px,vx) before oscillations " << bsFromMu->px() << ", " << bsFromMu->vx() << std::endl;
 
                //remove oscillations
                auto bsFromMuWOOsc = removeOscillations(bsFromMu);
                //bool related = hasAncestor(dsFromK1,bsFromK1);
-               std::cout << "(px,vx) without oscillations " << bsFromMuWOOsc->px() << ", " << bsFromMuWOOsc->vx() << std::endl;
+               //std::cout << "(px,vx) without oscillations " << bsFromMuWOOsc->px() << ", " << bsFromMuWOOsc->vx() << std::endl;
               
                nGenMatches++;
                genMatchSuccess = 1;
 
-               if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
+               //if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
 
                //get gen 4 momenta
                TLorentzVector genMuTlv; 
@@ -806,10 +807,50 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                float fv_z_gen = k1PtrGen->vz();
 
                //save the gen info by adding gen candidates of final states
-               bs.addUserCand("mu_gen",muPtrGen);
-               bs.addUserCand("k1_gen",k1PtrGen);
-               bs.addUserCand("k2_gen",k2PtrGen);
-               bs.addUserCand("pi_gen",piPtrGen);
+
+               //bs.addUserCand("mu_gen",muPtrGen);
+               //bs.addUserCand("k1_gen",k1PtrGen);
+               //bs.addUserCand("k2_gen",k2PtrGen);
+               //bs.addUserCand("pi_gen",piPtrGen);
+               bs.addUserFloat("mu_gen_px"      ,muPtrGen->px());
+               bs.addUserFloat("mu_gen_py"      ,muPtrGen->py());
+               bs.addUserFloat("mu_gen_pz"      ,muPtrGen->pz());
+               bs.addUserFloat("mu_gen_pt"      ,muPtrGen->pt());
+               bs.addUserFloat("mu_gen_eta"     ,muPtrGen->eta());
+               bs.addUserFloat("mu_gen_phi"     ,muPtrGen->phi());
+               bs.addUserFloat("mu_gen_mass"    ,muPtrGen->mass());
+               bs.addUserFloat("mu_gen_charge"  ,muPtrGen->charge());
+               bs.addUserInt(  "mu_gen_pdgid"   ,muPtrGen->pdgId());
+     
+               bs.addUserFloat("k1_gen_px"      ,k1PtrGen->px());
+               bs.addUserFloat("k1_gen_py"      ,k1PtrGen->py());
+               bs.addUserFloat("k1_gen_pz"      ,k1PtrGen->pz());
+               bs.addUserFloat("k1_gen_pt"      ,k1PtrGen->pt());
+               bs.addUserFloat("k1_gen_eta"     ,k1PtrGen->eta());
+               bs.addUserFloat("k1_gen_phi"     ,k1PtrGen->phi());
+               bs.addUserFloat("k1_gen_mass"    ,k1PtrGen->mass());
+               bs.addUserFloat("k1_gen_charge"  ,k1PtrGen->charge());
+               bs.addUserInt(  "k1_gen_pdgid"   ,k1PtrGen->pdgId());
+     
+               bs.addUserFloat("k2_gen_px"      ,k2PtrGen->px());
+               bs.addUserFloat("k2_gen_py"      ,k2PtrGen->py());
+               bs.addUserFloat("k2_gen_pz"      ,k2PtrGen->pz());
+               bs.addUserFloat("k2_gen_pt"      ,k2PtrGen->pt());
+               bs.addUserFloat("k2_gen_eta"     ,k2PtrGen->eta());
+               bs.addUserFloat("k2_gen_phi"     ,k2PtrGen->phi());
+               bs.addUserFloat("k2_gen_mass"    ,k2PtrGen->mass());
+               bs.addUserFloat("k2_gen_charge"  ,k2PtrGen->charge());
+               bs.addUserInt(  "k2_gen_pdgid"   ,k2PtrGen->pdgId());
+     
+               bs.addUserFloat("pi_gen_px"      ,piPtrGen->px());
+               bs.addUserFloat("pi_gen_py"      ,piPtrGen->py());
+               bs.addUserFloat("pi_gen_pz"      ,piPtrGen->pz());
+               bs.addUserFloat("pi_gen_pt"      ,piPtrGen->pt());
+               bs.addUserFloat("pi_gen_eta"     ,piPtrGen->eta());
+               bs.addUserFloat("pi_gen_phi"     ,piPtrGen->phi());
+               bs.addUserFloat("pi_gen_mass"    ,piPtrGen->mass());
+               bs.addUserFloat("pi_gen_charge"  ,piPtrGen->charge());
+               bs.addUserInt(  "pi_gen_pdgid"   ,piPtrGen->pdgId());
 
 
                //and gen info from the resonances
@@ -988,45 +1029,145 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("angPlaneDsGen", angPlaneDsGen);
                bs.addUserFloat("cosPlaneDsGen", cos(angPlaneDsGen));
 
+               //if we reached this point we have found our gen match and we can stop the loop
+               std::cout << "found a gen match" << std::endl;
+               break;
+
                //////////////////////////////////////////////////
 
              }//close gen matching pi loop 
+            break;
             }//close gen matching k2 loop 
+          break;
           } //close gen matching k1 loop
+        break;
         } //close gen matching mu loop
 
-    
-        if (genMatchSuccess == 0) continue; 
+        //if (genMatchSuccess == 0) continue; 
 
-        /*
-        std::cout << iEvent.id() << std::endl;
         if (genMatchSuccess == 0){
-          std::cout << "no gen match, I store nan" << std::endl;
 
-          bs.addUserFloat("gen_phi_pt" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_phi_eta",std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_phi_phi",std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_phi_vx" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_phi_vy" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_phi_vz" ,std::numeric_limits<double>::quiet_NaN());
+          // no gen match, we store nans
 
-          bs.addUserFloat("gen_ds_pt"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_ds_eta" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_ds_phi" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_ds_vx"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_ds_vy"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_ds_vz"  ,std::numeric_limits<double>::quiet_NaN());
+          //prepare a dummy (This does not work!! can not add the empty vector as candidate even it compiles.. why??)
+          /* 
+          reco::GenParticle dummy;
+          math::PtEtaPhiMLorentzVector dummyP4(std::nan(""),std::nan("") ,std::nan("") ,std::nan(""));
+          dummy.setP4(dummyP4); 
+          dummy.setCharge(-9999); 
+          dummy.setPdgId( -9999); 
+          edm::Ptr<reco::GenParticle> empty(&dummy, 0);
 
-          bs.addUserFloat("gen_bs_pt"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_bs_eta" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_bs_phi" ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_bs_vx"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_bs_vy"  ,std::numeric_limits<double>::quiet_NaN());
-          bs.addUserFloat("gen_bs_vz"  ,std::numeric_limits<double>::quiet_NaN());
-       
+          bs.addUserCand("mu_gen"          ,empty);
+          bs.addUserCand("k1_gen"          ,empty);
+          bs.addUserCand("k2_gen"          ,empty);
+          bs.addUserCand("pi_gen"          ,empty);
+          */
+
+          //well, then its a little more tedious
+          bs.addUserFloat("m2_miss_gen"    ,std::nan(""));
+          bs.addUserFloat("q2_gen"         ,std::nan(""));
+
+          bs.addUserFloat("mu_gen_px"      ,std::nan(""));
+          bs.addUserFloat("mu_gen_py"      ,std::nan(""));
+          bs.addUserFloat("mu_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("mu_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("mu_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("mu_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("mu_gen_mass"    ,std::nan(""));
+          bs.addUserFloat("mu_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "mu_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("k1_gen_px"      ,std::nan(""));
+          bs.addUserFloat("k1_gen_py"      ,std::nan(""));
+          bs.addUserFloat("k1_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("k1_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("k1_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("k1_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("k1_gen_mass"    ,std::nan(""));
+          bs.addUserFloat("k1_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "k1_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("k2_gen_px"      ,std::nan(""));
+          bs.addUserFloat("k2_gen_py"      ,std::nan(""));
+          bs.addUserFloat("k2_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("k2_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("k2_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("k2_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("k2_gen_mass"    ,std::nan(""));
+          bs.addUserFloat("k2_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "k2_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("pi_gen_px"      ,std::nan(""));
+          bs.addUserFloat("pi_gen_py"      ,std::nan(""));
+          bs.addUserFloat("pi_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("pi_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("pi_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("pi_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("pi_gen_mass"    ,std::nan(""));
+          bs.addUserFloat("pi_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "pi_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("phi_gen_px"     ,std::nan(""));
+          bs.addUserFloat("phi_gen_py"     ,std::nan(""));
+          bs.addUserFloat("phi_gen_pz"     ,std::nan(""));
+          bs.addUserFloat("phi_gen_pt"     ,std::nan(""));
+          bs.addUserFloat("phi_gen_eta"    ,std::nan(""));
+          bs.addUserFloat("phi_gen_phi"    ,std::nan(""));
+          bs.addUserFloat("tv_x_gen"       ,std::nan(""));
+          bs.addUserFloat("tv_y_gen"       ,std::nan(""));
+          bs.addUserFloat("tv_z_gen"       ,std::nan(""));
+          bs.addUserFloat("phi_gen_charge" ,std::nan(""));
+          bs.addUserInt(  "phi_gen_pdgid"  ,-9999);
+
+          bs.addUserFloat("ds_gen_px"      ,std::nan(""));
+          bs.addUserFloat("ds_gen_py"      ,std::nan(""));
+          bs.addUserFloat("ds_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("ds_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("ds_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("ds_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("sv_x_gen"       ,std::nan(""));
+          bs.addUserFloat("sv_y_gen"       ,std::nan(""));
+          bs.addUserFloat("sv_z_gen"       ,std::nan(""));
+          bs.addUserFloat("ds_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "ds_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("bs_gen_px"      ,std::nan(""));
+          bs.addUserFloat("bs_gen_py"      ,std::nan(""));
+          bs.addUserFloat("bs_gen_pz"      ,std::nan(""));
+          bs.addUserFloat("bs_gen_pt"      ,std::nan(""));
+          bs.addUserFloat("bs_gen_eta"     ,std::nan(""));
+          bs.addUserFloat("bs_gen_phi"     ,std::nan(""));
+          bs.addUserFloat("pv_x_gen"       ,std::nan(""));
+          bs.addUserFloat("pv_y_gen"       ,std::nan(""));
+          bs.addUserFloat("pv_z_gen"       ,std::nan(""));
+          bs.addUserFloat("bs_gen_charge"  ,std::nan(""));
+          bs.addUserInt(  "bs_gen_pdgid"   ,-9999);
+
+          bs.addUserFloat("fv_x_gen"       ,std::nan(""));
+          bs.addUserFloat("fv_y_gen"       ,std::nan(""));
+          bs.addUserFloat("fv_z_gen"       ,std::nan(""));
+ 
+          bs.addUserFloat("angMuWGen"      ,std::nan(""));
+          bs.addUserFloat("cosMuWGen"      ,std::nan(""));
+
+          bs.addUserFloat("angPiK1Gen"     ,std::nan(""));
+          bs.addUserFloat("angPiK2Gen"     ,std::nan(""));
+          bs.addUserFloat("cosPiK1Gen"     ,std::nan(""));
+          bs.addUserFloat("cosPiK2Gen"     ,std::nan(""));
+
+          bs.addUserFloat("angPhiDsGen"    ,std::nan(""));
+          bs.addUserFloat("angPiDsGen"     ,std::nan(""));
+          bs.addUserFloat("cosPhiDsGen"    ,std::nan(""));
+          bs.addUserFloat("cosPiDsGen"     ,std::nan(""));
+
+          bs.addUserFloat("angPlaneBsGen"  ,std::nan(""));
+          bs.addUserFloat("cosPlaneBsGen"  ,std::nan(""));
+          bs.addUserFloat("angPlaneDsGen"  ,std::nan(""));
+          bs.addUserFloat("cosPlaneDsGen"  ,std::nan(""));
+      
 
         }
-        */
         //std::cout << sigId << std::endl; 
         ////std::cout << "1" << std::endl;
         // save signal Id
@@ -1208,7 +1349,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dsMu_pt", dsMu.pt());
         bs.addUserFloat("dsMu_eta", dsMu.eta());
         bs.addUserFloat("dsMu_phi", dsMu.phi());
-        bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino mass
+        bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino contribution
         bs.addUserFloat("dsMu_charge", dsMu.charge());
         bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPi, *muPtr));
 

@@ -48,7 +48,8 @@
 
 //B field
 #include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
-
+//for 3DPoint
+#include "DataFormats/Math/interface/Point3D.h"
 ////////////////////////////////////////////////////////////////////////////////////////////
 // TODOS:
 //
@@ -67,7 +68,7 @@
 // - what if an event has two signals?  -> SAVE BOTH!
 // - divide into submitter chunks DONE
 // - save gen information!! DONE 
-// - do gen tests, check f.e. refitted p's with gen p's and unfitted p's
+// - do gen tests, check f.e. refitted p's with gen p's and unfitted p's DONE
 // - put hel angle calc. etc into functions! DONE
 // - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +203,7 @@ float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLorentzVec
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
-//function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
+//function which gets angle between decay planes
 
 float angPlane (TLorentzVector d, TLorentzVector b, TLorentzVector mu, TLorentzVector pi) {
 
@@ -239,6 +240,31 @@ float angPlane (TLorentzVector d, TLorentzVector b, TLorentzVector mu, TLorentzV
 
   return n1.Angle(n2);
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets angle of kaon in DsPi plane 
+
+float angPlane2 (TLorentzVector d, TLorentzVector b, TLorentzVector k, TLorentzVector pi) {
+
+  //get Ds boost vector in the lab frame (to boost pi)
+  TVector3 dBoost = d.BoostVector();
+
+  //now boost the pi and k1 into the ds rest frame
+  pi.Boost(-dBoost);
+  k.Boost(-dBoost);
+
+  //boost Ds into Bs rest frame
+  TVector3 bBoost = b.BoostVector();
+  d.Boost(-bBoost);
+
+  // normal vector on Ds - pi plane
+  TVector3 n1 = d.Vect().Cross(pi.Vect());
+  // normal vector on k1 - pi plane
+  TVector3 n2 = k.Vect().Cross(pi.Vect()); 
+
+  return n1.Angle(n2);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns the phi difference of two phi variables (in cms coordinate system)
 double phiDiff(double phi1, double phi2){
@@ -719,11 +745,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                auto bsFromDs = getAncestor(dsFromPhi,531);
                auto bsFromMu = getAncestor(muReco,531);
                if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
+ 
+               std::cout << "(px,vx) before oscillations " << bsFromMu->px() << ", " << bsFromMu->vx() << std::endl;
 
                //remove oscillations
                auto bsFromMuWOOsc = removeOscillations(bsFromMu);
                //bool related = hasAncestor(dsFromK1,bsFromK1);
-               
+               std::cout << "(px,vx) without oscillations " << bsFromMuWOOsc->px() << ", " << bsFromMuWOOsc->vx() << std::endl;
+              
                nGenMatches++;
                genMatchSuccess = 1;
 
@@ -759,6 +788,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("m2_miss_gen",m2_miss_gen);
                bs.addUserFloat("q2_gen",q2_gen);
 
+               //vertices
+               float pv_x_gen = bsFromMuWOOsc->vx();//This is the bs production vertex!
+               float pv_y_gen = bsFromMuWOOsc->vy();
+               float pv_z_gen = bsFromMuWOOsc->vz();
+
+               float sv_x_gen = dsFromPi->vx(); //This is the ds production vertex!
+               float sv_y_gen = dsFromPi->vy();
+               float sv_z_gen = dsFromPi->vz();
+
+               float tv_x_gen = phiFromK1->vx(); //This is the phi production vertex!
+               float tv_y_gen = phiFromK1->vy();
+               float tv_z_gen = phiFromK1->vz();
+
+               float fv_x_gen = k1PtrGen->vx(); //This is the k1 production vertex!
+               float fv_y_gen = k1PtrGen->vy();
+               float fv_z_gen = k1PtrGen->vz();
+
                //save the gen info by adding gen candidates of final states
                bs.addUserCand("mu_gen",muPtrGen);
                bs.addUserCand("k1_gen",k1PtrGen);
@@ -773,9 +819,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("phi_gen_pt"     ,phiFromK1->pt());
                bs.addUserFloat("phi_gen_eta"    ,phiFromK1->eta());
                bs.addUserFloat("phi_gen_phi"    ,phiFromK1->phi());
-               bs.addUserFloat("tv_x_gen"       ,phiFromK1->vx());//This is the phi production vertex!
-               bs.addUserFloat("tv_y_gen"       ,phiFromK1->vy());
-               bs.addUserFloat("tv_z_gen"       ,phiFromK1->vz());
+               bs.addUserFloat("tv_x_gen"       ,tv_x_gen);//This is the phi production vertex!
+               bs.addUserFloat("tv_y_gen"       ,tv_y_gen);
+               bs.addUserFloat("tv_z_gen"       ,tv_z_gen);
                bs.addUserFloat("phi_gen_charge" ,phiFromK1->charge());
                bs.addUserInt(  "phi_gen_pdgid"  ,phiFromK1->pdgId());
 
@@ -785,9 +831,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("ds_gen_pt"     ,dsFromPi->pt());
                bs.addUserFloat("ds_gen_eta"    ,dsFromPi->eta());
                bs.addUserFloat("ds_gen_phi"    ,dsFromPi->phi());
-               bs.addUserFloat("sv_x_gen"      ,dsFromPi->vx());//This is the ds production vertex!
-               bs.addUserFloat("sv_y_gen"      ,dsFromPi->vy());
-               bs.addUserFloat("sv_z_gen"      ,dsFromPi->vz());
+               bs.addUserFloat("sv_x_gen"      ,sv_x_gen);//This is the ds production vertex!
+               bs.addUserFloat("sv_y_gen"      ,sv_y_gen);
+               bs.addUserFloat("sv_z_gen"      ,sv_z_gen);
                bs.addUserFloat("ds_gen_charge" ,dsFromPi->charge());
                bs.addUserInt(  "ds_gen_pdgid"  ,dsFromPi->pdgId());
 
@@ -797,17 +843,102 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("bs_gen_pt"     ,bsFromMuWOOsc->pt());
                bs.addUserFloat("bs_gen_eta"    ,bsFromMuWOOsc->eta());
                bs.addUserFloat("bs_gen_phi"    ,bsFromMuWOOsc->phi());
-               bs.addUserFloat("pv_x_gen"      ,bsFromMuWOOsc->vx()); //This is the bs production vertex!
-               bs.addUserFloat("pv_y_gen"      ,bsFromMuWOOsc->vy());
-               bs.addUserFloat("pv_z_gen"      ,bsFromMuWOOsc->vz());
+               bs.addUserFloat("pv_x_gen"      ,pv_x_gen); //This is the bs production vertex!
+               bs.addUserFloat("pv_y_gen"      ,pv_y_gen);
+               bs.addUserFloat("pv_z_gen"      ,pv_z_gen);
                bs.addUserFloat("bs_gen_charge" ,bsFromMuWOOsc->charge());
                bs.addUserInt(  "bs_gen_pdgid"  ,bsFromMuWOOsc->pdgId());
 
                //lets also store the fourth vertex ( the k production vertex)
-               bs.addUserFloat("fv_x_gen"       ,k1PtrGen->vx());//This is the kaon production vertex!
-               bs.addUserFloat("fv_y_gen"       ,k1PtrGen->vy());
-               bs.addUserFloat("fv_z_gen"       ,k1PtrGen->vz());
+               bs.addUserFloat("fv_x_gen"       ,fv_x_gen);//This is the kaon production vertex!
+               bs.addUserFloat("fv_y_gen"       ,fv_y_gen);
+               bs.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
+               //define vertex variables
+ 
+               float lxyBsGen   = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) ); 
+               float lxyzBsGen  = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) + std::pow((pv_z_gen - sv_z_gen),2) ); 
+       
+               float lxyDsGen   = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) ); 
+               float lxyzDsGen  = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) + std::pow((sv_z_gen - tv_z_gen),2) ); 
+       
+               float lxyPhiGen  = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) ); 
+               float lxyzPhiGen = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) + std::pow((tv_z_gen - fv_z_gen),2) ); 
+
+               /* 
+               bs.addUserFloat("lxy_bs_gen"   ,lxyBsGen);
+               bs.addUserFloat("lxyz_bs_gen"  ,lxyzBsGen);
+       
+               bs.addUserFloat("lxy_ds_gen"   ,lxyDsGen);
+               bs.addUserFloat("lxyz_ds_gen"  ,lxyzDsGen);
+       
+               bs.addUserFloat("lxy_phi_gen"  ,lxyPhiGen);
+               bs.addUserFloat("lxyz_phi_gen" ,lxyzPhiGen);
+
+               math::XYZPoint pvGen(pv_x_gen,pv_y_gen,pv_z_gen); 
+              
+                
+               float dxyMuGen    = muPtrGen->bestTrack()->dxy(pvGen);  
+               //float dxyMuErrGen = muPtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());  
+               //float dxyMuSigGen = dxyMuGen/dxyMuErrGen;
+       
+               float dzMuGen     = muPtrGen->bestTrack()->dz(pvGen);  
+               //float dzMuErrGen  = muPtrGen->bestTrack()->dzError();  
+               //float dzMuSigGen  = dzMuGen/dzMuErrGen ; 
+       
+               float dxyPiGen    = piPtrGen->bestTrack()->dxy(pvGen);  //maybe useful for Ds* vs Ds ? 
+               //float dxyPiErrGen = piPtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());  
+               //float dxyPiSigGen = dxyPiGen/dxyPiErrGen;
+       
+               float dzPiGen     = piPtrGen->bestTrack()->dz(pvGen);  
+               //float dzPiErrGen  = piPtrGen->bestTrack()->dzError();  
+               //float dzPiSigGen  = dzPiGen/dzPiErrGen ; 
+       
+               float dxyK1Gen    = k1PtrGen->bestTrack()->dxy(pvGen); //needed ? 
+               //float dxyK1ErrGen = k1PtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());
+               //float dxyK1SigGen = dxyK1Gen/dxyK1ErrGen;
+       
+               float dzK1Gen     = k1PtrGen->bestTrack()->dz(pvGen);  
+               //float dzK1ErrGen  = k1PtrGen->bestTrack()->dzError();  
+               //float dzK1SigGen  = dzK1Gen/dzK1ErrGen ; 
+       
+               float dxyK2Gen    = k2PtrGen->bestTrack()->dxy(pvGen); //needed ? 
+               //float dxyK2ErrGen = k2PtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());
+               //float dxyK2SigGen = dxyK2Gen/dxyK2ErrGen;
+       
+               float dzK2Gen     = k2PtrGen->bestTrack()->dz(pvGen);  
+               //float dzK2ErrGen  = k2PtrGen->bestTrack()->dzError();  
+               //float dzK2SigGen  = dzK2Gen/dzK2ErrGen ; 
+       
+               bs.addUserFloat("dxy_mu_gen",     dxyMuGen);
+               bs.addUserFloat("dz_mu_gen",      dzMuGen);
+               //bs.addUserFloat("dxy_mu_err_gen", dxyMuErrGen);
+               //bs.addUserFloat("dz_mu_err_gen",  dzMuErrGen);
+               //bs.addUserFloat("dxy_mu_sig_gen", dxyMuSigGen);
+               //bs.addUserFloat("dz_mu_sig_gen",  dzMuSigGen);
+       
+               bs.addUserFloat("dxy_pi_gen",     dxyPiGen);
+               bs.addUserFloat("dz_pi_gen",      dzPiGen);
+               //bs.addUserFloat("dxy_pi_err_gen", dxyPiErrGen);
+               //bs.addUserFloat("dz_pi_err_gen",  dzPiErrGen);
+               //bs.addUserFloat("dxy_pi_sig_gen", dxyPiSigGen);
+               //bs.addUserFloat("dz_pi_sig_gen",  dzPiSigGen);
+       
+               bs.addUserFloat("dxy_k1_gen",     dxyK1Gen);
+               bs.addUserFloat("dz_k1_gen",      dzK1Gen);
+               //bs.addUserFloat("dxy_k1_err_gen", dxyK1ErrGen);
+               //bs.addUserFloat("dz_k1_err_gen",  dzK1ErrGen);
+               //bs.addUserFloat("dxy_k1_sig_gen", dxyK1SigGen);
+               //bs.addUserFloat("dz_k1_sig_gen",  dzK1SigGen);
+       
+               bs.addUserFloat("dxy_k2_gen",     dxyK2Gen);
+               bs.addUserFloat("dz_k2_gen",      dzK2Gen);
+               //bs.addUserFloat("dxy_k2_err_gen", dxyK2ErrGen);
+               //bs.addUserFloat("dz_k2_err_gen",  dzK2ErrGen);
+               //bs.addUserFloat("dxy_k2_sig_gen", dxyK2SigGen);
+               //bs.addUserFloat("dz_k2_sig_gen",  dzK2SigGen);
+               */
+ 
                // now find the signal ID
                // Ds mu   = 0
                // Ds* mu  = 1
@@ -847,6 +978,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("angPiDsGen",  angPiDsGen);
                bs.addUserFloat("cosPhiDsGen", cos(angPhiDsGen));
                bs.addUserFloat("cosPiDsGen",  cos(angPiDsGen));
+
+               //plane angle
+               float angPlaneBsGen = angPlane(genDsTlv, genBsTlv, genMuTlv, genPiTlv);
+               bs.addUserFloat("angPlaneBsGen", angPlaneBsGen);
+               bs.addUserFloat("cosPlaneBsGen", cos(angPlaneBsGen));
+
+               float angPlaneDsGen = angPlane2(genDsTlv, genBsTlv, genK1Tlv, genPiTlv);
+               bs.addUserFloat("angPlaneDsGen", angPlaneDsGen);
+               bs.addUserFloat("cosPlaneDsGen", cos(angPlaneDsGen));
 
                //////////////////////////////////////////////////
 
@@ -1628,6 +1768,31 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPiDsLhcbAlt",  cos(angPiDsLhcbAlt)); 
         bs.addUserFloat("cosPiDsReco1",    cos(angPiDsReco1)); 
         bs.addUserFloat("cosPiDsReco2",    cos(angPiDsReco2)); 
+
+        // helicity plane angle
+        float angPlaneBsColl    = angPlane(fittedDs, collBsTlv,    refittedMu, refittedPi);
+        float angPlaneBsLhcb    = angPlane(fittedDs, lhcbBsTlv,    refittedMu, refittedPi);
+        float angPlaneBsLhcbAlt = angPlane(fittedDs, lhcbAltBsTlv, refittedMu, refittedPi);
+        float angPlaneBsReco1   = angPlane(fittedDs, recoBsTlv1,   refittedMu, refittedPi);
+        float angPlaneBsReco2   = angPlane(fittedDs, recoBsTlv2,   refittedMu, refittedPi);
+
+        bs.addUserFloat("cosPlaneBsColl",    cos(angPlaneBsColl));
+        bs.addUserFloat("cosPlaneBsLhcb",    cos(angPlaneBsLhcb));
+        bs.addUserFloat("cosPlaneBsLhcbAlt", cos(angPlaneBsLhcbAlt));
+        bs.addUserFloat("cosPlaneBsReco1",   cos(angPlaneBsReco1));
+        bs.addUserFloat("cosPlaneBsReco2",   cos(angPlaneBsReco2));
+
+        float angPlaneDsColl    = angPlane2(fittedDs, collBsTlv,    refittedK1, refittedPi);
+        float angPlaneDsLhcb    = angPlane2(fittedDs, lhcbBsTlv,    refittedK1, refittedPi);
+        float angPlaneDsLhcbAlt = angPlane2(fittedDs, lhcbAltBsTlv, refittedK1, refittedPi);
+        float angPlaneDsReco1   = angPlane2(fittedDs, recoBsTlv1,   refittedK1, refittedPi);
+        float angPlaneDsReco2   = angPlane2(fittedDs, recoBsTlv2,   refittedK1, refittedPi);
+
+        bs.addUserFloat("cosPlaneDsColl",    cos(angPlaneDsColl));
+        bs.addUserFloat("cosPlaneDsLhcb",    cos(angPlaneDsLhcb));
+        bs.addUserFloat("cosPlaneDsLhcbAlt", cos(angPlaneDsLhcbAlt));
+        bs.addUserFloat("cosPlaneDsReco1",   cos(angPlaneDsReco1));
+        bs.addUserFloat("cosPlaneDsReco2",   cos(angPlaneDsReco2));
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////

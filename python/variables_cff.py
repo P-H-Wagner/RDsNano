@@ -201,6 +201,12 @@ genVariables = cms.PSet(
         angPhiDsGen       = Var("userFloat('angPhiDsGen')",float),
         cosPhiDsGen       = Var("userFloat('cosPhiDsGen')",float),
 
+        angPlaneBsGen     = Var("userFloat('angPlaneBsGen')",float),
+        cosPlaneBsGen     = Var("userFloat('cosPlaneBsGen')",float),
+ 
+        angPlaneDsGen     = Var("userFloat('angPlaneDsGen')",float),
+        cosPlaneDsGen     = Var("userFloat('cosPlaneDsGen')",float),
+
         gen_match_success = uint('gen_match_success'),
 
 
@@ -397,6 +403,18 @@ helicityVariables = cms.PSet(
         cosMuWLhcbAlt    = Var("userFloat('cosMuWLhcbAlt')",float),
         cosMuWReco1      = Var("userFloat('cosMuWReco1')",float),
         cosMuWReco2      = Var("userFloat('cosMuWReco2')",float),
+
+        cosPlaneBsColl   = Var("userFloat('cosPlaneBsColl')",float),
+        cosPlaneBsLhcb   = Var("userFloat('cosPlaneBsLhcb')",float),
+        cosPlaneBsLhcbAlt= Var("userFloat('cosPlaneBsLhcbAlt')",float),
+        cosPlaneBsReco1  = Var("userFloat('cosPlaneBsReco1')",float),
+        cosPlaneBsReco2  = Var("userFloat('cosPlaneBsReco2')",float),
+
+        cosPlaneDsColl   = Var("userFloat('cosPlaneDsColl')",float),
+        cosPlaneDsLhcb   = Var("userFloat('cosPlaneDsLhcb')",float),
+        cosPlaneDsLhcbAlt= Var("userFloat('cosPlaneDsLhcbAlt')",float),
+        cosPlaneDsReco1  = Var("userFloat('cosPlaneDsReco1')",float),
+        cosPlaneDsReco2  = Var("userFloat('cosPlaneDsReco2')",float),
 
 
 )

@@ -34,20 +34,18 @@ process.Timing = cms.Service("Timing",
 #load all the chosen options
 process.MessageLogger.cerr.FwkReport.reportEvery = 1
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(30)
+    input = cms.untracked.int32(300)
 )
 
 # Input source
 
 filenames = os.listdir('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/')
 inputfiles = ['file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' + filename for filename in filenames ]
-inputfiles = inputfiles[0:2]
-
-#print(inputfiles)
+inputfiles = inputfiles[0]
 
 process.source = cms.Source(
     "PoolSource",
-    fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
+    fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_97.root'),
     #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
     secondaryFileNames = cms.untracked.vstring(),
 )
@@ -75,7 +73,7 @@ process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
         filterName = cms.untracked.string('')
     ),
     #fileName = cms.untracked.string('file:/scratch/pahwagne/nanoAOD/test.root' ),
-    fileName = cms.untracked.string('file:/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanotest.root'), #used for local tests
+    fileName = cms.untracked.string('file:/work/pahwagne/test/nanotest.root'), #used for local tests
     outputCommands = cms.untracked.vstring(
       'drop *',
       "keep nanoaodFlatTable_*Table_*_*",     # event data

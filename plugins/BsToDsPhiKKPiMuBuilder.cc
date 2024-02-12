@@ -1336,7 +1336,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("kk_phi", kk.phi());
         bs.addUserFloat("kk_mass", kk.mass());
         bs.addUserFloat("kk_charge", kk.charge());
-        bs.addUserInt("kkCharge",kkCharge); 
         bs.addUserFloat("kk_deltaR", reco::deltaR(*k1Ptr, *k2Ptr));
 
         bs.addUserFloat("phiPi_pt", phiPi.pt());
@@ -1353,9 +1352,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dsMu_charge", dsMu.charge());
         bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPi, *muPtr));
 
-        //rel charges
-        bs.addUserInt("kk_charge",kkCharge); 
-        bs.addUserInt("pi_mu_charge",piMuCharge); 
+        //rel charges (not additive!)
+        bs.addUserFloat("pi_mu_charge",piMuCharge); 
+        bs.addUserFloat("k_k_charge"  ,kkCharge); 
 
 
         //AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();

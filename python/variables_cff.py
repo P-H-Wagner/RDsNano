@@ -99,7 +99,8 @@ prefitBasicVariables = cms.PSet(
         bs_pdgId      = Var("pdgId()",int),
 
         # rel charge, important for flattening
-        pi_mu_charge = Var("userInt('pi_mu_charge')",int),
+        pi_mu_charge  = Var("userFloat('pi_mu_charge')",float),
+        k_k_charge    = Var("userFloat('k_k_charge')",float),
 
 )
 

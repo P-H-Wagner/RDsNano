@@ -225,6 +225,10 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // Make sure that you can find a pat  muon matching the HLT object  //
   //////////////////////////////////////////////////////////////////////
 
+  // count the nr of pat::muons which fired the trigger -> reset to 0 in every event
+  int counter = 0;
+
+
   // now loop over all pat::muons
   for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
     //std::cout<<"found pat muon!" << std::endl;
@@ -245,8 +249,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     //////////////////////////////////////////////////////////////////////
     // Find the (pat muon, HLT)  pair with the smallest dR and save it  //
     //////////////////////////////////////////////////////////////////////
-
+    int iTrg = 0;
+    int iMatch = 0;
     for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
+
+      iTrg++;
 
       pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
       //unpack trigger labels
@@ -258,6 +265,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       //check if the triggermuon was actually firing the trigger
       if(!trgObj.hasFilterLabel("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q") || trgObj.pt() < 6.5 || fabs(trgObj.eta()) > 2.0) continue;
     
+      iMatch++;
       //std::cout<< "we have a trg object, is it matching?!!" << std::endl;
       //std::cout << "Filter labels for trigger object:" << std::endl;
       //for (const std::string& label : filterLabels) {
@@ -267,11 +275,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       //save the dR between the triggering muon and the pat muon 
       float dr = reco::deltaR(trgObj, muon);
    
-      //the first element of the loop can enter bc we allow drMuon.. = 1
+      //the first element of the loop can enter bc we allow drMuon.. = -1
       //the others can only enter if their dR is smaller (and they match the trigger)
       //---> we filter out the one (muon,trigger muon) pair, which has the smallest dR
       
-      if((dr < drMuonTrgObj || drMuonTrgObj == -1)  && dr < maxdR_)
+      if( ( (dr < drMuonTrgObj) || (drMuonTrgObj == -1))  && (dr < maxdR_))
       {
               //modify dR and the reco and triggering muon index
 	      drMuonTrgObj = dr;
@@ -279,11 +287,12 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	      trgObjIdx    = objIdx;
       }
 
-    }
-    //save reco muon if we found a matching candidate 
+    } // closing loop over trg muons
+
+    //save pat muon if we found a matching candidate 
     if(muonIdx != -1)
      {
-            //the following line does a copy of muon with the name recoTriggerMuonCand (same properties different adress)
+            //the following line does a copy of muon with the name trgMatchedMuon (same properties different adress)
 	    pat::Muon trgMatchedMuon(muon);
 
             //save also the tracks
@@ -297,17 +306,18 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
  	    trgMatchedMuon.addUserInt("trgObjIdx", trgObjIdx);
  	    trgMatchedMuon.addUserInt("trgPrescale", triggerPrescales->getPrescaleForIndex(trgObjIdx));
 
-	    //saving
-            trgMuons->emplace_back(trgMatchedMuon);
+	    // append the pat::muon which could be matched to the output
+            trgMuons->emplace_back(trgMatchedMuon); 
             ttracksTrgMuons->emplace_back(ttrackTrgMuon);
             //std::cout<<" Yes, it is matched and saved :)!" << std::endl;
 
-            ++counter;
-            //std::cout <<  "counted:" << counter << std::endl;   
+            counter++;
 
       }
   } //close the loop over pat muons
   
+  std::cout <<  "wehave:" << counter << std::endl;   
+
   } //close if condition of HLT
   //store the new collections in the event
   iEvent.put(std::move(trgMuons),    "trgMuons");

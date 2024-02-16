@@ -278,7 +278,120 @@ double phiDiff(double phi1, double phi2){
   return dPhi;
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+// LHCb method for bs reconstruction
 
+TLorentzVector lhcbMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  TVector3 beamAxis;
+  TVector3 radialAxis;
+           
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
+  radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
+   
+  float theta = bsFlightDir.Theta(); //angle between beam axis and bs flight dir
+  float lhcbPz = dMu.Pz() *bMass_ / dMu.M();
+  float lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+  
+  bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
+  float lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
+  
+  TLorentzVector b; 
+  float eta = - std::log(std::tan(theta/2));
+  b.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bMass_); 
+     
+  return b;
+
+} 
+
+///////////////////////////////////////////////////////////////////////////////////
+// Alternative LHCb method for bs reconstruction
+
+TLorentzVector lhcbAltMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  TVector3 lhcbAltBs;
+  TLorentzVector lhcbAltBsTlv;
+  
+  lhcbAltBs = bsFlightDir.Unit();  
+  lhcbAltBs *= dMu.Vect().Mag() * bMass_ / dMu.M(); 
+  lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bMass_);      
+  
+  return lhcbAltBsTlv;
+
+}
+
+std::vector<TLorentzVector> recoMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TLorentzVector recoBsTlv1;
+  TLorentzVector recoBsTlv2;
+  
+  double recoNeutPll_1; // neutrino momentum parallel to bs direction
+  double recoNeutPll_2; // "
+  
+  double recoBsAbs_1; // absolute 3 momentum of bs
+  double recoBsAbs_2; // "
+  
+  // bs flight direction
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+   
+  // angle between the bs flight direction and the Dsmu system (visible)
+  double recoAngle = dMu.Angle(bsFlightDir); 
+                      
+  //define parameters 
+  // momentum of DsMu system parallel to the bs
+  double recoDsMuPll = std::cos(recoAngle) * dMu.Vect().Mag();
+  // momentum of DsMu system orthogonal to the bs
+  double recoDsMuT = std::sin(recoAngle) * dMu.Vect().Mag();
+  // energy of Dsmu system
+  double recoDsMuE = dMu.E(); 
+  // cocktail, drops out of equation
+  double recoMix = std::pow(bMass_,2) + std::pow(recoDsMuPll,2) - std::pow(recoDsMuT,2) - std::pow(recoDsMuE,2);
+  
+  // define a,b,c, to give to mitternachtsformel
+  double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
+  double b = 4*recoDsMuPll*recoMix;
+  double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
+  // discriminant
+  double disc = std::pow(b,2) - 4*a*c;      
+  
+  if( disc >= 0) {
+  
+    //non complex root -> nice! 
+    recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
+    recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
+  
+    recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
+    recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
+  
+    TVector3 recoBs_1 = bsFlightDir.Unit();
+    TVector3 recoBs_2 = bsFlightDir.Unit();
+  
+    recoBs_1 *= recoBsAbs_1; 
+    recoBs_2 *= recoBsAbs_2; 
+  
+    recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
+    recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+  }
+  else{ 
+  //complex root, save nans
+  recoBsTlv1.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+  recoBsTlv2.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+  }
+  
+    std::vector<TLorentzVector> recos;
+    recos.push_back(recoBsTlv1);
+    recos.push_back(recoBsTlv2);
+  
+    return recos; 
+  
+}
 ///////////////////////////////////////////////////////////////////////////////////
 // counters for filters to know when we lose how many particles
 
@@ -443,13 +556,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   //////////////////////////////////////////////////////
   // Match the trigger muon with a muon from the      //
-  // packed pat collection. Reminder, we only have one//
-  // unique trigger muon candidate from Trigger.cc    //
+  // packed pat collection. Reminder, we often have   //
+  // only one trigger muon, but sometimes two! :)     //
+  // --> checked, and its valid to have more than one //
   //////////////////////////////////////////////////////
 
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
     nMuons++;
-
+   
     //if there is no trg muon, this loop is empty:)
     edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
@@ -643,7 +757,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           //TODO:define as variable
           if(drMuonMatch > drMatchGen_) continue;
 
-          std::cout << "found a gen matched muon" << std::endl;
+          //std::cout << "found a gen matched muon" << std::endl;
           ++nMuGen;
 
           ////////////////////////////////////////////////
@@ -665,7 +779,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             //TODO:define as variable
             if(drK1Match > drMatchGen_) continue;
 
-            std::cout << "found a gen matched k1!" << std::endl;
+            //std::cout << "found a gen matched k1!" << std::endl;
             ++nK1Gen;
 
            ////////////////////////////////////////////////
@@ -690,7 +804,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
              //TODO:define as variable
              if(drK2Match > drMatchGen_ ) continue;
 
-             std::cout << "found a gen matched k2!" << std::endl;
+             //std::cout << "found a gen matched k2!" << std::endl;
              ++nK2Gen;
 
              ////////////////////////////////////////////////
@@ -714,7 +828,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
      
                //TODO:define as variable
                if(drPiMatch > drMatchGen_) continue;
-               std::cout << "found a gen matched pion!" << std::endl;
+               //std::cout << "found a gen matched pion!" << std::endl;
                ++nPiGen;
 
                //////////////////////////////////////////////////
@@ -999,10 +1113,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
                //define helicity angles
 
+               //test lhcb method on gen
+               TLorentzVector lhcbBsTlvGen = lhcbMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
+               std::vector<TLorentzVector> recosGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
+               TLorentzVector reco1BsTlvGen = recosGen.at(0);
+               TLorentzVector reco2BsTlvGen = recosGen.at(1);
+
                //angle between Mu and W
                float angMuWGen = angMuW(genDsTlv,genBsTlv,genMuTlv); 
+               float angMuWGenLhcb = angMuW(genDsTlv,lhcbBsTlvGen,genMuTlv); 
+               float angMuWGenReco1 = angMuW(genDsTlv,reco1BsTlvGen,genMuTlv); 
+               float angMuWGenReco2 = angMuW(genDsTlv,reco2BsTlvGen,genMuTlv); 
+
                bs.addUserFloat("angMuWGen",angMuWGen);
                bs.addUserFloat("cosMuWGen",cos(angMuWGen));
+               bs.addUserFloat("cosMuWGenLhcb",cos(angMuWGenLhcb));
+               bs.addUserFloat("cosMuWGenReco1",cos(angMuWGenReco1));
+               bs.addUserFloat("cosMuWGenReco2",cos(angMuWGenReco2));
+
 
                //angle between k1(k2) and pion in phi rest frame
                float angPiK1Gen  = angDoubleDecay(genPhiTlv, genK1Tlv,  genPiTlv);
@@ -1015,10 +1143,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                // equivalently, angle between phi(pi) and bs in ds rest frame
                float angPhiDsGen = angDoubleDecay(genDsTlv,  genPhiTlv, genBsTlv);
                float angPiDsGen  = angDoubleDecay(genDsTlv,  genPiTlv,  genBsTlv);
+               float angPiDsGenLhcb  = angDoubleDecay(genDsTlv,  genPiTlv,  lhcbBsTlvGen);
+
                bs.addUserFloat("angPhiDsGen", angPhiDsGen);
                bs.addUserFloat("angPiDsGen",  angPiDsGen);
                bs.addUserFloat("cosPhiDsGen", cos(angPhiDsGen));
                bs.addUserFloat("cosPiDsGen",  cos(angPiDsGen));
+               bs.addUserFloat("cosPiDsGenLhcb",  cos(angPiDsGenLhcb));
 
                //plane angle
                float angPlaneBsGen = angPlane(genDsTlv, genBsTlv, genMuTlv, genPiTlv);
@@ -1150,6 +1281,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
           bs.addUserFloat("angMuWGen"      ,std::nan(""));
           bs.addUserFloat("cosMuWGen"      ,std::nan(""));
+          bs.addUserFloat("cosMuWGenLhcb"      ,std::nan(""));
+          bs.addUserFloat("cosMuWGenReco1"      ,std::nan(""));
+          bs.addUserFloat("cosMuWGenReco2"      ,std::nan(""));
 
           bs.addUserFloat("angPiK1Gen"     ,std::nan(""));
           bs.addUserFloat("angPiK2Gen"     ,std::nan(""));
@@ -1160,6 +1294,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserFloat("angPiDsGen"     ,std::nan(""));
           bs.addUserFloat("cosPhiDsGen"    ,std::nan(""));
           bs.addUserFloat("cosPiDsGen"     ,std::nan(""));
+          bs.addUserFloat("cosPiDsGenLhcb"     ,std::nan(""));
 
           bs.addUserFloat("angPlaneBsGen"  ,std::nan(""));
           bs.addUserFloat("cosPlaneBsGen"  ,std::nan(""));
@@ -1580,43 +1715,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // LHCb method          //
         //////////////////////////
 
-        TVector3 bsFlightDir;
-        TVector3 beamAxis;
-        TVector3 radialAxis;
-
-        TLorentzVector lhcbQTlv; // for q2
-        TLorentzVector lhcbMissTlv; // for m2 miss
-
-        dsMuTlv.SetXYZM(dsMu.px(),dsMu.py(),dsMu.pz(),dsMu.mass());       
-
-        //bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z);
-        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
-
-        beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
-        radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
-
-        //double theta = bsFlightDir.Angle(beamAxis); //angle between beam axis and bs flight dir
-        float theta = bsFlightDir.Theta(); //angle between beam axis and bs flight dir
-
         TLorentzVector refittedDsMu = fittedDs + refittedMu;
-        float lhcbPz = dsMuTlv.Pz() *bsMass_ / refittedDsMu.M();
-        float lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
 
-        bs.addUserFloat("lhcb_pz",lhcbPz);
-        bs.addUserFloat("theta",theta); 
+        TLorentzVector lhcbBsTlv = lhcbMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
+        TLorentzVector lhcbMissTlv = lhcbBsTlv - refittedDsMu;
+        TLorentzVector lhcbQTlv = lhcbBsTlv - fittedDs;
 
-        bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
-        double lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
-
-        TLorentzVector lhcbBsTlv; 
-        double eta = - std::log(std::tan(theta/2));
-        lhcbBsTlv.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bsMass_); 
-        
-        lhcbMissTlv = lhcbBsTlv - refittedDsMu;
-        lhcbQTlv = lhcbBsTlv - fittedDs;
-
-        double m2_miss_lhcb = lhcbMissTlv.M2();
-        double q2_lhcb = lhcbQTlv.M2();
+        float m2_miss_lhcb = lhcbMissTlv.M2();
+        float q2_lhcb = lhcbQTlv.M2();
 
         bs.addUserFloat("bs_px_lhcb",lhcbBsTlv.Px());
         bs.addUserFloat("bs_py_lhcb",lhcbBsTlv.Py());
@@ -1633,15 +1739,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // Another Lhcb method                   //
         ///////////////////////////////////////////
 
-        // reset bs flight direction
-        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
-
-        TVector3 lhcbAltBs;
-        TLorentzVector lhcbAltBsTlv;
-
-        lhcbAltBs = bsFlightDir.Unit();  
-        lhcbAltBs *= refittedDsMu.Vect().Mag() * bsMass_ / refittedDsMu.M(); 
-        lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bsMass_);      
+        TLorentzVector lhcbAltBsTlv = lhcbAltMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
 
         TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
         TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
@@ -1649,9 +1747,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_px_lhcb_alt",lhcbAltBsTlv.Px());
         bs.addUserFloat("bs_py_lhcb_alt",lhcbAltBsTlv.Py());
         bs.addUserFloat("bs_pz_lhcb_alt",lhcbAltBsTlv.Pz());
-        bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBs.Pt());
-        bs.addUserFloat("bs_eta_lhcb_alt",lhcbAltBs.Eta());
-        bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBs.Phi());
+        bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBsTlv.Pt());
+        bs.addUserFloat("bs_eta_lhcb_alt",lhcbAltBsTlv.Eta());
+        bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBsTlv.Phi());
 
         bs.addUserFloat("m2_miss_lhcb_alt",lhcbAltMissTlv.M2());
         bs.addUserFloat("q2_lhcb_alt",lhcbAltQTlv.M2());
@@ -1661,89 +1759,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // This method is exact in the 1-neutrino final state :) //
         ///////////////////////////////////////////////////////////
 
-        TLorentzVector recoBsTlv1;
-        TLorentzVector recoBsTlv2;
+        std::vector<TLorentzVector> recosBs = recoMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
 
-        TLorentzVector miss_1; // for m2 miss
-        TLorentzVector miss_2; // "
-        TLorentzVector Q_1; // for q2
-        TLorentzVector Q_2; // "
+        TLorentzVector recoBsTlv1 = recosBs.at(0);
+        TLorentzVector recoBsTlv2 = recosBs.at(1);
 
-        double recoNeutPll_1; // neutrino momentum parallel to bs direction
-        double recoNeutPll_2; // "
+        TLorentzVector miss_1 = recoBsTlv1 - refittedDsMu;  
+        TLorentzVector miss_2 = recoBsTlv2 - refittedDsMu;  
+        TLorentzVector Q_1 = recoBsTlv1 - fittedDs;  
+        TLorentzVector Q_2 = recoBsTlv2 - fittedDs;  
 
-        double recoBsAbs_1; // absolute 3 momentum of bs
-        double recoBsAbs_2; // "
-
-        // reset bs flight direction
-        bsFlightDir.SetXYZ(sv_x - pv_x, sv_y - pv_y , sv_z - pv_z);
- 
-        // angle between the bs flight direction and the Dsmu system (visible)
-        double recoAngle = refittedDsMu.Angle(bsFlightDir); 
-                    
-        //define parameters 
-        // momentum of DsMu system parallel to the bs
-        double recoDsMuPll = std::cos(recoAngle) * refittedDsMu.Vect().Mag();
-        // momentum of DsMu system orthogonal to the bs
-        double recoDsMuT = std::sin(recoAngle) * refittedDsMu.Vect().Mag();
-        // energy of Dsmu system
-        double recoDsMuE = refittedDsMu.E(); 
-        // cocktail, drops out of equation
-        double recoMix = std::pow(bsMass_,2) + std::pow(recoDsMuPll,2) - std::pow(recoDsMuT,2) - std::pow(recoDsMuE,2);
-
-        // define a,b,c, to give to mitternachtsformel
-        double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
-        double b = 4*recoDsMuPll*recoMix;
-        double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
-        // discriminant
-        double disc = std::pow(b,2) - 4*a*c;      
-
-        //prepare m2miss and q2 variables
-        double m2_miss_reco_1;
-        double q2_reco_1;
-        double m2_miss_reco_2;
-        double q2_reco_2;
-
-        if( disc >= 0) {
-
-          //non complex root -> nice! 
-          recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
-          recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
-
-          recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
-          recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
-
-          TVector3 recoBs_1 = bsFlightDir.Unit();
-          TVector3 recoBs_2 = bsFlightDir.Unit();
-
-          recoBs_1 *= recoBsAbs_1; 
-          recoBs_2 *= recoBsAbs_2; 
-
-          recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bsMass_);
-          recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bsMass_);
-
-          miss_1 = recoBsTlv1 - refittedDsMu;  
-          miss_2 = recoBsTlv2 - refittedDsMu;  
-          Q_1 = recoBsTlv1 - fittedDs;  
-          Q_2 = recoBsTlv2 - fittedDs;  
-
-          m2_miss_reco_1 = miss_1.M2();
-          m2_miss_reco_2 = miss_2.M2();
-          q2_reco_1 = Q_1.M2();
-          q2_reco_2 = Q_2.M2();
-
-
-        }
-        else{ 
-        //complex root, save nans
-        recoBsTlv1.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
-        recoBsTlv2.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
-
-        m2_miss_reco_1 = std::nan("");
-        m2_miss_reco_2 = std::nan("");
-        q2_reco_1 = std::nan("");
-        q2_reco_2 = std::nan("");
-        }
+        float m2_miss_reco_1 = miss_1.M2();
+        float m2_miss_reco_2 = miss_2.M2();
+        float q2_reco_1 = Q_1.M2();
+        float q2_reco_2 = Q_2.M2();
 
         bs.addUserFloat("bs_px_reco_1",recoBsTlv1.Px());
         bs.addUserFloat("bs_py_reco_1",recoBsTlv1.Py());
@@ -1878,7 +1907,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float angPiDsLhcbAlt = angDoubleDecay(fittedDs, refittedPi,  lhcbAltBsTlv);
         float angPiDsReco1   = angDoubleDecay(fittedDs, refittedPi,  recoBsTlv1);
         float angPiDsReco2   = angDoubleDecay(fittedDs, refittedPi,  recoBsTlv2);
-
+        
         bs.addUserFloat("angPiK1",         angPiK1); 
         bs.addUserFloat("angPiK2",         angPiK2); 
 

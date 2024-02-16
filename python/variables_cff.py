@@ -193,6 +193,9 @@ genVariables = cms.PSet(
 
         angMuWGen         = Var("userFloat('angMuWGen')",float),
         cosMuWGen         = Var("userFloat('cosMuWGen')",float),
+        cosMuWGenLhcb     = Var("userFloat('cosMuWGenLhcb')",float),
+        cosMuWGenReco1     = Var("userFloat('cosMuWGenReco1')",float),
+        cosMuWGenReco2     = Var("userFloat('cosMuWGenReco2')",float),
 
         angPiK1Gen        = Var("userFloat('angPiK1Gen')",float),
         cosPiK1Gen        = Var("userFloat('cosPiK1Gen')",float),
@@ -202,6 +205,7 @@ genVariables = cms.PSet(
 
         angPiDsGen        = Var("userFloat('angPiDsGen')",float),
         cosPiDsGen        = Var("userFloat('cosPiDsGen')",float),
+        cosPiDsGenLhcb    = Var("userFloat('cosPiDsGenLhcb')",float),
 
         angPhiDsGen       = Var("userFloat('angPhiDsGen')",float),
         cosPhiDsGen       = Var("userFloat('cosPhiDsGen')",float),

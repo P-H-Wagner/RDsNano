@@ -127,7 +127,7 @@ std::vector<double> infoAncestor(const auto dau, const int id){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
-// function which returns pointer to ancestor such that we can match by pointer! :)
+// function which returns pointer to ancestor with pdgid <id> such that we can match by pointer! :)
 
 auto getAncestor(const auto dau, const int id){
 
@@ -943,32 +943,49 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                const reco::Candidate* piReco = piPtrGen.get(); 
                const reco::Candidate* muReco = muPtrGen.get(); 
 
-               //std::cout << "searching for phi resonance .. " << std::endl;
+               // searching for phi resonance 
                auto phiFromK1 = getAncestor(k1Reco,333);
                auto phiFromK2 = getAncestor(k2Reco,333);
                if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
                     
-               //std::cout << "searching for ds resonance .. " << std::endl;
-
-               //std::cout << "before getAncestor" << phiFromK1->pt() << std::endl;
+               // searching for ds resonance 
                auto dsFromPhi = getAncestor(phiFromK1,431);
-              //std::cout << "after getAncestor" << phiFromK1->pt() << std::endl;
-
                auto dsFromPi  = getAncestor(piReco,431);
                if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
 
-               //std::cout << "searching for bs resonance .. " << std::endl;
-               auto bsFromDs = getAncestor(dsFromPhi,531);
-               auto bsFromMu = getAncestor(muReco,531);
+               // we dont know what b mother we have
+               int bMotherId = 0;
+
+               // first search for b baryon (isAncestor also checks neg. Ids)
+               for(int bIdx = 5000; bIdx < 6000; bIdx++){
+                 if (isAncestor(dsFromPhi, bIdx)){
+                   bMotherId = bIdx;
+                   break;
+                 }
+               }
+
+               // Then search for possible B meson coming from B-baryon
+               for(int bIdx = 500; bIdx < 600; bIdx++){
+                 if (isAncestor(dsFromPhi, bIdx)){
+                   bMotherId = bIdx;
+                   break;
+                 }
+               }
+              
+               if (bMotherId == 0) break; // no b mother found
+
+               // Even if the mu is not required to come brom the b mother directly (would be signal case)
+               // if it comes from another D meson (double charm background case), we still want
+               // that this D meson is coming from the b mother. So the muon should share
+               // the same ancestor as the Ds.
+               auto bsFromDs = getAncestor(dsFromPhi,bMotherId);
+               auto bsFromMu = getAncestor(muReco,   bMotherId);
+
                if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
  
-               //std::cout << "(px,vx) before oscillations " << bsFromMu->px() << ", " << bsFromMu->vx() << std::endl;
-
                //remove oscillations
                auto bsFromMuWOOsc = removeOscillations(bsFromMu);
-               //bool related = hasAncestor(dsFromK1,bsFromK1);
-               //std::cout << "(px,vx) without oscillations " << bsFromMuWOOsc->px() << ", " << bsFromMuWOOsc->vx() << std::endl;
-              
+
                nGenMatches++;
                genMatchSuccess = 1;
 
@@ -1200,29 +1217,125 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //bs.addUserFloat("dz_k2_sig_gen",  dzK2SigGen);
                */
  
-               // now find the signal ID
+               // now find the channel ID, we have the following scheme:
+              
+               // SIGNAL:
+               // Bs -> Ds mu   0
+               // Bs -> Ds tau  1
+               //
+               // Bs -> Ds* mu  2
+               // Bs -> Ds* tau 3
+               //
+               // HB: (the mother base is defined in step1 for each mother)
+               //
+               // B mother -> Ds  +  D                              mother_base + 0
+               // B mother -> Ds  +  D*                             mother_base + 1
+               // B mother -> Ds  +  (something else producing mu)  mother_base + 1
 
-               // Bs decays 0-10
+               // B mother -> Ds* +  D                              mother_base + 5
+               // B mother -> Ds* +  D*                             mother_base + 6
+               // B mother -> Ds* +  (something else producing mu)  mother_base + 7
+
+               // ground state charmed mesons:  
+               std::vector<int> dMesons{
+                 411, // "           : yes 1869
+                 421, // "           : no  1864
+                 431  // "           : yes 1968
+               };
+
+               // excited charmed mesons:  
+               std::vector<int> dMesonsExc{
+                 10411, // charged/mass: yes 2400 
+                 10421, // "           : no  2400
+                 413,   // "           : yes 2010
+                 423,   // "           : no  2007
+                 10413, // "           : yes 2420
+                 10423, // "           : no  2420
+                 20413, // "           : yes ????
+                 20423, // "           : no  2430
+                 415,   // "           : yes 2460
+                 425,   // "           : no  2460
+                 10431, // "           : yes 2317
+                 433,   // "           : yes todo
+                 10433, // "           : yes 2536
+                 20433, // "           : yes 2460 (resp. 2457)
+                 435    // "           : yes 2573
+               };
 
 
 
-               // Ds mu   = 0
-               // Ds* mu  = 1
-               // Ds tau  = 2
-               // Ds* tau = 3
-               sigId = 0; //default
-
-               // look for tau in signal 
-               //std::cout << "before isAncestor" << muPtrGen->pt() << std::endl;
-               if(isAncestor(muPtrGen, 15)) sigId = 2;               
-               //std::cout << "after isAncestor" << muPtrGen->pt() << std::endl;
-
-               // now look for possible Ds*
-               //std::cout << "before isAncestor" << piPtrGen->pt() << std::endl;
-               if(isAncestor(piPtrGen, 433)) sigId += 1; 
+               // Step1: the b Mother fixes the 10s
+               switch(abs(bMotherId)){
+                 case 531:  sigId = 10;  break;  // Bs
+                 case 511:  sigId = 20;  break;  // B0
+                 case 521:  sigId = 30;  break;  // B+-
+                 case 5122: sigId = 40;  break;  // LambdaB
+                 default:   sigId = 50;          // anything else
+               }
  
+               bool isDsStar    = false;
+               bool isDMesonExc = false;
+               bool isOtherLep  = false;
+               bool isTauSig    = false;
 
-               //std::cout << "after isAncestor" << piPtrGen->pt() << std::endl;
+               // Step2: distinguish between Ds + charm / Ds* + charm
+               if(isAncestor(piPtrGen, 433)) isDsStar = true; 
+ 
+               // Step3: distinguish if the mu is coming from a second charmed meson
+               int dMesonIdx = -1;
+
+               for(size_t dIdx = 0; dIdx < dMesons.size(); dIdx++){
+                 if(isAncestor(muPtrGen, dMesons.at(dIdx))){
+                   dMesonIdx = dIdx; 
+                   break;
+                 }
+               } 
+
+               if (dMesonIdx == 0) {
+                 //only enter here when upper loop didnt find d meson
+                 for(size_t dIdx = 0; dIdx < dMesonsExc.size(); dIdx++){
+                   if(isAncestor(muPtrGen, dMesonsExc.at(dIdx))){
+                     dMesonIdx = dIdx;
+                     isDMesonExc = true;
+                     break;
+                   }
+                 }  
+               }
+                              
+               // step4: check if its a true signal or B-meson -> Ds + something leptonaically decaying 
+
+               //if its not bs and no double charm, its something else leptonically decaying
+               if ((dMesonIdx == -1) && (abs(bMotherId) != 531)) isOtherLep = true; 
+              
+               if ((dMesonIdx == -1) && (abs(bMotherId) == 531)) {
+                 // if its Bs and no double charm event, really be sure that we have the signal!
+
+                 std::vector<int> daus;
+                 for( size_t dauIdx = 0; dauIdx < bsFromMu->numberOfDaughters(); dauIdx++){
+
+                   int dauId = bsFromMu->daughter(dauIdx)->pdgId();
+                   //                  Ds*                   Ds                nu_tau                   tau                   nu_mu                   mu                photon
+                   if ( (abs(dauId) != 433) && (abs(dauId) != 431) &&  (abs(dauId) != 16 ) &&  (abs(dauId) != 15 ) &&  (abs(dauId) != 14 ) &&  (abs(dauId) != 13 ) && (abs(dauId) != 22)){
+                     isOtherLep = true;
+                   }
+                   daus.push_back(dauId);
+                   if ( abs(dauId) == 15) isTauSig = true; // found a tau!
+                 }
+               }
+
+               // now we assign the signal Id based on our boolean flags
+               std::cout << isOtherLep << std::endl;
+               std::cout << isDsStar << std::endl;
+               std::cout << isDMesonExc << std::endl;
+               std::cout << isOtherLep << std::endl;
+               std::cout << isTauSig << std::endl;
+
+               if (!isOtherLep)  sigId  = 0; // signal
+               if (isDsStar)     sigId += 5;
+               if (isDMesonExc)  sigId += 1; 
+               if (isOtherLep)   sigId += 2; // if this is true, isDMesonEx should be false!
+               if (isTauSig)     sigId += 1; // only for signals
+
 
                //define helicity angles
 

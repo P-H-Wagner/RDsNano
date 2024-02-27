@@ -58,16 +58,16 @@
 ////////////////////////////////////////////////////////////////////////////////////////////
 // TODOS:
 //
-// - move gen matching in separate module?             - NO
+// - move gen matching in separate module?             - DO THIS AT SOME POINT
 // - remove hardcoded numbers                          - DONE
 // - helicity plane angles                             - DONE 
 // - redefine all variables after the fit? save both ? - YES 
 // - beautify the bs.addUserFloat (...)                - DONE
-// - pos. def. cov matrix
+// - pos. def. cov matrix                              - DONE
 // - add counters before every selection  
 // - pruned vs packed -> discuss                       - DONE
 // - output tree has now empty entries when there is no trigger/signal -> DONE (ed filter)
-// - adapt for Hb background sample
+// - adapt for Hb background sample                    - DONE
 // - how to save kk same sign pair?                    - DONE
 // - generally: save only gen matched signals?         - NO
 // - what if an event has two signals?                 - SAVE BOTH!
@@ -79,7 +79,18 @@
 // - add Ds boost as dicrimanting variable
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////////
+// function which prints all daughters 
 
+void printDaughters(const auto mom){
+
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+    std::cout << " Now mom is: "<< mom->pdgId() << std::endl;
+    std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
+    printDaughters(mom->daughter(dauIdx)); 
+  }
+  return;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // function which checks if a genParticle has a certain ancestor 
@@ -1240,7 +1251,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                std::vector<int> dMesons{
                  411, // "           : yes 1869
                  421, // "           : no  1864
-                 431  // "           : yes 1968
+                 431, // "           : yes 1968
+                 4122 // "           : yes 4122
                };
 
                // excited charmed mesons:  
@@ -1274,9 +1286,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                }
  
                bool isDsStar    = false;
+               bool isDMeson    = false;
                bool isDMesonExc = false;
-               bool isOtherLep  = false;
-               bool isTauSig    = false;
+               bool isSignal    = true;
+               bool isTauSignal = false;
 
                // Step2: distinguish between Ds + charm / Ds* + charm
                if(isAncestor(piPtrGen, 433)) isDsStar = true; 
@@ -1287,6 +1300,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                for(size_t dIdx = 0; dIdx < dMesons.size(); dIdx++){
                  if(isAncestor(muPtrGen, dMesons.at(dIdx))){
                    dMesonIdx = dIdx; 
+                   isDMeson = true;
+                   isSignal = false;
                    break;
                  }
                } 
@@ -1297,6 +1312,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                    if(isAncestor(muPtrGen, dMesonsExc.at(dIdx))){
                      dMesonIdx = dIdx;
                      isDMesonExc = true;
+                     isSignal = false;
                      break;
                    }
                  }  
@@ -1305,7 +1321,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                // step4: check if its a true signal or B-meson -> Ds + something leptonaically decaying 
 
                //if its not bs and no double charm, its something else leptonically decaying
-               if ((dMesonIdx == -1) && (abs(bMotherId) != 531)) isOtherLep = true; 
+               if ((dMesonIdx == -1) && (abs(bMotherId) != 531)) isSignal = false; 
               
                if ((dMesonIdx == -1) && (abs(bMotherId) == 531)) {
                  // if its Bs and no double charm event, really be sure that we have the signal!
@@ -1316,25 +1332,29 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                    int dauId = bsFromMu->daughter(dauIdx)->pdgId();
                    //                  Ds*                   Ds                nu_tau                   tau                   nu_mu                   mu                photon
                    if ( (abs(dauId) != 433) && (abs(dauId) != 431) &&  (abs(dauId) != 16 ) &&  (abs(dauId) != 15 ) &&  (abs(dauId) != 14 ) &&  (abs(dauId) != 13 ) && (abs(dauId) != 22)){
-                     isOtherLep = true;
+                     isSignal = false; // daughter is none of the involved signal particles!
                    }
-                   daus.push_back(dauId);
-                   if ( abs(dauId) == 15) isTauSig = true; // found a tau!
+                   daus.push_back(abs(dauId)); //append abs of daughter id
+                   if ( abs(dauId) == 15) isTauSignal = true; // found a tau!
                  }
                }
 
                // now we assign the signal Id based on our boolean flags
-               std::cout << isOtherLep << std::endl;
+               printDaughters(bsFromMu);
+               std::cout << "flags are at " << std::endl;
+               std::cout << isSignal  << std::endl;
                std::cout << isDsStar << std::endl;
-               std::cout << isDMesonExc << std::endl;
-               std::cout << isOtherLep << std::endl;
-               std::cout << isTauSig << std::endl;
+               std::cout << isDMesonExc  << std::endl;
+               std::cout << isTauSignal  << std::endl;
 
-               if (!isOtherLep)  sigId  = 0; // signal
-               if (isDsStar)     sigId += 5;
-               if (isDMesonExc)  sigId += 1; 
-               if (isOtherLep)   sigId += 2; // if this is true, isDMesonEx should be false!
-               if (isTauSig)     sigId += 1; // only for signals
+               if (isSignal)                                sigId  = 0; // signal
+               if (isDsStar)                                sigId += 5;
+               if (isDMesonExc)                             sigId += 1; 
+               if (!isSignal && !isDMeson && !isDMesonExc)  sigId += 2; // if this is true, isDMesonEx should be false!
+               if (isSignal && isTauSignal)                 sigId += 1; // only for signals
+
+               std::cout << bMotherId << std::endl;
+               std::cout << sigId     << std::endl;
 
 
                //define helicity angles

@@ -76,7 +76,9 @@
 // - do gen tests, check f.e. refitted p's with gen p's and unfitted p's - DONE
 // - put hel angle calc. etc into functions!           - DONE
 // - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
-// - add Ds boost as dicrimanting variable
+// - add Ds boost as dicrimanting variable             - DONE
+// - add all impact parameters correctly and use refitted tracks
+// - add mu isolation, e* miss and pt miss, photon energy 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -293,6 +295,21 @@ float angPlane2 (TLorentzVector d, TLorentzVector b, TLorentzVector k, TLorentzV
 
   return n1.Angle(n2);
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns E*, the momentum of mu in b rest frame
+
+float getEStar(TLorentzVector b, TLorentzVector mu){
+
+  //get b boost vector
+  TVector3 bBoost = b.BoostVector();
+  mu.Boost(-bBoost);
+  
+  return mu.E();
+
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns the phi difference of two phi variables (in cms coordinate system)
@@ -850,6 +867,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //count the number of gen matches we find, ideally only 1
         int nGenMatches = 0;
 
+
         ////////////////////////////////////////////////////
         // find the gen-matched muon                      //
         ////////////////////////////////////////////////////
@@ -1028,9 +1046,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                genQTlv    = genBsTlv - (genDsTlv); 
 
                float m2_miss_gen = genMissTlv.M2();
+               float pt_miss_gen = genMissTlv.Pt();
                float q2_gen = genQTlv.M2();
+               float e_star_gen   = getEStar(genBsTlv,genMuTlv);
 
                bs.addUserFloat("m2_miss_gen",m2_miss_gen);
+               bs.addUserFloat("pt_miss_gen",pt_miss_gen);
+               bs.addUserFloat("e_star_gen",e_star_gen);
+
                bs.addUserFloat("q2_gen",q2_gen);
 
                //vertices
@@ -1116,6 +1139,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                bs.addUserFloat("ds_gen_pt"     ,dsFromPi->pt());
                bs.addUserFloat("ds_gen_eta"    ,dsFromPi->eta());
                bs.addUserFloat("ds_gen_phi"    ,dsFromPi->phi());
+               bs.addUserFloat("ds_gen_boost"  ,genDsTlv.BoostVector().Mag());
+
+
                bs.addUserFloat("sv_x_gen"      ,sv_x_gen);//This is the ds production vertex!
                bs.addUserFloat("sv_y_gen"      ,sv_y_gen);
                bs.addUserFloat("sv_z_gen"      ,sv_z_gen);
@@ -1340,12 +1366,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                }
 
                // now we assign the signal Id based on our boolean flags
-               printDaughters(bsFromMu);
-               std::cout << "flags are at " << std::endl;
-               std::cout << isSignal  << std::endl;
-               std::cout << isDsStar << std::endl;
-               std::cout << isDMesonExc  << std::endl;
-               std::cout << isTauSignal  << std::endl;
+               //printDaughters(bsFromMu); -> for debugging
 
                if (isSignal)                                sigId  = 0; // signal
                if (isDsStar)                                sigId += 5;
@@ -1353,8 +1374,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                if (!isSignal && !isDMeson && !isDMesonExc)  sigId += 2; // if this is true, isDMesonEx should be false!
                if (isSignal && isTauSignal)                 sigId += 1; // only for signals
 
-               std::cout << bMotherId << std::endl;
-               std::cout << sigId     << std::endl;
+               //std::cout << bMotherId << std::endl; //for debugging
+               //std::cout << sigId     << std::endl  //for debugging;
 
 
                //define helicity angles
@@ -1450,7 +1471,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           //well, then its a little more tedious
           bs.addUserFloat("m2_miss_gen"    ,std::nan(""));
+          bs.addUserFloat("pt_miss_gen"    ,std::nan(""));
           bs.addUserFloat("q2_gen"         ,std::nan(""));
+          bs.addUserFloat("e_star_gen"     ,std::nan(""));
 
           bs.addUserFloat("mu_gen_px"      ,std::nan(""));
           bs.addUserFloat("mu_gen_py"      ,std::nan(""));
@@ -1515,6 +1538,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserFloat("sv_z_gen"       ,std::nan(""));
           bs.addUserFloat("ds_gen_charge"  ,std::nan(""));
           bs.addUserInt(  "ds_gen_pdgid"   ,-9999);
+          bs.addUserFloat(  "ds_gen_boost"   ,std::nan(""));
 
           bs.addUserFloat("bs_gen_px"      ,std::nan(""));
           bs.addUserFloat("bs_gen_py"      ,std::nan(""));
@@ -1847,7 +1871,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // dxy(z) is the impact parameter in the xy(z) plane(space), i.e. the distance to the PV
         // TODO: check the errors of dxy and dz      
-        // TODO: bestTrack() is not refitted -> bad?
+        // TODO: bestTrack() is not refitted -> bad? #can be changed but i think its good! bc the refitted track
+        // may be wrongly crorected when its coming from a tau, nbc we fit it with the ds directly to the bs
  
         float dxyMu = muPtr->bestTrack()->dxy(pv.position());  
         float dxyMuErr = muPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
@@ -1973,7 +1998,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         collMissTlv = collBsTlv - (fittedDs + refittedMu); //bs - ds+mu
         collQTlv = collBsTlv - fittedDs; // bs - ds
         double m2_miss_coll = collMissTlv.M2();
-        double q2_coll = collQTlv.M2();
+        double pt_miss_coll = collMissTlv.Pt();
+        double q2_coll      = collQTlv.M2();
+        float  e_star_coll  = getEStar(collBsTlv,refittedMu); 
 
         bs.addUserFloat("bs_px_coll",collBsTlv.Px());
         bs.addUserFloat("bs_py_coll",collBsTlv.Py());
@@ -1981,8 +2008,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_pt_coll",collBsTlv.Pt());
         bs.addUserFloat("bs_eta_coll",collBsTlv.Eta());
         bs.addUserFloat("bs_phi_coll",collBsTlv.Phi());
+
         bs.addUserFloat("m2_miss_coll",m2_miss_coll);
+        bs.addUserFloat("pt_miss_coll",pt_miss_coll);
         bs.addUserFloat("q2_coll",q2_coll);
+        bs.addUserFloat("e_star_coll",e_star_coll);
+
         bs.addUserFloat("b_boost_coll",collBsTlv.BoostVector().Mag());
         bs.addUserFloat("b_boost_coll_pt",collBsTlv.BoostVector().Pt());
         bs.addUserFloat("b_boost_coll_eta",collBsTlv.BoostVector().Eta());
@@ -1997,7 +2028,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TLorentzVector lhcbQTlv = lhcbBsTlv - fittedDs;
 
         float m2_miss_lhcb = lhcbMissTlv.M2();
-        float q2_lhcb = lhcbQTlv.M2();
+        float pt_miss_lhcb = lhcbMissTlv.Pt();
+        float q2_lhcb      = lhcbQTlv.M2();
+        float e_star_lhcb  = getEStar(lhcbBsTlv,refittedMu); 
 
         bs.addUserFloat("bs_px_lhcb",lhcbBsTlv.Px());
         bs.addUserFloat("bs_py_lhcb",lhcbBsTlv.Py());
@@ -2007,7 +2040,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_phi_lhcb",lhcbBsTlv.Phi());
 
         bs.addUserFloat("m2_miss_lhcb",m2_miss_lhcb);
+        bs.addUserFloat("pt_miss_lhcb",pt_miss_lhcb);
         bs.addUserFloat("q2_lhcb",q2_lhcb);
+        bs.addUserFloat("e_star_lhcb",e_star_lhcb);
+
         bs.addUserFloat("b_boost_lhcb",lhcbBsTlv.BoostVector().Mag());
         bs.addUserFloat("b_boost_lhcb_pt",lhcbBsTlv.BoostVector().Pt());
         bs.addUserFloat("b_boost_lhcb_eta",lhcbBsTlv.BoostVector().Eta());
@@ -2023,6 +2059,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
         TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
 
+        float e_star_lhcb_alt  = getEStar(lhcbAltBsTlv,refittedMu); 
+
         bs.addUserFloat("bs_px_lhcb_alt",lhcbAltBsTlv.Px());
         bs.addUserFloat("bs_py_lhcb_alt",lhcbAltBsTlv.Py());
         bs.addUserFloat("bs_pz_lhcb_alt",lhcbAltBsTlv.Pz());
@@ -2031,7 +2069,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBsTlv.Phi());
 
         bs.addUserFloat("m2_miss_lhcb_alt",lhcbAltMissTlv.M2());
+        bs.addUserFloat("pt_miss_lhcb_alt",lhcbAltMissTlv.Pt());
         bs.addUserFloat("q2_lhcb_alt",lhcbAltQTlv.M2());
+        bs.addUserFloat("e_star_lhcb_alt",e_star_lhcb_alt);
+
         bs.addUserFloat("b_boost_lhcb_alt",lhcbAltBsTlv.BoostVector().Mag());
         bs.addUserFloat("b_boost_lhcb_alt_pt",lhcbAltBsTlv.BoostVector().Pt());
         bs.addUserFloat("b_boost_lhcb_alt_eta",lhcbAltBsTlv.BoostVector().Eta());
@@ -2054,8 +2095,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float m2_miss_reco_1 = miss_1.M2();
         float m2_miss_reco_2 = miss_2.M2();
+        float pt_miss_reco_1 = miss_1.Pt();
+        float pt_miss_reco_2 = miss_2.Pt();
+
         float q2_reco_1 = Q_1.M2();
         float q2_reco_2 = Q_2.M2();
+        float e_star_reco_1  = getEStar(recoBsTlv1,refittedMu); 
+        float e_star_reco_2  = getEStar(recoBsTlv2,refittedMu); 
 
         bs.addUserFloat("bs_px_reco_1",recoBsTlv1.Px());
         bs.addUserFloat("bs_py_reco_1",recoBsTlv1.Py());
@@ -2073,8 +2119,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bs.addUserFloat("m2_miss_reco_1",m2_miss_reco_1); 
         bs.addUserFloat("m2_miss_reco_2",m2_miss_reco_2); 
+        bs.addUserFloat("pt_miss_reco_1",pt_miss_reco_1); 
+        bs.addUserFloat("pt_miss_reco_2",pt_miss_reco_2); 
+
+
         bs.addUserFloat("q2_reco_1",q2_reco_1); 
         bs.addUserFloat("q2_reco_2",q2_reco_2); 
+        bs.addUserFloat("e_star_reco_1",e_star_reco_1);
+        bs.addUserFloat("e_star_reco_2",e_star_reco_2);
+
         bs.addUserFloat("b_boost_reco_1",recoBsTlv1.BoostVector().Mag());
         bs.addUserFloat("b_boost_reco_1_pt",recoBsTlv1.BoostVector().Pt());
         bs.addUserFloat("b_boost_reco_1_eta",recoBsTlv1.BoostVector().Eta());
@@ -2137,6 +2190,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_eta",    fittedDs.Eta()); 
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
+        bs.addUserFloat("ds_fitted_boost",  fittedDs.BoostVector().Mag()); 
 
         // bs fit
         bs.addUserFloat("mu_refitted_px",   refittedMu.Px()); 
@@ -2154,6 +2208,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_refitted_eta",  refittedDs.Eta()); 
         bs.addUserFloat("ds_refitted_phi",  refittedDs.Phi()); 
         bs.addUserFloat("ds_refitted_m",    refittedDs.M()); 
+        bs.addUserFloat("ds_refitted_boost",refittedDs.BoostVector().Mag()); 
 
         bs.addUserFloat("bs_fitted_px",     fittedBs.Px()); 
         bs.addUserFloat("bs_fitted_py",     fittedBs.Py()); 

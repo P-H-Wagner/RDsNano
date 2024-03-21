@@ -199,7 +199,9 @@ genVariables = cms.PSet(
         fv_z_gen          = Var("userFloat('fv_z_gen')",float),
 
         m2_miss_gen       = ufloat('m2_miss_gen'),
+        pt_miss_gen       = ufloat('pt_miss_gen'),
         q2_gen            = ufloat('q2_gen'),
+        q2_gen            = ufloat('e_star_gen'),
 
         angMuW_gen        = Var("userFloat('angMuWGen')",float),
         cosMuW_gen        = Var("userFloat('cosMuWGen')",float),
@@ -511,11 +513,23 @@ bsMomentumVariables = cms.PSet(
         m2_miss_reco_1   = Var("userFloat('m2_miss_reco_1')",float),
         m2_miss_reco_2   = Var("userFloat('m2_miss_reco_2')",float),
 
+        pt_miss_coll     = Var("userFloat('pt_miss_coll')",float),
+        pt_miss_lhcb     = Var("userFloat('pt_miss_lhcb')",float),
+        pt_miss_lhcb_alt = Var("userFloat('pt_miss_lhcb_alt')",float),
+        pt_miss_reco_1   = Var("userFloat('pt_miss_reco_1')",float),
+        pt_miss_reco_2   = Var("userFloat('pt_miss_reco_2')",float),
+
         q2_coll          = Var("userFloat('q2_coll')",float),
         q2_lhcb          = Var("userFloat('q2_lhcb')",float),
         q2_lhcb_alt      = Var("userFloat('q2_lhcb_alt')",float),
         q2_reco_1        = Var("userFloat('q2_reco_1')",float),
         q2_reco_2        = Var("userFloat('q2_reco_2')",float),
+
+        e_star_coll          = Var("userFloat('e_star_coll')",float),
+        e_star_lhcb          = Var("userFloat('e_star_lhcb')",float),
+        e_star_lhcb_alt      = Var("userFloat('e_star_lhcb_alt')",float),
+        e_star_reco_1        = Var("userFloat('e_star_reco_1')",float),
+        e_star_reco_2        = Var("userFloat('e_star_reco_2')",float),
 
         arrived          = Var("userInt('arrived')",int),
 )

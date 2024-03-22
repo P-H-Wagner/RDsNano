@@ -316,7 +316,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       }
   } //close the loop over pat muons
   
-  std::cout <<  "wehave:" << counter << std::endl;   
+  //std::cout <<  "wehave:" << counter << std::endl;   
 
   } //close if condition of HLT
   //store the new collections in the event

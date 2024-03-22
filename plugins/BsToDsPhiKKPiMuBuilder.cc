@@ -78,7 +78,7 @@
 // - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
 // - add Ds boost as dicrimanting variable             - DONE
 // - add all impact parameters correctly and use refitted tracks
-// - add mu isolation, e* miss and pt miss, photon energy 
+// - add mu isolation, e* miss and pt miss, photon energy - DONE 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -306,6 +306,21 @@ float getEStar(TLorentzVector b, TLorentzVector mu){
   mu.Boost(-bBoost);
   
   return mu.E();
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns E*, the momentum of mu in b rest frame
+
+float getEGamma(TLorentzVector ds, const double dsMass_, const double dsStarMass_ ){
+
+  // collienar approx to get Ds star 
+  TLorentzVector dsStar = ds;
+  dsStar *= dsStarMass_ / dsMass_ ; 
+
+  float eGamma = std::sqrt( std::pow(dsStarMass_,2) * (1 + std::pow(ds.P() / dsMass_ ,2) )) - ds.E();
+ 
+  return eGamma;
 
 }
 
@@ -586,9 +601,10 @@ private:
   const double kMass_;
   const double phiMass_;
   const double dsMass_;
+  const double dsStarMass_;
   const double muMass_;
   const double bsMass_;
-
+  const double isoCone_;
   //tokens to access data later
   //edm::Input tag can not be directly initialized inside the construcor! Why did it work fro Trigger.cc??
   //anyway ... 
@@ -604,6 +620,14 @@ private:
   // vertices
   const edm::InputTag primaryVtxTag;
   const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
+
+  // tracks for isolation
+  const edm::InputTag isoTracksTag;
+  const edm::EDGetTokenT<pat::PackedCandidateCollection> isoTracks_;
+
+  // lost tracks for isolation
+  const edm::InputTag isoTracksLostTag;
+  const edm::EDGetTokenT<pat::PackedCandidateCollection> isoTracksLost_;
  
   //gen for gen-matching
   const edm::InputTag prunedGenTag; //pruned is a compressed packed format
@@ -631,9 +655,11 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     kMass_(iConfig.getParameter<double>("kMass")),
     phiMass_(iConfig.getParameter<double>("phiMass")),
     dsMass_(iConfig.getParameter<double>("dsMass")),
+    dsStarMass_(iConfig.getParameter<double>("dsStarMass")),
     muMass_(iConfig.getParameter<double>("muMass")),
     bsMass_(iConfig.getParameter<double>("bsMass")),
- 
+    isoCone_(iConfig.getParameter<double>("isoCone")),
+
     srcTag(iConfig.getParameter<edm::InputTag>("pfCand")),
     src_(consumes<pat::PackedCandidateCollection>(srcTag)), 
 
@@ -642,6 +668,12 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
 
     primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
     primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)),
+
+    isoTracksTag(iConfig.getParameter<edm::InputTag>("tracks")),
+    isoTracks_(consumes<pat::PackedCandidateCollection>(isoTracksTag)),
+
+    isoTracksLostTag(iConfig.getParameter<edm::InputTag>("lostTracks")),
+    isoTracksLost_(consumes<pat::PackedCandidateCollection>(isoTracksLostTag)),
 
     prunedGenTag(iConfig.getParameter<edm::InputTag>("prunedCand")),
     prunedGen_(consumes<reco::GenParticleCollection>(prunedGenTag)),
@@ -667,6 +699,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
   edm::Handle<reco::VertexCollection> primaryVtx;
   iEvent.getByToken(primaryVtx_,primaryVtx);
+
+  edm::Handle<pat::PackedCandidateCollection> isoTracks;
+  iEvent.getByToken(isoTracks_,isoTracks);
+
+  edm::Handle<pat::PackedCandidateCollection> isoTracksLost;
+  iEvent.getByToken(isoTracksLost_,isoTracksLost);
 
   edm::Handle<reco::GenParticleCollection> prunedGen;
   iEvent.getByToken(prunedGen_,prunedGen);
@@ -1049,11 +1087,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                float pt_miss_gen = genMissTlv.Pt();
                float q2_gen = genQTlv.M2();
                float e_star_gen   = getEStar(genBsTlv,genMuTlv);
+               float e_gamma_gen  = getEGamma(genDsTlv, dsMass_, dsStarMass_);
 
                bs.addUserFloat("m2_miss_gen",m2_miss_gen);
                bs.addUserFloat("pt_miss_gen",pt_miss_gen);
                bs.addUserFloat("e_star_gen",e_star_gen);
-
+               bs.addUserFloat("e_gamma_gen",e_gamma_gen);
                bs.addUserFloat("q2_gen",q2_gen);
 
                //vertices
@@ -1253,6 +1292,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                //bs.addUserFloat("dxy_k2_sig_gen", dxyK2SigGen);
                //bs.addUserFloat("dz_k2_sig_gen",  dzK2SigGen);
                */
+
+               // muon isolation
+               float mu_iso_gen = 0;
+ 
+               for(size_t trkIdxGen = 0; trkIdxGen < prunedGen->size(); ++trkIdxGen){
+   
+                 //define a pointer to the gen trk    
+                 edm::Ptr<reco::GenParticle> trkPtrGen(prunedGen, trkIdxGen);
+               
+                 // only consider for isolation when dR < isoCone_ and track is not final state (not k k pi mu)
+                 if ( (reco::deltaR(*trkPtrGen,*muPtrGen) > isoCone_ ) || (trkIdxGen == muIdxGen) || (trkIdxGen == k1IdxGen) || (trkIdxGen == k2IdxGen) || (trkIdxGen == piIdxGen) ) continue;
+
+                 mu_iso_gen += trkPtrGen->pt();
+
+               }
+     
+               //divide by pt to get relative isolation
+               bs.addUserFloat("mu_rel_iso_gen", mu_iso_gen / muPtrGen->pt());
  
                // now find the channel ID, we have the following scheme:
               
@@ -1474,6 +1531,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserFloat("pt_miss_gen"    ,std::nan(""));
           bs.addUserFloat("q2_gen"         ,std::nan(""));
           bs.addUserFloat("e_star_gen"     ,std::nan(""));
+          bs.addUserFloat("e_gamma_gen"    ,std::nan(""));
 
           bs.addUserFloat("mu_gen_px"      ,std::nan(""));
           bs.addUserFloat("mu_gen_py"      ,std::nan(""));
@@ -1586,7 +1644,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserFloat("angPlaneDsGen"  ,std::nan(""));
           bs.addUserFloat("cosPlaneDsGen"  ,std::nan(""));
       
-
+          bs.addUserFloat("mu_rel_iso_gen"  ,std::nan(""));
         }
         //std::cout << sigId << std::endl; 
         ////std::cout << "1" << std::endl;
@@ -2310,6 +2368,43 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPlaneDsLhcbAlt", cos(angPlaneDsLhcbAlt));
         bs.addUserFloat("cosPlaneDsReco1",   cos(angPlaneDsReco1));
         bs.addUserFloat("cosPlaneDsReco2",   cos(angPlaneDsReco2));
+
+
+        // muon isolation
+         
+        float mu_iso = 0;
+        // loop over measured PF tracks
+        for(size_t trkIdx = 0; trkIdx < isoTracks->size(); ++trkIdx) {
+
+          //define a pointer to the PF candidate at position trkIdx
+          edm::Ptr<pat::PackedCandidate> trkPtr(isoTracks, trkIdx);
+
+          // only consider for isolation when dR < isoCone_ and track is not final state (not k k pi mu)
+          if ( (reco::deltaR(*trkPtr,*muPtr) > isoCone_ ) || (trkIdx == trgMuIdx) || (trkIdx == k1Idx) || (trkIdx == k2Idx) || (trkIdx == piIdx) ) continue;
+
+          mu_iso += trkPtr->pt();
+
+        }
+
+        // also consider the lost tracks!
+        for(size_t trkIdx = 0; trkIdx < isoTracksLost->size(); ++trkIdx) {
+
+          //define a pointer to the PF candidate at position trkIdx
+          edm::Ptr<pat::PackedCandidate> trkPtr(isoTracksLost, trkIdx);
+
+          // only consider for isolation when dR < isoCone_ , lost tracks are anyway not final state (not k k pi mu) --> right?? CHECK!
+          if (reco::deltaR(*trkPtr,*muPtr) > isoCone_ ) continue;
+
+          mu_iso += trkPtr->pt();
+
+        }
+
+        // divide by mu pt to get relative isolation
+        bs.addUserFloat("mu_rel_iso", mu_iso / muPtr->pt());
+
+        // e gamma
+        float e_gamma = getEGamma(fittedDs, dsMass_,dsStarMass_);
+        bs.addUserFloat("e_gamma", e_gamma);
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////

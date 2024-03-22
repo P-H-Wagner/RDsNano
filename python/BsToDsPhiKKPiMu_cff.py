@@ -15,6 +15,8 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     pfCand = cms.InputTag('packedPFCandidates'),
     muCand = cms.InputTag('muonTrgSelector', 'trgMuons'),
     pvCand = cms.InputTag("offlineSlimmedPrimaryVertices"),
+    tracks = cms.InputTag('packedPFCandidates'), # for isolation
+    lostTracks = cms.InputTag("lostTracks"),     # for isolation
     prunedCand = cms.InputTag("prunedGenParticles"),
     packedCand = cms.InputTag("packedGenParticles"),
     hadSelection = cms.string(' &&  '.join([
@@ -41,9 +43,10 @@ piMass = cms.double(0.13957039),      # pi mass
 kMass = cms.double(0.493677),         # kaon mass
 phiMass = cms.double(1.019461),       # phi mass
 dsMass = cms.double(1.96834),         # ds mass
+dsStarMass = cms.double(2.112204),    # ds star mass
 muMass = cms.double(0.105658),        # mu mass
-bsMass = cms.double(5.36688)          # bs mass
-
+bsMass = cms.double(5.36688),         # bs mass
+isoCone = cms.double(0.5)             # cut on dR for the mu isolation cone
 )
 
 #BsToDsPhiKKPiMuTableVariables = TableDefaultVariables.clone()

@@ -191,10 +191,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   //////////////////////////////////////////////////////
 
   pat::CompositeCandidate gen; 
-  std::cout << "1" << std::endl; 
   for(size_t bsIdx = 0; bsIdx < bsColl->size(); ++bsIdx){
    
-    //if there is no trg muon, this loop is empty:)
+    pat::CompositeCandidate gen; 
     edm::Ptr<pat::CompositeCandidate> bsPtr(bsColl, bsIdx);
 
     //get kinematic info of final states
@@ -203,15 +202,18 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
     auto k2Bs = bsPtr->userCand("k2");
     auto piBs = bsPtr->userCand("pi");
 
+    std::cout << "New candidate with pt: " << std::endl;
+    std::cout << muBs->pt() << std::endl;
+    std::cout << k1Bs->pt() << std::endl;
+    std::cout << k2Bs->pt() << std::endl;
+    std::cout << piBs->pt() << std::endl;
+
     int sigId = -1; 
     int genMatchSuccess = 0;
-    double bsPtGen;
-    //pat::CompositeCandidate gen;
 
     //count the number of gen matches we find, ideally only 1
     int nGenMatches = 0;
 
-    std::cout << "2" << std::endl; 
     ////////////////////////////////////////////////////
     // find the gen-matched muon                      //
     ////////////////////////////////////////////////////
@@ -234,7 +236,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
       //std::cout << "found a gen matched muon" << std::endl;
       ++nMuGen;
 
-      std::cout << "3" << std::endl; 
       ////////////////////////////////////////////////
       // find gen matched k1                        //
       ////////////////////////////////////////////////
@@ -257,7 +258,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         //std::cout << "found a gen matched k1!" << std::endl;
         ++nK1Gen;
 
-        std::cout << "4" << std::endl; 
         ////////////////////////////////////////////////
         // find gen matched k2                        //
         ////////////////////////////////////////////////
@@ -283,7 +283,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
              //std::cout << "found a gen matched k2!" << std::endl;
              ++nK2Gen;
 
-             std::cout << "5" << std::endl; 
              ////////////////////////////////////////////////
              // find gen matched pion                      //
              ////////////////////////////////////////////////
@@ -308,7 +307,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //std::cout << "found a gen matched pion!" << std::endl;
                ++nPiGen;
 
-               std::cout << "6" << std::endl; 
                //////////////////////////////////////////////////
                // Find resonances at gen level                 //
                //////////////////////////////////////////////////
@@ -351,7 +349,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
               
                if (bMotherId == 0) break; // no b mother found
 
-               std::cout << "7" << std::endl; 
                // Even if the mu is not required to come brom the b mother directly (would be signal case)
                // if it comes from another D meson (double charm background case), we still want
                // that this D meson is coming from the b mother. So the muon should share
@@ -366,10 +363,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                nGenMatches++;
                genMatchSuccess = 1;
-               std::cout << genMatchSuccess << std::endl;
+               std::cout << "found a gen match ! with pt: " << std::endl;
+
+               gen.addUserInt("gen_match_success",genMatchSuccess);
+               
                //if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
 
-               std::cout << "8" << std::endl; 
                //get gen 4 momenta
                TLorentzVector genMuTlv; 
                TLorentzVector genK1Tlv; 
@@ -426,7 +425,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //save the gen info by adding gen candidates of final states
 
-               std::cout << "9" << std::endl; 
                //gen.addUserCand("mu_gen",muPtrGen);
                //gen.addUserCand("k1_gen",k1PtrGen);
                //gen.addUserCand("k2_gen",k2PtrGen);
@@ -608,7 +606,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                // muon isolation
                float mu_iso_gen = 0;
  
-               std::cout << "10" << std::endl; 
                for(size_t trkIdxGen = 0; trkIdxGen < prunedGen->size(); ++trkIdxGen){
    
                  //define a pointer to the gen trk    
@@ -804,10 +801,11 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("cosPlaneDsGen", cos(angPlaneDsGen));
 
                //if we reached this point we have found our gen match and we can stop the loop
-               //std::cout << "found a gen match" << std::endl;
-               gen.addUserInt("gen_match_success",genMatchSuccess);
 
-               std::cout << "11" << std::endl; 
+               std::cout << gen.userFloat("mu_gen_pt") << std::endl;
+               std::cout << gen.userFloat("k1_gen_pt") << std::endl;
+               std::cout << gen.userFloat("k2_gen_pt") << std::endl;
+               std::cout << gen.userFloat("pi_gen_pt") << std::endl;
                break;
 
                //////////////////////////////////////////////////
@@ -826,7 +824,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         gen.addUserInt("gen_match_success",genMatchSuccess);
 
         if (genMatchSuccess == 0){
-
+          std::cout << "no gen match!" << std::endl;
           // no gen match, we store nans
 
           //prepare a dummy (This does not work!! can not add the empty vector as candidate even it compiles.. why??)
@@ -969,10 +967,11 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         //append candidate at the end of our return value :)
         //ret_value can be a vector!!
         ret_value->emplace_back(gen);
+        std::cout << "value pushed back:"<< gen.userFloat("pi_gen_pt") << std::endl;
         //ret_value_gen->emplace_back(gen);
 
   } //closing loop over Bs
-
+  std::cout << "size of vec: " << ret_value->size() << std::endl;
   iEvent.put(std::move(ret_value), "gen");
 }//closing event loop
 

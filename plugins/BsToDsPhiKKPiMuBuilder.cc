@@ -909,6 +909,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ////////////////////////////////////////////////////
         // find the gen-matched muon                      //
         ////////////////////////////////////////////////////
+
+        // no gen matchign on data!
+        if (isData_) continue;
+
         int nMuGen = 0;
 
         for(size_t muIdxGen = 0; muIdxGen < prunedGen->size(); ++muIdxGen){

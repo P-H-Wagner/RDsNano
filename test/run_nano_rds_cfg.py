@@ -2,7 +2,7 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 import FWCore.ParameterSet.Config as cms
 
 # TODO: put different samples into parser (flag from command line)
-channel = 'hb'
+channel = 'sig'
 
 import os
 
@@ -36,7 +36,7 @@ process.Timing = cms.Service("Timing",
 #load all the chosen options
 process.MessageLogger.cerr.FwkReport.reportEvery = 1
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(30)
+    input = cms.untracked.int32(100)
 )
 
 # Input source
@@ -101,13 +101,15 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, globaltag, '')
 
 
+# add all sequences as addtributes
 from PhysicsTools.RDsNano.nanoRDs_cff import *
 process = nanoAOD_customizeMuonTriggerBPark(process)  
 process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run only Trigger.cc for debugging
+process = nanoAOD_customizeGenMatching(process) 
 
 # Path and EndPath definitions
-process.nanoAOD_Bs_step= cms.Path(process.nanoSequence  + process.nanoBsToDsPhiKKPiMuSequence)
-#process.nanoAOD_Bs_step= cms.Path(process.nanoSequence) ## to run only Trigger.cc for debugging
+process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+#process.nanoAOD_Bs_step= cms.Path(process.triggerSequence) ## to run only Trigger.cc for debugging
 
 process.endjob_step = cms.EndPath(process.endOfProcess)
 

@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import Var, CandVars
 from PhysicsTools.RDsNano.common_cff import RDsCandVars, ufloat, uint, ubool
 from PhysicsTools.RDsNano.rds_common_cff import TableDefaultVariables, TableDefault
-from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, genVariables, vertexVariables, postfitBasicVariables, helicityVariables, bsMomentumVariables, empty
+from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, vertexVariables, postfitBasicVariables, helicityVariables, bsMomentumVariables, empty #,genvariables
 
 #from PhysicsTools.RDsNano.primaryVertices_cff import *
 
@@ -65,7 +65,7 @@ BsToDsPhiKKPiMuTable.variables = BsToDsPhiKKPiMuTableVariables
 #BsToDsPhiKKPiMuVariables.extend(vertexVariables)
 combined_variables = cms.PSet(
   prefitBasicVariables,
-  genVariables,
+  #genVariables,
   vertexVariables,
   postfitBasicVariables,
   helicityVariables,

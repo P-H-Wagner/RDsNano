@@ -11,6 +11,16 @@
 #include "DataFormats/GeometryVector/interface/PV3DBase.h"
 #include "Math/LorentzVector.h"
 
+// 4 vectors
+#include "TLorentzVector.h"
+#include "TVector3.h" // for boost vector
+
+// for the cov matrix correction
+#include "TMatrixDSym.h"
+#include "TVectorD.h"
+#include "DataFormats/RecoCandidate/interface/RecoCandidate.h"
+
+
 #include <vector>
 #include <algorithm>
 #include <limits>
@@ -18,97 +28,466 @@
 
 typedef std::vector<reco::TransientTrack> TransientTrackCollection;
 
-constexpr float Bc_MASS= 6.276;
 constexpr float K_MASS = 0.493677;
 constexpr float PI_MASS = 0.139571;
-constexpr float LEP_SIGMA = 0.0000001;
-constexpr float K_SIGMA = 0.000016;
-constexpr float PI_SIGMA = 0.000016;
-constexpr float MUON_MASS = 0.10565837;
-constexpr float ELECTRON_MASS = 0.000511;
 
-inline std::pair<float, float> min_max_dr(const std::vector< edm::Ptr<reco::Candidate> > & cands) {
-  float min_dr = std::numeric_limits<float>::max();
-  float max_dr = 0.;
-  for(size_t i = 0; i < cands.size(); ++i) {
-    for(size_t j = i+1; j < cands.size(); ++j) {
-      float dr = reco::deltaR(*cands.at(i), *cands.at(j));
-      min_dr = std::min(min_dr, dr);
-      max_dr = std::max(max_dr, dr);
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which prints all daughters 
+
+inline void printDaughters(const auto mom){
+
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+    std::cout << " Now mom is: "<< mom->pdgId() << std::endl;
+    std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
+    printDaughters(mom->daughter(dauIdx)); 
+  }
+  return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which checks if a genParticle has a certain ancestor 
+
+inline bool isAncestor(const auto dau, const int id){
+  //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
+  if (fabs(dau->pdgId()) == id){ 
+    return true;
     }
-  }
-  return std::make_pair(min_dr, max_dr);
-}
-
-template<typename FITTER, typename LORENTZ_VEC>
-inline double cos_theta_2D(const FITTER& fitter, const reco::BeamSpot &bs, const LORENTZ_VEC& p4) {
-  if(!fitter.success()) return -2;
-  GlobalPoint point = fitter.fitted_vtx();
-  auto bs_pos = bs.position(point.z());
-  math::XYZVector delta(point.x() - bs_pos.x(), point.y() - bs_pos.y(), 0.);
-  math::XYZVector pt(p4.px(), p4.py(), 0.);
-  double den = (delta.R() * pt.R());
-  return (den != 0.) ? delta.Dot(pt)/den : -2;
-}
-
-template<typename FITTER>
-inline Measurement1D l_xy(const FITTER& fitter, const reco::BeamSpot &bs) {
-  if(!fitter.success()) return {-2, -2};
-  GlobalPoint point = fitter.fitted_vtx();
-  GlobalError err = fitter.fitted_vtx_uncertainty();
-  auto bs_pos = bs.position(point.z());
-  GlobalPoint delta(point.x() - bs_pos.x(), point.y() - bs_pos.y(), 0.);  
-  return {delta.perp(), sqrt(err.rerr(delta))};
-}
-
-
-inline GlobalPoint FlightDistVector (const reco::BeamSpot & bm, GlobalPoint Bvtx)
-{
-   GlobalPoint Dispbeamspot(-1*( (bm.x0()-Bvtx.x()) + (Bvtx.z()-bm.z0()) * bm.dxdz()),
-			   -1*( (bm.y0()-Bvtx.y()) + (Bvtx.z()-bm.z0()) * bm.dydz()), 
-                            0);                    
-   return std::move(Dispbeamspot);
-}
-
-
-inline float CosA(GlobalPoint & dist, ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double>> & Bp4)
-{
-    math::XYZVector vperp(dist.x(),dist.y(),0);
-    math::XYZVector pperp(Bp4.Px(),Bp4.Py(),0); 
-    return std::move(vperp.Dot(pperp)/(vperp.R()*pperp.R()));
-}
-
-
-inline std::pair<double,double> computeDCA(const reco::TransientTrack& trackTT,
-					   const reco::BeamSpot& beamSpot)
-{
-  double DCABS    = -1.;
-  double DCABSErr = -1.;
-
-  TrajectoryStateClosestToPoint theDCAXBS = 
-    trackTT.trajectoryStateClosestToPoint(GlobalPoint(beamSpot.position().x(),beamSpot.position().y(),beamSpot.position().z()));
-  if (theDCAXBS.isValid()) {
-    DCABS    = theDCAXBS.perigeeParameters().transverseImpactParameter();
-    DCABSErr = theDCAXBS.perigeeError().transverseImpactParameterError();
-  }
-
-  return std::make_pair(DCABS,DCABSErr);
-}
-
-
-inline bool track_to_muon_match(edm::Ptr<reco::Candidate> l_ptr, auto iso_tracks_id, unsigned int iTrk)
-{
-  for (unsigned int i = 0; i < l_ptr->numberOfSourceCandidatePtrs(); ++i) {
-    if (! ((l_ptr->sourceCandidatePtr(i)).isNonnull() && 
-           (l_ptr->sourceCandidatePtr(i)).isAvailable())
-           )   continue;
-    const edm::Ptr<reco::Candidate> & source = l_ptr->sourceCandidatePtr(i);
-    if (source.id() == iso_tracks_id && source.key() == iTrk){
-      return true;
-    }        
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    if (isAncestor(dau->mother(momIdx), id)) return true;  
   }
   return false;
 }
+///////////////////////////////////////////////////////////////////////////////////
+// function which checks if mom is ancestor of dau
 
+inline bool hasAncestor(const auto dau, const auto mom){
+  //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
+  if (dau == mom){ 
+    return true;
+    }
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    if (hasAncestor(dau->mother(momIdx), mom)) return true;  
+  }
+  return false;
+}
+///////////////////////////////////////////////////////////////////////////////////
+// function which returns pt eta phi of the ancestor in order to compare ancestors.
+
+inline std::vector<double> infoAncestor(const auto dau, const int id){
+
+  if (fabs(dau->pdgId()) == id){
+    return {dau->pt(),dau->eta(),dau->phi(),dau->vx(),dau->vy(),dau->vz()};
+  }
+
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    if (isAncestor(dau->mother(momIdx), id)) {
+      std::vector<double> ptEtaPhiVxVyVz = infoAncestor(dau->mother(momIdx),id);
+      return ptEtaPhiVxVyVz;
+    }
+  }
+  std::vector<double> failedVector(6, std::numeric_limits<double>::quiet_NaN());
+  return failedVector;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which returns pointer to ancestor with pdgid <id> such that we can match by pointer! :)
+
+inline auto getAncestor(const auto dau, const int id){
+
+  //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
+  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+  if ((fabs(dau->pdgId()) == id)){
+    //std::cout << "sucess!" << std::endl;
+    return dau;
+  }
+
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+    //std::cout << "Now I access mom Nr " << momIdx << std::endl;
+    if (isAncestor(dau->mother(momIdx), id)) {
+      auto dau2 = getAncestor(dau->mother(momIdx),id);
+      return dau2;
+    }
+  }
+  const reco::Candidate* empty = nullptr; 
+  return empty;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which removes the un-oscillated ancestor of dau
+// f.e. dau is -531 and comes from 531 via oscillation, then this function removes oscillation
+// and returns a pointer to the 531 particle, which has the correct vertex!
+
+inline const reco::Candidate* removeOscillations(const auto dau){
+
+  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+
+  for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+
+    //check if dau has a mother with the same pdg Id but opposite sign
+    if (dau->mother(momIdx)->pdgId() == (-1 * dau->pdgId())) {
+      //std::cout << "oscillation!" << std::endl;
+
+      auto dau2 = removeOscillations(dau->mother(momIdx));
+      return dau2;
+    }
+  }
+  return dau;
+}
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets the hel angle between the mu and W
+inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){       
+
+  //get q2
+  TLorentzVector q = b - d;
+  double q2 = q.M2();
+
+  //boost Ds into Bs rest frame
+  TVector3 bBoost = b.BoostVector();
+  d.Boost(-bBoost);
+
+  //get W via Ds 
+  TLorentzVector w;
+  w.SetVectM(-d.Vect(),std::sqrt(q2));           
+  // boost it back into lab frame
+  w.Boost(bBoost);
+  // now take the boost vector of w
+  TVector3 wBoost = w.BoostVector();
+  //boost the muon into the w rest frame
+  mu.Boost(-wBoost); 
+  //boost the W back into the bs rest frame
+  w.Boost(-bBoost);
+ 
+  //now take the angle
+  return w.Angle(mu.Vect());
+
+}
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
+
+inline float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLorentzVector dau2) {
+  TVector3 restBoost = restFrame.BoostVector();
+  dau1.Boost(-restBoost);
+  dau2.Boost(-restBoost);
+  return dau1.Angle(dau2.Vect());
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
+
+inline float angDsPi (TLorentzVector d, TLorentzVector dau, TLorentzVector b) {
+
+  TVector3 bBoost = b.BoostVector();
+  TVector3 dBoost = d.BoostVector();
+  dau.Boost(-dBoost);
+  d.Boost(-bBoost);
+
+  return d.Angle(dau.Vect());
+}
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets angle between decay planes
+
+inline float angPlane (TLorentzVector d, TLorentzVector b, TLorentzVector mu, TLorentzVector pi) {
+
+  //get q2
+  TLorentzVector q = b - d;
+  double q2 = q.M2();
+
+  //get Ds boost vector in the lab frame (to boost pi)
+  TVector3 dBoost = d.BoostVector();
+
+  //boost Ds into Bs rest frame
+  TVector3 bBoost = b.BoostVector();
+  d.Boost(-bBoost);
+
+  //get W via Ds 
+  TLorentzVector w;
+  w.SetVectM(-d.Vect(),std::sqrt(q2));           
+  // boost it back into lab frame
+  w.Boost(bBoost);
+  // now take the boost vector of w
+  TVector3 wBoost = w.BoostVector();
+  //boost the muon into the w rest frame
+  mu.Boost(-wBoost);
+  //boost the W back into the bs rest frame
+  w.Boost(-bBoost);
+
+  //now boost the pi into the ds rest frame, ds is already in Bs rest frame
+  pi.Boost(-dBoost);
+
+  // normal vector on lepton-W plane
+  TVector3 n1 = mu.Vect().Cross(w.Vect());
+  // normal vector on ds-pi plane
+  TVector3 n2 = d.Vect().Cross(pi.Vect()); 
+
+  return n1.Angle(n2);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which gets angle of kaon in DsPi plane 
+
+inline float angPlane2 (TLorentzVector d, TLorentzVector b, TLorentzVector k, TLorentzVector pi) {
+
+  //get Ds boost vector in the lab frame (to boost pi)
+  TVector3 dBoost = d.BoostVector();
+
+  //now boost the pi and k1 into the ds rest frame
+  pi.Boost(-dBoost);
+  k.Boost(-dBoost);
+
+  //boost Ds into Bs rest frame
+  TVector3 bBoost = b.BoostVector();
+  d.Boost(-bBoost);
+
+  // normal vector on Ds - pi plane
+  TVector3 n1 = d.Vect().Cross(pi.Vect());
+  // normal vector on k1 - pi plane
+  TVector3 n2 = k.Vect().Cross(pi.Vect()); 
+
+  return n1.Angle(n2);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns E*, the momentum of mu in b rest frame
+
+inline float getEStar(TLorentzVector b, TLorentzVector mu){
+
+  //get b boost vector
+  TVector3 bBoost = b.BoostVector();
+  mu.Boost(-bBoost);
+  
+  return mu.E();
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns E*, the momentum of mu in b rest frame
+
+inline float getEGamma(TLorentzVector ds, const double dsMass_, const double dsStarMass_ ){
+
+  // collienar approx to get Ds star 
+  TLorentzVector dsStar = ds;
+  dsStar *= dsStarMass_ / dsMass_ ; 
+
+  float eGamma = std::sqrt( std::pow(dsStarMass_,2) * (1 + std::pow(ds.P() / dsMass_ ,2) )) - ds.E();
+ 
+  return eGamma;
+
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns the phi difference of two phi variables (in cms coordinate system)
+inline double phiDiff(double phi1, double phi2){
+
+  double dPhi = phi1 - phi2;
+  double pi = 3.14159265358979323846;
+  while (fabs(dPhi) > pi) {
+    int sgn = dPhi > 0? 1 : -1;
+    dPhi -= sgn*2*pi;
+  }
+  return dPhi;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns the phi difference of two phi variables (in cms coordinate system)
+inline TLorentzVector collMethod(TLorentzVector dMu, const double bMass_){
+
+        TLorentzVector b = dMu;
+
+        double dMuMass = dMu.M();
+        b *= bMass_ / dMuMass; //scale it
+
+        return b;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// LHCb method for bs reconstruction
+
+inline TLorentzVector lhcbMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  TVector3 beamAxis;
+  TVector3 radialAxis;
+           
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  beamAxis.SetXYZ(0.0,0.0,1.0); // in z direction
+  radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
+   
+  float theta = bsFlightDir.Theta(); //angle between beam axis and bs flight dir
+  float lhcbPz = dMu.Pz() *bMass_ / dMu.M();
+  float lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+  
+  bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
+  float lhcbPhi;
+
+  // give attention that the phi component is correct
+  if (bsFlightDir.Py() > 0) lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
+  else lhcbPhi = - bsFlightDir.Angle(radialAxis); //get the phi angle
+ 
+  TLorentzVector b; 
+  float eta = - std::log(std::tan(theta/2));
+  b.SetPtEtaPhiM(lhcbPt,eta,lhcbPhi,bMass_); 
+     
+  return b;
+
+} 
+
+///////////////////////////////////////////////////////////////////////////////////
+// Alternative LHCb method for bs reconstruction
+
+inline TLorentzVector lhcbAltMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  TVector3 lhcbAltBs;
+  TLorentzVector lhcbAltBsTlv;
+  
+  lhcbAltBs = bsFlightDir.Unit();  
+  lhcbAltBs *= dMu.Vect().Mag() * bMass_ / dMu.M(); 
+  lhcbAltBsTlv.SetXYZM(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bMass_);      
+  
+  return lhcbAltBsTlv;
+
+}
+
+inline std::vector<TLorentzVector> recoMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TLorentzVector recoBsTlv1;
+  TLorentzVector recoBsTlv2;
+  
+  double recoNeutPll_1; // neutrino momentum parallel to bs direction
+  double recoNeutPll_2; // "
+  
+  double recoBsAbs_1; // absolute 3 momentum of bs
+  double recoBsAbs_2; // "
+  
+  // bs flight direction
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+   
+  // angle between the bs flight direction and the Dsmu system (visible)
+  double recoAngle = dMu.Angle(bsFlightDir); 
+                      
+  //define parameters 
+  // momentum of DsMu system parallel to the bs
+  double recoDsMuPll = std::cos(recoAngle) * dMu.Vect().Mag();
+  // momentum of DsMu system orthogonal to the bs
+  double recoDsMuT = std::sin(recoAngle) * dMu.Vect().Mag();
+  // energy of Dsmu system
+  double recoDsMuE = dMu.E(); 
+  // cocktail, drops out of equation
+  double recoMix = std::pow(bMass_,2) + std::pow(recoDsMuPll,2) - std::pow(recoDsMuT,2) - std::pow(recoDsMuE,2);
+  
+  // define a,b,c, to give to mitternachtsformel
+  double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
+  double b = 4*recoDsMuPll*recoMix;
+  double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
+  // discriminant
+  double disc = std::pow(b,2) - 4*a*c;      
+  
+  if( disc >= 0) {
+  
+    //non complex root -> nice! 
+    recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
+    recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
+  
+    recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
+    recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
+  
+    TVector3 recoBs_1 = bsFlightDir.Unit();
+    TVector3 recoBs_2 = bsFlightDir.Unit();
+  
+    recoBs_1 *= recoBsAbs_1; 
+    recoBs_2 *= recoBsAbs_2; 
+  
+    recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
+    recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+  }
+  else{ 
+  //complex root, save nans
+  recoBsTlv1.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+  recoBsTlv2.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+  }
+  
+    std::vector<TLorentzVector> recos;
+    recos.push_back(recoBsTlv1);
+    recos.push_back(recoBsTlv2);
+  
+    return recos; 
+  
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// Fix the track covariance matrix to be pos. def.
+
+
+inline reco::Track correctCovMat(const reco::Track *tk, double delta){
+
+// Parameters associated to the 5D curvilinear covariance matrix: 
+// (qoverp, lambda, phi, dxy, dsz) 
+// Defined as:
+//   qoverp = q / abs(p) = signed inverse of momentum [1/GeV] 
+//   lambda = pi/2 - polar angle at the given point 
+//   phi = azimuth angle at the given point 
+//   dxy = -vx*sin(phi) + vy*cos(phi) [cm] 
+//   dsz = vz*cos(lambda) - (vx*cos(phi)+vy*sin(phi))*sin(lambda) [cm] 
+
+    unsigned int i;
+    unsigned int j;
+    double min_eig = 1;
+
+    // Get the original covariance matrix
+    reco::TrackBase::CovarianceMatrix cov = tk->covariance();
+
+    // Define a TMatrixDSym of the same shape as the old cov matrix.
+    // Sym -> you only have to give one dimension, it will be a symm matrix
+    // of shape (cov.kRows, cov.kRows)
+    TMatrixDSym newCov(cov.kRows);
+
+    // loop over old cov matrix 
+    for (i = 0; i < cov.kRows; i++) {
+        for (j = 0; j < cov.kRows; j++) {
+            // change nan or inf values to 1e-6 
+            if (std::isnan(cov(i,j)) || std::isinf(cov(i,j)))
+                cov(i,j) = 1e-6;
+            // fill new covariacne matrix
+            newCov(i,j) = cov(i,j);
+        }
+    }
+
+    // Define a vector of size cov.kRows
+    TVectorD eig(cov.kRows);
+    // Fill it with the egienvalues of the newCov
+    newCov.EigenVectors(eig);
+
+    // loop over eigenvalues and find the minimal eigenvalue :)
+    for (i = 0; i < cov.kRows; i++)
+        if (eig(i) < min_eig)
+            min_eig = eig(i);
+
+    // If the minimum eigenvalue is less than zero, then subtract it from the diagonal and add `delta`.
+    if (min_eig < 0) {
+        for (i = 0; i < cov.kRows; i++)
+            cov(i,i) -= min_eig - delta;
+    }
+
+    return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
+    }
+
+///////////////////////////////////////////////////////////////////////////////////
+// Fix the track covariance matrix to be pos. def.
+inline reco::Track fixTrack(const reco::TrackRef& tk)
+{
+    reco::Track t = reco::Track(*tk);
+    return correctCovMat(&t, 1e-8);
+}
  
 #endif

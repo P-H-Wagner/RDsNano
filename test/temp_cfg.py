@@ -4,6 +4,8 @@ import FWCore.ParameterSet.Config as cms
 #from HbToJPsiMuMu_2021_files import files
 import os
 
+channel = 'HOOK_CHANNEL'
+
 #globaltag = '102X_dataRun2_v11' if not options.isMC else '102X_upgrade2018_realistic_v15'
 globaltag = '106X_upgrade2018_realistic_v11_L1v1'
 
@@ -88,9 +90,14 @@ from PhysicsTools.RDsNano.nanoRDs_cff import *
 process = nanoAOD_customizeMuonTriggerBPark(process)  
 process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run only Trigger.cc for debugging
 
-# Path and EndPath definitions
-process.nanoAOD_Bs_step= cms.Path(process.nanoSequence  + process.nanoBsToDsPhiKKPiMuSequence)
-#process.nanoAOD_Bs_step= cms.Path(process.nanoSequence) ## to run only Trigger.cc for debugging
+if channel != 'data':
+  #gen match only for MC
+  process = nanoAOD_customizeGenMatching(process)
+  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+
+else:
+  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence)
+
 
 process.endjob_step = cms.EndPath(process.endOfProcess)
 

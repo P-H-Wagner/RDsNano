@@ -179,10 +179,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
   //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
-  std::cout << "---------------- NEW EVENT ---------------" << std::endl;
-  std::cout << "i am in gen matching loop" << std::endl;
-  int arrived = -1;
-
 
   //////////////////////////////////////////////////////
   // Match the bsCand (and all its final states) with //
@@ -202,13 +198,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
     auto k2Bs = bsPtr->userCand("k2");
     auto piBs = bsPtr->userCand("pi");
 
-    std::cout << "New candidate with pt: " << std::endl;
-    std::cout << muBs->pt() << std::endl;
-    std::cout << k1Bs->pt() << std::endl;
-    std::cout << k2Bs->pt() << std::endl;
-    std::cout << piBs->pt() << std::endl;
-
-    int sigId = -1; 
+    int sigId = -9999; 
     int genMatchSuccess = 0;
 
     //count the number of gen matches we find, ideally only 1
@@ -363,7 +353,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                nGenMatches++;
                genMatchSuccess = 1;
-               std::cout << "found a gen match ! with pt: " << std::endl;
 
                gen.addUserInt("gen_match_success",genMatchSuccess);
                
@@ -627,14 +616,14 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                // Bs -> Ds mu   0
                // Bs -> Ds tau  1
                //
-               // Bs -> Ds* mu  2
-               // Bs -> Ds* tau 3
+               // Bs -> Ds* mu  5
+               // Bs -> Ds* tau 6
                //
                // HB: (the mother base is defined in step1 for each mother)
                //
                // B mother -> Ds  +  D                              mother_base + 0
                // B mother -> Ds  +  D*                             mother_base + 1
-               // B mother -> Ds  +  (something else producing mu)  mother_base + 1
+               // B mother -> Ds  +  (something else producing mu)  mother_base + 2
 
                // B mother -> Ds* +  D                              mother_base + 5
                // B mother -> Ds* +  D*                             mother_base + 6
@@ -733,7 +722,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                }
 
                // now we assign the signal Id based on our boolean flags
-               //printDaughters(bsFromMu); -> for debugging
+               //printDaughters(bsFromMu); //-> for debugging
 
                if (isSignal)                                sigId  = 0; // signal
                if (isDsStar)                                sigId += 5;
@@ -748,13 +737,24 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //test lhcb method on gen
                TLorentzVector lhcbBsTlvGen = lhcbMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
-               std::vector<TLorentzVector> recosGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
+               std::cout << "this is the gen matched case: " << std::endl;
+               std::tuple<std::vector<TLorentzVector>,float> recoResultGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
+
+               std::vector<TLorentzVector> recosGen = std::get<0>(recoResultGen);
+               float discNegativityGen                 = std::get<1>(recoResultGen);
+
+               int discIsNegativeGen = 0;
+               if (discNegativityGen > 0) discIsNegativeGen = 1;
+
                TLorentzVector reco1BsTlvGen = recosGen.at(0);
                TLorentzVector reco2BsTlvGen = recosGen.at(1);
 
-               gen.addUserFloat("bs_gen_lhcb_pt", lhcbBsTlvGen.Pt());
-               gen.addUserFloat("bs_gen_lhcb_eta", lhcbBsTlvGen.Eta());
-               gen.addUserFloat("bs_gen_lhcb_phi", lhcbBsTlvGen.Phi());
+               gen.addUserInt("disc_is_negative_gen", discIsNegativeGen); 
+               gen.addUserFloat("disc_negativity_gen", discNegativityGen); 
+
+               gen.addUserFloat("bs_gen_lhcb_pt",   lhcbBsTlvGen.Pt());
+               gen.addUserFloat("bs_gen_lhcb_eta",  lhcbBsTlvGen.Eta());
+               gen.addUserFloat("bs_gen_lhcb_phi",  lhcbBsTlvGen.Phi());
 
                //angle between Mu and W
 
@@ -802,10 +802,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //if we reached this point we have found our gen match and we can stop the loop
 
-               std::cout << gen.userFloat("mu_gen_pt") << std::endl;
-               std::cout << gen.userFloat("k1_gen_pt") << std::endl;
-               std::cout << gen.userFloat("k2_gen_pt") << std::endl;
-               std::cout << gen.userFloat("pi_gen_pt") << std::endl;
                break;
 
                //////////////////////////////////////////////////
@@ -824,7 +820,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         gen.addUserInt("gen_match_success",genMatchSuccess);
 
         if (genMatchSuccess == 0){
-          std::cout << "no gen match!" << std::endl;
           // no gen match, we store nans
 
           //prepare a dummy (This does not work!! can not add the empty vector as candidate even it compiles.. why??)
@@ -928,6 +923,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("b_boost_gen_eta" ,std::nan(""));
           gen.addUserFloat("b_boost_gen_phi" ,std::nan(""));
 
+          gen.addUserInt("disc_is_negative_gen", -9999); 
+          gen.addUserFloat("disc_negativity_gen", std::nan("")); 
+
           gen.addUserFloat("bs_gen_lhcb_pt", std::nan(""));
           gen.addUserFloat("bs_gen_lhcb_eta", std::nan(""));
           gen.addUserFloat("bs_gen_lhcb_phi", std::nan(""));
@@ -967,11 +965,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         //append candidate at the end of our return value :)
         //ret_value can be a vector!!
         ret_value->emplace_back(gen);
-        std::cout << "value pushed back:"<< gen.userFloat("pi_gen_pt") << std::endl;
         //ret_value_gen->emplace_back(gen);
 
   } //closing loop over Bs
-  std::cout << "size of vec: " << ret_value->size() << std::endl;
   iEvent.put(std::move(ret_value), "gen");
 }//closing event loop
 

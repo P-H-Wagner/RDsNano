@@ -20,6 +20,8 @@
 #include "TVectorD.h"
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h"
 
+// for the reco function
+#include <tuple>
 
 #include <vector>
 #include <algorithm>
@@ -357,7 +359,7 @@ inline TLorentzVector lhcbAltMethod(TLorentzVector dMu, float v1_x, float v1_y, 
 
 }
 
-inline std::vector<TLorentzVector> recoMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+inline std::tuple<std::vector<TLorentzVector>, float> recoMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
 
   TLorentzVector recoBsTlv1;
   TLorentzVector recoBsTlv2;
@@ -376,6 +378,7 @@ inline std::vector<TLorentzVector> recoMethod(TLorentzVector dMu, float v1_x, fl
   double recoAngle = dMu.Angle(bsFlightDir); 
                       
   //define parameters 
+
   // momentum of DsMu system parallel to the bs
   double recoDsMuPll = std::cos(recoAngle) * dMu.Vect().Mag();
   // momentum of DsMu system orthogonal to the bs
@@ -389,38 +392,58 @@ inline std::vector<TLorentzVector> recoMethod(TLorentzVector dMu, float v1_x, fl
   double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
   double b = 4*recoDsMuPll*recoMix;
   double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
+
   // discriminant
   double disc = std::pow(b,2) - 4*a*c;      
-  
+  float discNegativity;
+  /*
+  std::cout << "v1_x   = " << v1_x << std::endl;
+  std::cout << "v1_y   = " << v1_y << std::endl;
+  std::cout << "v1_z   = " << v1_z << std::endl;
+
+  std::cout << "v2_x   = " << v2_x << std::endl;
+  std::cout << "v2_y   = " << v2_y << std::endl;
+  std::cout << "v2_z   = " << v2_z << std::endl;
+  std::cout << "dMu Pt = " << dMu.Pt() << std::endl;
+  */
+ 
   if( disc >= 0) {
   
     //non complex root -> nice! 
     recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
     recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
-  
-    recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
-    recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
-  
-    TVector3 recoBs_1 = bsFlightDir.Unit();
-    TVector3 recoBs_2 = bsFlightDir.Unit();
-  
-    recoBs_1 *= recoBsAbs_1; 
-    recoBs_2 *= recoBsAbs_2; 
-  
-    recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
-    recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+    //std::cout << "---- disc is positive!!" << std::endl;
+    //std::cout << "disc = " << disc << std::endl;
+    discNegativity = 0;
+ 
   }
-  else{ 
-  //complex root, save nans
-  recoBsTlv1.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
-  recoBsTlv2.SetXYZM(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+  else{
+    // complex root, only save -b / 2a (i.e. set disc to zero!)
+
+    recoNeutPll_1 = -b / (2*a);
+    recoNeutPll_2 = -b / (2*a);
+    //std::cout << "---- disc is negative!!" << std::endl;
+    //std::cout << "disc = " << disc << std::endl;
+    discNegativity = std::sqrt(abs(disc)) / abs(b);
   }
+ 
+  recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
+  recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
   
-    std::vector<TLorentzVector> recos;
-    recos.push_back(recoBsTlv1);
-    recos.push_back(recoBsTlv2);
+  TVector3 recoBs_1 = bsFlightDir.Unit();
+  TVector3 recoBs_2 = bsFlightDir.Unit();
   
-    return recos; 
+  recoBs_1 *= recoBsAbs_1; 
+  recoBs_2 *= recoBsAbs_2; 
+  
+  recoBsTlv1.SetXYZM(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
+  recoBsTlv2.SetXYZM(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+
+  std::vector<TLorentzVector> recos;
+  recos.push_back(recoBsTlv1);
+  recos.push_back(recoBsTlv2);
+  
+  return std::make_tuple(recos,discNegativity); 
   
 }
 

@@ -32,4 +32,4 @@ muonTrgTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
     ),
 )
 
-muonTrgSequence = cms.Sequence(muonTrgSelector + muonTrgTable)
+muonTrgSequence = cms.Sequence(muonTrgSelector)

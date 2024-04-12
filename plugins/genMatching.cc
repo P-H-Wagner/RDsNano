@@ -424,7 +424,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("mu_gen_pt"      ,muPtrGen->pt());
                gen.addUserFloat("mu_gen_eta"     ,muPtrGen->eta());
                gen.addUserFloat("mu_gen_phi"     ,muPtrGen->phi());
-               gen.addUserFloat("mu_gen_mass"    ,muPtrGen->mass());
+               gen.addUserFloat("mu_gen_m"    ,muPtrGen->mass());
                gen.addUserFloat("mu_gen_charge"  ,muPtrGen->charge());
                gen.addUserInt(  "mu_gen_pdgid"   ,muPtrGen->pdgId());
      
@@ -434,7 +434,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("k1_gen_pt"      ,k1PtrGen->pt());
                gen.addUserFloat("k1_gen_eta"     ,k1PtrGen->eta());
                gen.addUserFloat("k1_gen_phi"     ,k1PtrGen->phi());
-               gen.addUserFloat("k1_gen_mass"    ,k1PtrGen->mass());
+               gen.addUserFloat("k1_gen_m"    ,k1PtrGen->mass());
                gen.addUserFloat("k1_gen_charge"  ,k1PtrGen->charge());
                gen.addUserInt(  "k1_gen_pdgid"   ,k1PtrGen->pdgId());
      
@@ -444,7 +444,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("k2_gen_pt"      ,k2PtrGen->pt());
                gen.addUserFloat("k2_gen_eta"     ,k2PtrGen->eta());
                gen.addUserFloat("k2_gen_phi"     ,k2PtrGen->phi());
-               gen.addUserFloat("k2_gen_mass"    ,k2PtrGen->mass());
+               gen.addUserFloat("k2_gen_m"    ,k2PtrGen->mass());
                gen.addUserFloat("k2_gen_charge"  ,k2PtrGen->charge());
                gen.addUserInt(  "k2_gen_pdgid"   ,k2PtrGen->pdgId());
      
@@ -454,7 +454,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("pi_gen_pt"      ,piPtrGen->pt());
                gen.addUserFloat("pi_gen_eta"     ,piPtrGen->eta());
                gen.addUserFloat("pi_gen_phi"     ,piPtrGen->phi());
-               gen.addUserFloat("pi_gen_mass"    ,piPtrGen->mass());
+               gen.addUserFloat("pi_gen_m"    ,piPtrGen->mass());
                gen.addUserFloat("pi_gen_charge"  ,piPtrGen->charge());
                gen.addUserInt(  "pi_gen_pdgid"   ,piPtrGen->pdgId());
 
@@ -737,7 +737,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //test lhcb method on gen
                TLorentzVector lhcbBsTlvGen = lhcbMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
-               std::cout << "this is the gen matched case: " << std::endl;
+               //std::cout << "this is the gen matched case: " << std::endl;
                std::tuple<std::vector<TLorentzVector>,float> recoResultGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
 
                std::vector<TLorentzVector> recosGen = std::get<0>(recoResultGen);
@@ -848,7 +848,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("mu_gen_pt"      ,std::nan(""));
           gen.addUserFloat("mu_gen_eta"     ,std::nan(""));
           gen.addUserFloat("mu_gen_phi"     ,std::nan(""));
-          gen.addUserFloat("mu_gen_mass"    ,std::nan(""));
+          gen.addUserFloat("mu_gen_m"    ,std::nan(""));
           gen.addUserFloat("mu_gen_charge"  ,std::nan(""));
           gen.addUserInt(  "mu_gen_pdgid"   ,-9999);
 
@@ -858,7 +858,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("k1_gen_pt"      ,std::nan(""));
           gen.addUserFloat("k1_gen_eta"     ,std::nan(""));
           gen.addUserFloat("k1_gen_phi"     ,std::nan(""));
-          gen.addUserFloat("k1_gen_mass"    ,std::nan(""));
+          gen.addUserFloat("k1_gen_m"    ,std::nan(""));
           gen.addUserFloat("k1_gen_charge"  ,std::nan(""));
           gen.addUserInt(  "k1_gen_pdgid"   ,-9999);
 
@@ -868,7 +868,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("k2_gen_pt"      ,std::nan(""));
           gen.addUserFloat("k2_gen_eta"     ,std::nan(""));
           gen.addUserFloat("k2_gen_phi"     ,std::nan(""));
-          gen.addUserFloat("k2_gen_mass"    ,std::nan(""));
+          gen.addUserFloat("k2_gen_m"    ,std::nan(""));
           gen.addUserFloat("k2_gen_charge"  ,std::nan(""));
           gen.addUserInt(  "k2_gen_pdgid"   ,-9999);
 
@@ -878,7 +878,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("pi_gen_pt"      ,std::nan(""));
           gen.addUserFloat("pi_gen_eta"     ,std::nan(""));
           gen.addUserFloat("pi_gen_phi"     ,std::nan(""));
-          gen.addUserFloat("pi_gen_mass"    ,std::nan(""));
+          gen.addUserFloat("pi_gen_m"    ,std::nan(""));
           gen.addUserFloat("pi_gen_charge"  ,std::nan(""));
           gen.addUserInt(  "pi_gen_pdgid"   ,-9999);
 

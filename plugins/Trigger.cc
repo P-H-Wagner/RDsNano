@@ -121,7 +121,6 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
 
 void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
    
-
   //std::cout << iEvent.id().event() << std::endl;
 
   //Define handles
@@ -146,7 +145,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //std::cout << "Available trigger names:" << std::endl;
   //for (unsigned int i = 0; i < names.size(); ++i) {
   //  std::cout << names.triggerName(i) << std::endl;
-  // }
+  //}
   /////////////
   
   //taken from https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD2016#Trigger
@@ -162,11 +161,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   std::unique_ptr<TransientTrackCollection> ttracksTrgMuons( new TransientTrackCollection);
  
   // Getting the indices of the HLT paths
-  unsigned int index_7_4_p0      = names.triggerIndex("HLT_Mu7_IP4_part0_v2"); //check this with riccardo!
-  unsigned int index_7_4_p1      = names.triggerIndex("HLT_Mu7_IP4_part1_v2"); //check this with riccardo!
-  unsigned int index_7_4_p2      = names.triggerIndex("HLT_Mu7_IP4_part2_v2"); //check this with riccardo!
-  unsigned int index_7_4_p3      = names.triggerIndex("HLT_Mu7_IP4_part3_v2"); //check this with riccardo!
-  unsigned int index_7_4_p4      = names.triggerIndex("HLT_Mu7_IP4_part4_v2"); //check this with riccardo!
+  unsigned int index_7_4_p0      = names.triggerIndex("HLT_Mu7_IP4_part0_v2"); 
+  unsigned int index_7_4_p1      = names.triggerIndex("HLT_Mu7_IP4_part1_v2"); 
+  unsigned int index_7_4_p2      = names.triggerIndex("HLT_Mu7_IP4_part2_v2"); 
+  unsigned int index_7_4_p3      = names.triggerIndex("HLT_Mu7_IP4_part3_v2"); 
+  unsigned int index_7_4_p4      = names.triggerIndex("HLT_Mu7_IP4_part4_v2"); 
   //unsigned int index_8_3      = names.triggerIndex("HLT_Mu8_IP3");
   //unsigned int index_8_5      = names.triggerIndex("HLT_Mu8_IP5");
   //unsigned int index_8_6      = names.triggerIndex("HLT_Mu8_IP6");
@@ -176,7 +175,12 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //unsigned int index_10p5_3p5 = names.triggerIndex("HLT_Mu10p5_IP3p5");
   //unsigned int index_12_6     = names.triggerIndex("HLT_Mu12_IP6");
 
-  
+  std::cout << (index_7_4_p0 < triggerBits->size())  << "and" <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
+  std::cout << (index_7_4_p1 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
+  std::cout << (index_7_4_p2 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
+  std::cout << (index_7_4_p3 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
+  std::cout << (index_7_4_p4 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
+
   //default is false  
   bool pass_7_4_p0_path      = false;
   bool pass_7_4_p1_path      = false;
@@ -216,7 +220,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   //only continue when we the event passes the HLT_Mu7_IP4
   if (pass_7_4_p0_path || pass_7_4_p1_path || pass_7_4_p2_path || pass_7_4_p3_path || pass_7_4_p4_path){
-  //std::cout<<"found trigger!" << std::endl;
+  std::cout<<"found trigger!" << std::endl;
 
   // define vectors of ints of length muons->size(), all values set to 0
   std::vector<int> isTriggerMuon(muons->size(), 0);

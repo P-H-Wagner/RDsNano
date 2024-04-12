@@ -11,6 +11,13 @@
 #include "DataFormats/GeometryVector/interface/PV3DBase.h"
 #include "Math/LorentzVector.h"
 
+// for the fit
+#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
+#include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
+
 // 4 vectors
 #include "TLorentzVector.h"
 #include "TVector3.h" // for boost vector
@@ -512,5 +519,30 @@ inline reco::Track fixTrack(const reco::TrackRef& tk)
     reco::Track t = reco::Track(*tk);
     return correctCovMat(&t, 1e-8);
 }
- 
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// Vertex Fit 
+inline RefCountedKinematicTree vertexFit(std::vector<RefCountedKinematicParticle> toFit, ParticleMass massConstr, bool applyConstr)
+{
+
+  //define fitter
+  KinematicConstrainedVertexFitter fitter;
+
+  //define constraint
+  MultiTrackKinematicConstraint* constr = new TwoTrackMassKinematicConstraint(massConstr);
+
+  RefCountedKinematicTree fitTree;
+
+  if(applyConstr) {
+  // perform the fit
+  fitTree = fitter.fit(toFit, constr);
+  }
+  else{
+  fitTree = fitter.fit(toFit);
+  }
+
+  return fitTree;
+
+}
 #endif

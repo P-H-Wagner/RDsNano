@@ -145,7 +145,9 @@ private:
   const double piMass_;
   const double kMass_;
   const double phiMass_;
+  const bool   constrainPhiMass_;
   const double dsMass_;
+  const bool   constrainDsMass_;
   const double dsStarMass_;
   const double muMass_;
   const double bsMass_;
@@ -199,7 +201,9 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     piMass_(iConfig.getParameter<double>("piMass")),
     kMass_(iConfig.getParameter<double>("kMass")),
     phiMass_(iConfig.getParameter<double>("phiMass")),
+    constrainPhiMass_(iConfig.getParameter<bool>("constrainPhiMass")),
     dsMass_(iConfig.getParameter<double>("dsMass")),
+    constrainDsMass_(iConfig.getParameter<bool>("constrainDsMass")),
     dsStarMass_(iConfig.getParameter<double>("dsStarMass")),
     muMass_(iConfig.getParameter<double>("muMass")),
     bsMass_(iConfig.getParameter<double>("bsMass")),
@@ -275,7 +279,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
     nMuons++;
-   
+    std::cout << "muon loop" << std::endl; 
     //if there is no trg muon, this loop is empty:)
     edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
@@ -329,7 +333,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && (abs(k1Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
 
       if (!k1Sel) continue;
-
+      std::cout << "found k1" << std::endl;
       k1Sel2Counter++;
     //////////////////////////////////////////////////
     // Loop over k2 and select the good tracks      //
@@ -416,7 +420,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
 
         phiPi.setCharge(kk.charge() + piPtr->charge());
-
+        std::cout << "found ds resonance" << std::endl;
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
         //////////////////////////////////////////////////
@@ -496,20 +500,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // To go back to the pi one would have to move the pointer to the top again :)
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // define fitter
-        KinematicConstrainedVertexFitter phiFitter;
-        // define cosntraints
-        MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass);
-        MultiTrackKinematicConstraint* dsConstr  = new TwoTrackMassKinematicConstraint(dsMass);
 
         // PHI VERTEX FIT
-        RefCountedKinematicTree phiTree          = phiFitter.fit(phiToFit, phiConstr);
+        RefCountedKinematicTree phiTree  = vertexFit(phiToFit, phiMass, constrainPhiMass_);
+
         if (!phiTree->isValid()) continue; //check if fit result is valid
 
-        //access the fitted resonance 
+        //access the fitted resonance and vertex 
         phiTree->movePointerToTheTop();
         RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
+
+        //get vtx chi2 and ndof
+
         auto phiVtx = phiTree->currentDecayVertex();
+        float phiVtxChi2    = phiVtx->chiSquared();
+        float phiVtxNDof    = phiVtx->degreesOfFreedom();
+        float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
+
         // access refitted children
         phiTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle phiDau1 = phiTree->currentParticle();
@@ -525,15 +532,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         dsToFit.push_back(phiParticle);
 
         // DS VERTEX FIT
-        KinematicConstrainedVertexFitter dsFitter; //check --> define new fitter?
 
-        RefCountedKinematicTree dsTree = dsFitter.fit(dsToFit, dsConstr);
+        RefCountedKinematicTree dsTree = vertexFit(dsToFit, dsMass, constrainDsMass_);
         if (!dsTree->isValid()) continue; //check if fit result is valid
 
         // access the fitted resonance and the refitted children
         dsTree->movePointerToTheTop();
         RefCountedKinematicParticle dsParticle = dsTree->currentParticle();
-        RefCountedKinematicVertex dsDecayVertex = dsTree->currentDecayVertex(); //compare to the access via AlgebraicVector7
+
+        // get vtx chi2 and ndof
+        RefCountedKinematicVertex dsVtx = dsTree->currentDecayVertex(); //compare to the access via AlgebraicVector7
+        float dsVtxChi2    = dsVtx->chiSquared();
+        float dsVtxNDof    = dsVtx->degreesOfFreedom();
+        float dsVtxRedChi2 = dsVtxChi2 / dsVtxNDof; 
+        //std::cout << "red chi2 of ds fit is:" << dsVtxRedChi2 << std::endl;
+
+
         dsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle dsDau1 = dsTree->currentParticle();
         dsTree->movePointerToTheNextChild();
@@ -556,7 +570,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // access the fitted resonance and the refitted children
         bsTree->movePointerToTheTop();
         RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
-        RefCountedKinematicVertex bsDecayVertex = bsTree->currentDecayVertex();
+
+        // get vtx chi2 and ndof
+        RefCountedKinematicVertex bsVtx = bsTree->currentDecayVertex();
+        float bsVtxChi2    = bsVtx->chiSquared();
+        float bsVtxNDof    = bsVtx->degreesOfFreedom();
+        float bsVtxRedChi2 = bsVtxChi2 / bsVtxNDof; 
 
         bsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle bsDau1 = bsTree->currentParticle();
@@ -583,46 +602,52 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //add final states as Candidates
         bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
-        bs.addUserFloat("k1_mass",kMass_);
+        bs.addUserFloat("k1_m",kMass_);
 
         bs.addUserCand("k2",k2Ptr);  // "
-        bs.addUserFloat("k2_mass",kMass_);
+        bs.addUserFloat("k2_m",kMass_);
 
         bs.addUserCand("pi",piPtr);
-        bs.addUserFloat("pi_mass",piMass_);
+        bs.addUserFloat("pi_m",piMass_);
 
         bs.addUserCand("mu",muPtr); //muon mass is correct -> check
-        bs.addUserFloat("mu_mass",muMass_);
+        bs.addUserFloat("mu_m",muMass_);
 
         TLorentzVector muTlv;
         muTlv.SetXYZM(muPtr->px(), muPtr->py(), muPtr->pz(), muMass_);
 
         // add information about trg muon
-        bs.addUserFloat("mu_is_tracker",     muPtr->isTrackerMuon());
-        bs.addUserFloat("mu_is_pf",          muPtr->isPFMuon());
-        bs.addUserFloat("mu_is_global",      muPtr->isGlobalMuon());
-        bs.addUserFloat("mu_is_standalone",  muPtr->isStandAloneMuon());
+        bs.addUserInt("mu_is_tracker",     muPtr->isTrackerMuon());
+        bs.addUserInt("mu_is_pf",          muPtr->isPFMuon());
+        bs.addUserInt("mu_is_global",      muPtr->isGlobalMuon());
+        bs.addUserInt("mu_is_standalone",  muPtr->isStandAloneMuon());
+
+        // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
+        bs.addUserInt("mu_id_medium",      muPtr->passed(1)); // 
+        bs.addUserInt("mu_id_loose",       muPtr->passed(0)); // 
+        bs.addUserInt("mu_id_tight",       muPtr->passed(3)); // 
+
         //add prefit resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
 
         bs.addUserFloat("kk_pt", kk.pt());
         bs.addUserFloat("kk_eta", kk.eta());
         bs.addUserFloat("kk_phi", kk.phi());
-        bs.addUserFloat("kk_mass", kk.mass());
+        bs.addUserFloat("kk_m", kk.mass());
         bs.addUserFloat("kk_charge", kk.charge());
         bs.addUserFloat("kk_deltaR", reco::deltaR(*k1Ptr, *k2Ptr));
 
         bs.addUserFloat("phiPi_pt", phiPi.pt());
         bs.addUserFloat("phiPi_eta", phiPi.eta());
         bs.addUserFloat("phiPi_phi", phiPi.phi());
-        bs.addUserFloat("phiPi_mass", phiPi.mass());
+        bs.addUserFloat("phiPi_m", phiPi.mass());
         bs.addUserFloat("phiPi_charge", phiPi.charge());
         bs.addUserFloat("phiPi_deltaR", reco::deltaR(kk, *piPtr));
 
         bs.addUserFloat("dsMu_pt", dsMu.pt());
         bs.addUserFloat("dsMu_eta", dsMu.eta());
         bs.addUserFloat("dsMu_phi", dsMu.phi());
-        bs.addUserFloat("dsMu_mass", dsMu.mass()); //we miss the neutrino contribution
+        bs.addUserFloat("dsMu_m", dsMu.mass()); //we miss the neutrino contribution
         bs.addUserFloat("dsMu_charge", dsMu.charge());
         bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPi, *muPtr));
 
@@ -657,7 +682,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_x",  pv_x); 
         bs.addUserFloat("pv_y",  pv_y); 
         bs.addUserFloat("pv_z",  pv_z); 
-        
+ 
+        bs.addUserFloat("pv_chi2",    pv.chi2()); // can access this directlyfor the reco::Vertex class
+        bs.addUserFloat("pv_ndof",    pv.ndof());
+        bs.addUserFloat("pv_redchi2", pv.normalizedChi2());
+       
         // secondary vertex ( = Bs decay vertex)  
 
         float sv_x = bsParams(0);
@@ -667,7 +696,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("sv_x",  sv_x); 
         bs.addUserFloat("sv_y",  sv_y); 
         bs.addUserFloat("sv_z",  sv_z); 
-  
+ 
+        bs.addUserFloat("sv_chi2",    bsVtxChi2);
+        bs.addUserFloat("sv_ndof",    bsVtxNDof);
+        bs.addUserFloat("sv_redchi2", bsVtxRedChi2);
+
         // tertiary vertex ( = Ds decay vertex) 
 
         float tv_x = dsParams(0);
@@ -678,6 +711,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("tv_y",  tv_y); 
         bs.addUserFloat("tv_z",  tv_z); 
 
+        bs.addUserFloat("tv_chi2",    dsVtxChi2);
+        bs.addUserFloat("tv_ndof",    dsVtxNDof);
+        bs.addUserFloat("tv_redchi2", dsVtxRedChi2);
+
         // fourth vertex ( = Phi Decay Vertex)
 
         float fv_x = phiParams(0);
@@ -687,6 +724,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("fv_x",  fv_x); 
         bs.addUserFloat("fv_y",  fv_y); 
         bs.addUserFloat("fv_z",  fv_z); 
+
+        bs.addUserFloat("fv_chi2",    phiVtxChi2);
+        bs.addUserFloat("fv_ndof",    phiVtxNDof);
+        bs.addUserFloat("fv_redchi2", phiVtxRedChi2);
 
         ////////////////////////////////////// lxy(z), dxy(z) //////////////////////////////////////////
 
@@ -793,7 +834,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double dsMuPerp = dsMuTlv.Vect().Perp(bFlightDir); // I checked that Perp is doing the right thing (via sin(..))
 
         bsMassCorr = std::sqrt(std::pow(dsMu.mass(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
-        bs.addUserFloat("bs_mass_corr", bsMassCorr);
+        bs.addUserFloat("bs_m_corr", bsMassCorr);
 
 
         ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
@@ -825,6 +866,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedK2.SetXYZM(  phiDau2Params(3), phiDau2Params(4), phiDau2Params(5),  phiDau2Params(6));
         refittedPi.SetXYZM(  dsDau1Params(3),  dsDau1Params(4),  dsDau1Params(5),   dsDau1Params(6));
         refittedMu.SetXYZM(  bsDau1Params(3),  bsDau1Params(4),  bsDau1Params(5),   bsDau1Params(6));
+
+        // For the ds mass
+        TLorentzVector refittedPhiPi;
+        refittedPhiPi = refittedPhi + refittedPi; 
 
         /////////////////////////
         // Collinear approx.   //
@@ -924,7 +969,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // RECO METHOD -> 2 Solutions                            //
         // This method is exact in the 1-neutrino final state :) //
         ///////////////////////////////////////////////////////////
-        std::cout << "now i calc the reco method:" << std::endl;
+        //std::cout << "now i calc the reco method:" << std::endl;
         std::tuple<std::vector<TLorentzVector>,float> recoResult = recoMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
 
         //std::tuple<std::vector<TLorentzVector>,bool> recoResult = recoMethod(fittedDs + muTlv, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);
@@ -1045,6 +1090,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
         bs.addUserFloat("ds_fitted_boost",  fittedDs.BoostVector().Mag()); 
+
+        bs.addUserFloat("phiPi_refitted_px",     refittedPhiPi.Px()); 
+        bs.addUserFloat("phiPi_refitted_py",     refittedPhiPi.Py()); 
+        bs.addUserFloat("phiPi_refitted_pz",     refittedPhiPi.Pz()); 
+        bs.addUserFloat("phiPi_refitted_pt",     refittedPhiPi.Pt()); 
+        bs.addUserFloat("phiPi_refitted_eta",    refittedPhiPi.Eta()); 
+        bs.addUserFloat("phiPi_refitted_phi",    refittedPhiPi.Phi()); 
+        bs.addUserFloat("phiPi_refitted_m",      refittedPhiPi.M()); 
+        bs.addUserFloat("phiPi_refitted_boost",  refittedPhiPi.BoostVector().Mag()); 
 
         // bs fit
         bs.addUserFloat("mu_refitted_px",   refittedMu.Px()); 

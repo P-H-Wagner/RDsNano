@@ -29,9 +29,19 @@ prefitBasicVariables = cms.PSet(
         mu_pt         = Var("userCand('mu').pt()",float),
         mu_eta        = Var("userCand('mu').eta()",float),
         mu_phi        = Var("userCand('mu').phi()",float),
-        mu_mass       = ufloat("mu_mass"),
+        mu_m       = ufloat("mu_m"),
         mu_charge     = Var("userCand('mu').charge()",float),
         mu_pdgId      = Var("userCand('mu').pdgId()",int),
+
+        mu_is_tracker    = Var("userInt('mu_is_tracker')",int),
+        mu_is_pf         = Var("userInt('mu_is_pf')",int),
+        mu_is_global     = Var("userInt('mu_is_global')",int),
+        mu_is_standalone = Var("userInt('mu_is_standalone')",int),
+
+        mu_id_loose      = Var("userInt('mu_id_loose')",int),
+        mu_id_medium     = Var("userInt('mu_id_medium')",int),
+        mu_id_tight      = Var("userInt('mu_id_tight')",int),
+
 
         k1_px         = Var("userCand('k1').px()",float),
         k1_py         = Var("userCand('k1').py()",float),
@@ -39,7 +49,7 @@ prefitBasicVariables = cms.PSet(
         k1_pt         = Var("userCand('k1').pt()",float),
         k1_eta        = Var("userCand('k1').eta()",float),
         k1_phi        = Var("userCand('k1').phi()",float),
-        k1_mass       = ufloat("k1_mass"),
+        k1_m       = ufloat("k1_m"),
         k1_charge     = Var("userCand('k1').charge()",float),
         k1_pdgId      = Var("userCand('k1').pdgId()",int),
 
@@ -49,7 +59,7 @@ prefitBasicVariables = cms.PSet(
         k2_pt         = Var("userCand('k2').pt()",float),
         k2_eta        = Var("userCand('k2').eta()",float),
         k2_phi        = Var("userCand('k2').phi()",float),
-        k2_mass       = ufloat("k2_mass"),
+        k2_m       = ufloat("k2_m"),
         k2_charge     = Var("userCand('k2').charge()",float),
         k2_pdgId      = Var("userCand('k2').pdgId()",int),
 
@@ -59,7 +69,7 @@ prefitBasicVariables = cms.PSet(
         pi_pt         = Var("userCand('pi').pt()",float),
         pi_eta        = Var("userCand('pi').eta()",float),
         pi_phi        = Var("userCand('pi').phi()",float),
-        pi_mass       = ufloat("pi_mass"),
+        pi_m       = ufloat("pi_m"),
         pi_charge     = Var("userCand('pi').charge()",float),
         pi_pdgId      = Var("userCand('pi').pdgId()",int),
 
@@ -68,21 +78,21 @@ prefitBasicVariables = cms.PSet(
         kk_pt         = Var("userFloat('kk_pt')",float),
         kk_eta        = Var("userFloat('kk_eta')",float),
         kk_phi        = Var("userFloat('kk_phi')",float),
-        kk_mass       = Var("userFloat('kk_mass')",float),
+        kk_m       = Var("userFloat('kk_m')",float),
         kk_charge     = Var("userFloat('kk_charge')",float),
         kk_deltaR     = Var("userFloat('kk_deltaR')",float),
 
         phiPi_pt      = Var("userFloat('phiPi_pt')",float),
         phiPi_eta     = Var("userFloat('phiPi_eta')",float),
         phiPi_phi     = Var("userFloat('phiPi_phi')",float),
-        phiPi_mass    = Var("userFloat('phiPi_mass')",float),
+        phiPi_m    = Var("userFloat('phiPi_m')",float),
         phiPi_charge  = Var("userFloat('phiPi_charge')",float),
         phiPi_deltaR  = Var("userFloat('phiPi_deltaR')",float),
        
         dsMu_pt       = Var("userFloat('dsMu_pt')",float),
         dsMu_eta      = Var("userFloat('dsMu_eta')",float),
         dsMu_phi      = Var("userFloat('dsMu_phi')",float),
-        dsMu_mass     = Var("userFloat('dsMu_mass')",float),
+        dsMu_m     = Var("userFloat('dsMu_m')",float),
         dsMu_charge   = Var("userFloat('dsMu_charge')",float),
         dsMu_deltaR   = Var("userFloat('dsMu_deltaR')",float),
 
@@ -94,7 +104,7 @@ prefitBasicVariables = cms.PSet(
         bs_pt         = Var("pt()",float),
         bs_eta        = Var("eta()",float),
         bs_phi        = Var("phi()",float),
-        bs_mass       = Var("mass()",float),
+        bs_m       = Var("mass()",float),
         bs_charge     = Var("charge()",float),
         bs_pdgId      = Var("pdgId()",int),
 
@@ -114,7 +124,7 @@ genVariables = cms.PSet(
         mu_pt     = Var("userFloat('mu_gen_pt')",float),
         mu_eta    = Var("userFloat('mu_gen_eta')",float),
         mu_phi    = Var("userFloat('mu_gen_phi')",float),
-        mu_mass   = Var("userFloat('mu_gen_mass')",float),
+        mu_m      = Var("userFloat('mu_gen_m')",float),
         mu_charge = Var("userFloat('mu_gen_charge')",float),
         mu_pdgid  = Var("userInt('mu_gen_pdgid')", int),
 
@@ -124,7 +134,7 @@ genVariables = cms.PSet(
         k1_pt     = Var("userFloat('k1_gen_pt')",float),
         k1_eta    = Var("userFloat('k1_gen_eta')",float),
         k1_phi    = Var("userFloat('k1_gen_phi')",float),
-        k1_mass   = Var("userFloat('k1_gen_mass')",float),
+        k1_m   = Var("userFloat('k1_gen_m')",float),
         k1_charge = Var("userFloat('k1_gen_charge')",float),
         k1_pdgid  = Var("userInt('k1_gen_pdgid')",int),
 
@@ -134,7 +144,7 @@ genVariables = cms.PSet(
         k2_pt     = Var("userFloat('k2_gen_pt')",float),
         k2_eta    = Var("userFloat('k2_gen_eta')",float),
         k2_phi    = Var("userFloat('k2_gen_phi')",float),
-        k2_mass   = Var("userFloat('k2_gen_mass')",float),
+        k2_m   = Var("userFloat('k2_gen_m')",float),
         k2_charge = Var("userFloat('k2_gen_charge')",float),
         k2_pdgid  = Var("userInt('k2_gen_pdgid')",int),
 
@@ -144,7 +154,7 @@ genVariables = cms.PSet(
         pi_pt     = Var("userFloat('pi_gen_pt')",float),
         pi_eta    = Var("userFloat('pi_gen_eta')",float),
         pi_phi    = Var("userFloat('pi_gen_phi')",float),
-        pi_mass   = Var("userFloat('pi_gen_mass')",float),
+        pi_m   = Var("userFloat('pi_gen_m')",float),
         pi_charge = Var("userFloat('pi_gen_charge')",float),
         pi_pdgid  = Var("userInt('pi_gen_pdgid')",int),
 
@@ -361,6 +371,15 @@ postfitBasicVariables = cms.PSet(
         ds_fitted_m      = Var("userFloat('ds_fitted_m')",float),
         ds_fitted_boost  = Var("userFloat('ds_fitted_boost')",float),
 
+        phiPi_refitted_px     = Var("userFloat('phiPi_refitted_px')",float),
+        phiPi_refitted_py     = Var("userFloat('phiPi_refitted_py')",float),
+        phiPi_refitted_pz     = Var("userFloat('phiPi_refitted_pz')",float),
+        phiPi_refitted_pt     = Var("userFloat('phiPi_refitted_pt')",float),
+        phiPi_refitted_eta    = Var("userFloat('phiPi_refitted_eta')",float),
+        phiPi_refitted_phi    = Var("userFloat('phiPi_refitted_phi')",float),
+        phiPi_refitted_m      = Var("userFloat('phiPi_refitted_m')",float),
+        phiPi_refitted_boost  = Var("userFloat('phiPi_refitted_boost')",float),
+
         # Bs fit
         mu_refitted_px   = Var("userFloat('mu_refitted_px')",float),
         mu_refitted_py   = Var("userFloat('mu_refitted_py')",float),
@@ -455,7 +474,7 @@ helicityVariables = cms.PSet(
 
 bsMomentumVariables = cms.PSet(
 
-        bsMassCorr       = Var("userFloat('bs_mass_corr')",float), 
+        bsMassCorr       = Var("userFloat('bs_m_corr')",float), 
 
         #pi_mu_charge = Var("userInt('pi_mu_charge')",int),
         bs_px_coll         = Var("userFloat('bs_px_coll')",float),

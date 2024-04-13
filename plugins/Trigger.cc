@@ -75,6 +75,9 @@ private:
     const edm::EDGetTokenT<reco::VertexCollection> vertexSrc_;
 
     //the maximal dR you allow between pat muon and trigger muon candidate
+    const string trgFilterLabel_;
+    const double minMuPt_;
+    const double maxMuEta_;
     const double maxdR_; 
     //for filter wrt trigger ????
     //const double dzTrg_cleaning_; 
@@ -106,6 +109,10 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
   vertexSrc_(consumes<reco::VertexCollection>(vertexSrcTag)), 
 
   //parameters
+
+  trgFilterLabel_(iConfig.getParameter<string>("trgFilterLabel")),
+  minMuPt_(iConfig.getParameter<double>("minMuPt")),
+  maxMuEta_(iConfig.getParameter<double>("maxMuEta")),
   maxdR_(iConfig.getParameter<double>("maxdR_matching"))
   //dzTrg_cleaning_(iConfig.getParameter<double>("dzForCleaning_wrtTrgMuon")),
   //ptMin_(iConfig.getParameter<double>("ptMin")),
@@ -144,7 +151,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   ///////////// Debugging:
   //std::cout << "Available trigger names:" << std::endl;
   //for (unsigned int i = 0; i < names.size(); ++i) {
+  //  if("HLT_Mu7_IP4" in names.triggerName(i)){
   //  std::cout << names.triggerName(i) << std::endl;
+  //}
   //}
   /////////////
   
@@ -175,11 +184,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //unsigned int index_10p5_3p5 = names.triggerIndex("HLT_Mu10p5_IP3p5");
   //unsigned int index_12_6     = names.triggerIndex("HLT_Mu12_IP6");
 
-  std::cout << (index_7_4_p0 < triggerBits->size())  << "and" <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
-  std::cout << (index_7_4_p1 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
-  std::cout << (index_7_4_p2 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
-  std::cout << (index_7_4_p3 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
-  std::cout << (index_7_4_p4 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
+  //std::cout << (index_7_4_p0 < triggerBits->size())  << "and" <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
+  //std::cout << (index_7_4_p1 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
+  //std::cout << (index_7_4_p2 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
+  //std::cout << (index_7_4_p3 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
+  //std::cout << (index_7_4_p4 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
 
   //default is false  
   bool pass_7_4_p0_path      = false;
@@ -220,7 +229,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   //only continue when we the event passes the HLT_Mu7_IP4
   if (pass_7_4_p0_path || pass_7_4_p1_path || pass_7_4_p2_path || pass_7_4_p3_path || pass_7_4_p4_path){
-  std::cout<<"found trigger!" << std::endl;
+  //std::cout<<"found trigger!" << std::endl;
 
   // define vectors of ints of length muons->size(), all values set to 0
   std::vector<int> isTriggerMuon(muons->size(), 0);
@@ -267,7 +276,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       std::vector<std::string> filterLabels = trgObj.filterLabels();
   
       //check if the triggermuon was actually firing the trigger
-      if(!trgObj.hasFilterLabel("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q") || trgObj.pt() < 6.5 || fabs(trgObj.eta()) > 2.0) continue;
+      if(!trgObj.hasFilterLabel(trgFilterLabel_) || trgObj.pt() < minMuPt_ || fabs(trgObj.eta()) > maxMuEta_) continue;
     
       iMatch++;
       //std::cout<< "we have a trg object, is it matching?!!" << std::endl;

@@ -19,21 +19,24 @@ genMatcher = cms.EDProducer(
 'pdgId != 11',
 'pdgId != 13',
 'charge != 0',
-'pt > 1.0', 
-'eta > -2.4',
-'eta < 2.4',
+'pt > 0.7', 
+'eta > -2.1',
+'eta < 2.1',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
-'pt > 1.0', 
-'eta > -2.4',
-'eta < 2.4'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+'pt > 0.7', 
+'eta > -2.1',
+'eta < 2.1'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+minMuPt     = cms.double(7.0),
+maxMuEta    = cms.double(1.5),
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
-maxdzDiffHadMuon = cms.double(0.5),   # difference in dz between muon/pv and had/pv
-phiMassAllowance = cms.double(0.015), # allow 15 MeV when collecting candidates for phi 
-dsMassAllowance = cms.double(0.05),   # allow 50 MeV when collecting candidates for ds
+maxdzDiffHadMuon = cms.double(0.6),   # difference in dz between muon/pv and had/pv
+phiMassAllowance = cms.double(0.030), # allow 30 MeV when collecting candidates for phi 
+dsMassAllowance = cms.double(0.150),  # allow 150 MeV when collecting candidates for ds
 drMatchGen = cms.double(0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
+maxBsMass = cms.double(8.0),
 
 piMass = cms.double(0.13957039),      # pi mass
 kMass = cms.double(0.493677),         # kaon mass
@@ -44,6 +47,9 @@ muMass = cms.double(0.105658),        # mu mass
 bsMass = cms.double(5.36688),         # bs mass
 isoCone = cms.double(0.5)             # cut on dR for the mu isolation cone
 )
+
+print( " ========> Parameters used:")
+print(genMatcher.dumpPython)
 
 #BsToDsPhiKKPiMuVariables.extend(vertexVariables)
 combined_variables = cms.PSet(

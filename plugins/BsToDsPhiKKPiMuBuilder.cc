@@ -139,9 +139,11 @@ private:
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
   const double maxdzDiffHadMuon_; 
+  const double maxdxyHadPv_; 
   const double phiMassAllowance_;
   const double dsMassAllowance_;
   const double drMatchGen_;
+  const double maxBsMass_;
   const double piMass_;
   const double kMass_;
   const double phiMass_;
@@ -193,10 +195,11 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     maxdRHadMuon_(iConfig.getParameter<double>("maxdRHadMuon")),
     mindRHadMuon_(iConfig.getParameter<double>("mindRHadMuon")),
     maxdzDiffHadMuon_(iConfig.getParameter<double>("maxdzDiffHadMuon")),
+    maxdxyHadPv_(iConfig.getParameter<double>("maxdxyHadPv")),
     phiMassAllowance_(iConfig.getParameter<double>("phiMassAllowance")),
     dsMassAllowance_(iConfig.getParameter<double>("dsMassAllowance")),
     drMatchGen_(iConfig.getParameter<double>("drMatchGen")),
-   
+    maxBsMass_(iConfig.getParameter<double>("maxBsMass")),
 
     piMass_(iConfig.getParameter<double>("piMass")),
     kMass_(iConfig.getParameter<double>("kMass")),
@@ -266,7 +269,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
   //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
-  std::cout << "---------------- NEW EVENT ---------------" << std::endl;
+  //std::cout << "---------------- NEW EVENT ---------------" << std::endl;
   nEvents++;
   int arrived = -1;
 
@@ -279,7 +282,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
     nMuons++;
-    std::cout << "muon loop" << std::endl; 
+    //std::cout << "muon loop" << std::endl; 
     //if there is no trg muon, this loop is empty:)
     edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
@@ -330,10 +333,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       float muonK1dR = reco::deltaR(*k1Ptr,*muPtr);
 
-      bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && (abs(k1Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
+      bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && 
+      (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && 
+      (abs(k1Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
+      (abs(k1Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
       if (!k1Sel) continue;
-      std::cout << "found k1" << std::endl;
+      //std::cout << "found k1" << std::endl;
       k1Sel2Counter++;
     //////////////////////////////////////////////////
     // Loop over k2 and select the good tracks      //
@@ -353,7 +359,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       float muonK2dR = reco::deltaR(*k2Ptr,*muPtr);
 
-      bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
+      bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && 
+      (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && 
+      (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
+      (abs(k2Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
       //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
@@ -381,7 +390,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float muonPidR = reco::deltaR(*piPtr,*muPtr);
 
-        bool piSel = ((muonPidR < maxdRHadMuon_) && (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&(abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_));
+        bool piSel = ((muonPidR < maxdRHadMuon_) && 
+        (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&
+        (abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
+        (abs(piPtr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
         //pi and mu must have opposite charge -> only for signal tests, later we keep everything
         int piMuCharge = piPtr->charge() * muPtr->charge();
@@ -420,15 +432,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
 
         phiPi.setCharge(kk.charge() + piPtr->charge());
-        std::cout << "found ds resonance" << std::endl;
+        //std::cout << "found ds resonance" << std::endl;
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
         //////////////////////////////////////////////////
 
         pat::CompositeCandidate dsMu;
         dsMu.setP4(phiPi.p4() + muPtr->p4()); 
-
         dsMu.setCharge(phiPi.charge() + muPtr->charge()); //sanity check:shoould be 0
+
+        if(dsMu.mass() > maxBsMass_) continue;
 
         //build bs with collinear approximation
         pat::CompositeCandidate bs;
@@ -513,6 +526,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //get vtx chi2 and ndof
 
         auto phiVtx = phiTree->currentDecayVertex();
+        if (!phiVtx->vertexIsValid()) continue; //check if fit result is valid
+
         float phiVtxChi2    = phiVtx->chiSquared();
         float phiVtxNDof    = phiVtx->degreesOfFreedom();
         float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
@@ -542,6 +557,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get vtx chi2 and ndof
         RefCountedKinematicVertex dsVtx = dsTree->currentDecayVertex(); //compare to the access via AlgebraicVector7
+        if (!dsVtx->vertexIsValid()) continue; //check if fit result is valid
+
         float dsVtxChi2    = dsVtx->chiSquared();
         float dsVtxNDof    = dsVtx->degreesOfFreedom();
         float dsVtxRedChi2 = dsVtxChi2 / dsVtxNDof; 
@@ -573,6 +590,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get vtx chi2 and ndof
         RefCountedKinematicVertex bsVtx = bsTree->currentDecayVertex();
+        if (!bsVtx->vertexIsValid()) continue; //check if fit result is valid
+
         float bsVtxChi2    = bsVtx->chiSquared();
         float bsVtxNDof    = bsVtx->degreesOfFreedom();
         float bsVtxRedChi2 = bsVtxChi2 / bsVtxNDof; 
@@ -682,7 +701,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_x",  pv_x); 
         bs.addUserFloat("pv_y",  pv_y); 
         bs.addUserFloat("pv_z",  pv_z); 
- 
         bs.addUserFloat("pv_chi2",    pv.chi2()); // can access this directlyfor the reco::Vertex class
         bs.addUserFloat("pv_ndof",    pv.ndof());
         bs.addUserFloat("pv_redchi2", pv.normalizedChi2());
@@ -696,7 +714,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("sv_x",  sv_x); 
         bs.addUserFloat("sv_y",  sv_y); 
         bs.addUserFloat("sv_z",  sv_z); 
- 
         bs.addUserFloat("sv_chi2",    bsVtxChi2);
         bs.addUserFloat("sv_ndof",    bsVtxNDof);
         bs.addUserFloat("sv_redchi2", bsVtxRedChi2);
@@ -710,7 +727,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("tv_x",  tv_x); 
         bs.addUserFloat("tv_y",  tv_y); 
         bs.addUserFloat("tv_z",  tv_z); 
-
         bs.addUserFloat("tv_chi2",    dsVtxChi2);
         bs.addUserFloat("tv_ndof",    dsVtxNDof);
         bs.addUserFloat("tv_redchi2", dsVtxRedChi2);
@@ -724,7 +740,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("fv_x",  fv_x); 
         bs.addUserFloat("fv_y",  fv_y); 
         bs.addUserFloat("fv_z",  fv_z); 
-
         bs.addUserFloat("fv_chi2",    phiVtxChi2);
         bs.addUserFloat("fv_ndof",    phiVtxNDof);
         bs.addUserFloat("fv_redchi2", phiVtxRedChi2);
@@ -1273,12 +1288,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   } //closing trg muon loop
 
   if(arrived >0){
-  std::cout << "arrived: " << arrived << std::endl;
+  //std::cout << "arrived: " << arrived << std::endl;
   iEvent.put(std::move(bsCandidates), "bs");
   }
   else{
 
-  std::cout << "arrived: " << arrived << std::endl;
+  //std::cout << "arrived: " << arrived << std::endl;
   pat::CompositeCandidate bs;
   bs.addUserInt("arrived",arrived);
   bsCandidates->emplace_back(bs);

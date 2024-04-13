@@ -9,8 +9,18 @@ parser.add_argument('channel') # sig or hb or data
 parser.add_argument('nFiles')  # nr of miniAOD files to process
 args = parser.parse_args()
 
-queue = 'short'
-time = 60
+
+######################################
+
+#500 jobs per user on std queue
+nMaxJobs = 500
+filesPerJob = int(args.nFiles) / nMaxJobs
+print("========> processing ", filesPerJob, " files per job")
+
+######################################
+
+queue = 'standard'
+#time = 60
 nevents = -1
 nFiles = int(args.nFiles)
 now = datetime.now()
@@ -25,7 +35,7 @@ def filesFromFolder(directory):
 def filesFromTxt(txtFile):
   with open(txtFile) as dataFiles: 
     filenames = [line[0:-1] for line in dataFiles] #-2 to remove the newline character \n
-  return ['root://cms-xrd-global.cern.ch//' + filename for filename in filenames ]
+  return ['file:root://cms-xrd-global.cern.ch//' + filename for filename in filenames ]
 
 #######################################
 
@@ -47,14 +57,15 @@ if args.channel == 'data':
   naming = 'data'
 
 
-inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
+#inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
 
 os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/"+dt_string)
 os.makedirs(dt_string+"/logs")
 os.makedirs(dt_string+"/errs")
 
-for i, fin in enumerate(inputfiles):
+for i in range(0,nMaxJobs):
 
+  fin = inputfiles[i:i+filesPerJob] # this is a list!!
   #template
   temp = open("temp_cfg.py", "rt")
   #file to write to
@@ -65,7 +76,7 @@ for i, fin in enumerate(inputfiles):
   for line in temp:
     if   "HOOK_CHANNEL" in line: cfg.write(line.replace("HOOK_CHANNEL", args.channel))
     elif "HOOK_N_EVENTS" in line: cfg.write(line.replace("HOOK_N_EVENTS", str(nevents)))
-    elif "HOOK_FILE_IN" in line: cfg.write(line.replace("HOOK_FILE_IN", fin))
+    elif "HOOK_FILE_IN" in line: cfg.write(line.replace("HOOK_FILE_IN", str(fin)))
     elif "HOOK_FILE_OUT" in line: cfg.write(line.replace("HOOK_FILE_OUT", fout))
     else: cfg.write(line)
 
@@ -97,7 +108,7 @@ for i, fin in enumerate(inputfiles):
         '-e {0}/errs/chunk_{1}.err'.format(dt_string,i),
         '--mem=1200M',
         '--job-name=MINI_{0}_{1}'.format(i,args.channel),
-        '--time={0}'.format(time),
+        #'--time={0}'.format(time),
         '{0}/submitter_chunk_{1}.sh'.format(dt_string,i),
      ])
 

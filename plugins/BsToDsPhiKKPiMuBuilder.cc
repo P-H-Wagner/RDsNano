@@ -340,10 +340,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       //define a pointer to the kaon at position k1Idx
       edm::Ptr<pat::PackedCandidate> k1Ptr(pcand, k1Idx);
+      std::cout << "possible k1: " << k1Ptr->pt() << std::endl;
 
       if (!hadSelection_(*k1Ptr)) continue; 
       k1Sel1Counter++;
 
+      std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
       //the PF algorithm assigns a pdgId hypothesis, generall it distinguishes between:
       // photons, electron/muon, charged hadron, neutral hadrons
       // and we trust the algorithm that when it says its an electron (11) or muon (13), that it is not a kaon or pion
@@ -356,7 +358,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       (abs(k1Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
       if (!k1Sel) continue;
-      //std::cout << "found k1: " << k1Ptr->pt() << std::endl;
+      std::cout << "found k1 (passed 2nd selection): " << k1Ptr->pt() << std::endl;
       k1Sel2Counter++;
     //////////////////////////////////////////////////
     // Loop over k2 and select the good tracks      //
@@ -435,6 +437,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
         kk.setP4(k1P4 + k2P4);
       
+        std::cout << "found kkpi candidate with pt: mu k1 k2 pi and mass (KK) "  << std::endl; 
+        std::cout << muPtr->pt() << std::endl;
+        std::cout << k1Ptr->pt() << std::endl;
+        std::cout << k2Ptr->pt() << std::endl;
+        std::cout << piPtr->pt() << std::endl;
+        std::cout << kk.mass() << std::endl;
+ 
+
         //only continue when they build a phi resonance, allow 15MeV:
         if (fabs(kk.mass() - phiMass_) > phiMassAllowance_) continue;     
         std::cout << "we passed the phi resonance" << std::endl; 
@@ -568,17 +578,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!phiVtx->vertexIsValid() || !phiParticle->currentState().isValid() ) continue; //check if fit result is valid
 
         float phiVtxChi2    = phiVtx->chiSquared();
-        if (phiVtxChi2 < 0) continue;
         float phiVtxNDof    = phiVtx->degreesOfFreedom();
         //auto maxChi2        = TMath::ChisquareQuantile( 0.99 , phiVtxNDof);
         float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
         float phiVtxProb    = ChiSquaredProbability(phiVtxChi2, phiVtxNDof); 
-        if (phiVtxProb < 0.01) continue;
 
+        std::cout << "phi chi2:" << phiVtxChi2 << std::endl;
+        std::cout << "phi ndof:" << phiVtxNDof << std::endl;
+        std::cout << "phi prob:" << phiVtxProb << std::endl;
+
+        if (phiVtxProb < 0.01) continue;
+        if (phiVtxChi2 < 0) continue;
         std::cout << "we passed the phi vtx fit prob" << std::endl; 
-        //std::cout << "phi chi2:" << phiVtxChi2 << std::endl;
-        //std::cout << "phi ndof:" << phiVtxNDof << std::endl;
-        //std::cout << "phi prob:" << phiVtxProb << std::endl;
         //std::cout << "phi prob:" << ChiSquaredProbability(phiVtxChi2,phiVtxNDof) << std::endl;
 
         // access refitted children
@@ -610,15 +621,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!dsVtx->vertexIsValid()) continue; //check if fit result is valid
 
         float dsVtxChi2    = dsVtx->chiSquared();
-        if (dsVtxChi2 < 0) continue;
         float dsVtxNDof    = dsVtx->degreesOfFreedom();
         float dsVtxRedChi2 = dsVtxChi2 / dsVtxNDof; 
         float dsVtxProb    = ChiSquaredProbability(dsVtxChi2, dsVtxNDof); 
         //std::cout << "red chi2 of ds fit is:" << dsVtxRedChi2 << std::endl;
+        std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
+        std::cout << "ds ndof:" << dsVtxNDof << std::endl;
+        std::cout << "ds prob:" << dsVtxProb << std::endl;
+
+        if (dsVtxChi2 < 0) continue;
         if (dsVtxProb < 0.01) continue;
-        //std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
-        //std::cout << "ds ndof:" << dsVtxNDof << std::endl;
-        //std::cout << "ds prob:" << dsVtxProb << std::endl;
+        std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
         //std::cout << "ds prob:" << ChiSquaredProbability(dsVtxChi2,dsVtxNDof) << std::endl;
 
         std::cout << "we passed the ds vtx fit prob" << std::endl; 
@@ -652,15 +665,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         std::cout << "bs vtx valid " << std::endl;
         float bsVtxChi2    = bsVtx->chiSquared();
-        if (bsVtxChi2 < 0) continue;
         float bsVtxNDof    = bsVtx->degreesOfFreedom();
         float bsVtxRedChi2 = bsVtxChi2 / bsVtxNDof; 
         float bsVtxProb    = ChiSquaredProbability(bsVtxChi2, bsVtxNDof); 
 
-        std::cout << "bs chi2 > 0 " << std::endl;
-        //std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
-        //std::cout << "bs ndof:" << bsVtxNDof << std::endl;
-        //std::cout << "bs prob:" << bsVtxProb << std::endl;
+        //std::cout << "bs chi2 > 0 " << std::endl;
+        std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
+        std::cout << "bs ndof:" << bsVtxNDof << std::endl;
+        std::cout << "bs prob:" << bsVtxProb << std::endl;
+        if (bsVtxChi2 < 0) continue;
         //std::cout << "bs prob:" << ChiSquaredProbability(bsVtxChi2,bsVtxNDof) << std::endl;
 
         bsTree->movePointerToTheFirstChild();
@@ -1372,9 +1385,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
         
-        arrived = 1;
-        bs.addUserInt("arrived", arrived);
-        arrived = -1;
+        //arrived = 1;
+        //bs.addUserInt("arrived", arrived);
+        //arrived = -1;
         //append candidate at the end of our return value :)
         //ret_value can be a vector!!
         bsCandidates->emplace_back(bs);
@@ -1384,7 +1397,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       } //closing k2 loop
     } //closing k1 loop
   } //closing trg muon loop
-
+  
+  iEvent.put(std::move(bsCandidates), "bs");
+  /*
   if(arrived >0){
   std::cout << "arrived: " << arrived << std::endl;
   iEvent.put(std::move(bsCandidates), "bs");
@@ -1397,6 +1412,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   bsCandidates->emplace_back(bs);
   iEvent.put(std::move(bsCandidates), "bs"); 
   }
+  */
 }//closing event loop
 
 DEFINE_FWK_MODULE(BsToDsPhiKKPiMuBuilder);

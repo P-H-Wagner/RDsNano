@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import Var, CandVars
 from PhysicsTools.RDsNano.common_cff import RDsCandVars, ufloat, uint, ubool
 from PhysicsTools.RDsNano.rds_common_cff import TableDefaultVariables, TableDefault
-from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, vertexVariables, postfitBasicVariables, helicityVariables, bsMomentumVariables, empty #,genvariables
+from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, vertexVariables, postfitBasicVariables, helicityVariables, bsMomentumVariables #, empty #,genvariables
 
 #from PhysicsTools.RDsNano.primaryVertices_cff import *
 
@@ -25,9 +25,9 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'pdgId != 11',
 'pdgId != 13',
 'charge != 0',
-'pt > 0.7', 
-'eta > -2.1',
-'eta < 2.1',
+'pt > 1.0', 
+'eta > -2.4',
+'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
@@ -36,22 +36,25 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'eta < 2.1'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),     # min dR "
-maxdzDiffHadMuon = cms.double( 0.6),   # difference in dz between muon/pv and had/pv
+maxdzDiffHadMuon = cms.double( 0.5),   # difference in dz between muon/pv and had/pv
 maxdxyHadPv      = cms.double( 0.6),
-phiMassAllowance = cms.double( 0.03),  # allow 30 MeV when collecting candidates for phi 
-dsMassAllowance  = cms.double( 0.15),   # allow 150 MeV when collecting candidates for ds
+phiMassAllowance = cms.double( 0.015),  # allow 15 MeV when collecting candidates for phi 
+dsMassAllowance  = cms.double( 0.06),   # allow 150 MeV when collecting candidates for ds
 drMatchGen       = cms.double( 0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
 maxBsMass        = cms.double( 8.0 ),  
-
-
 piMass           = cms.double( 0.13957039),      # pi mass
+piMassSigma      = cms.double( 0.00000018),      # pi mass
 kMass            = cms.double( 0.493677),         # kaon mass
+kMassSigma       = cms.double( 0.000016),         # kaon mass
 phiMass          = cms.double( 1.019461),       # phi mass
-constrainPhiMass = cms.bool(   False),    # constrain phi mass in the vtx fit?
+constrainPhiMass = cms.bool(False),    # constrain phi mass in the vtx fit?
+minPhiVtxProb    = cms.double(0.01),
 dsMass           = cms.double( 1.96834),         # ds mass
-constrainDsMass  = cms.bool(   False),     # constrain Ds mass in the vtx fit?
+constrainDsMass  = cms.bool(False),     # constrain Ds mass in the vtx fit?
+minDsVtxProb     = cms.double(0.01),
 dsStarMass       = cms.double( 2.112204),    # ds star mass
-muMass           = cms.double( 0.105658),        # mu mass
+muMass           = cms.double( 0.105658),        # mu ma
+muMassSigma      = cms.double( 0.0000000023),        # mu mass
 bsMass           = cms.double( 5.36688),         # bs mass
 isoCone          = cms.double( 0.5)             # cut on dR for the mu isolation cone
 )
@@ -123,5 +126,6 @@ arrived = cms.EDFilter(
 )
 
 #tables = cms.Sequence(BsToDsPhiKKPiMuTable) # * vertexTable)
-BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + arrived + BsToDsPhiKKPiMuTable)
+#BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + arrived + BsToDsPhiKKPiMuTable)
+BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + BsToDsPhiKKPiMuTable)
 

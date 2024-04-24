@@ -11,6 +11,8 @@ from PhysicsTools.RDsNano.common_cff import RDsCandVars, ufloat, uint, ubool
 ## BsToDsPhiKKPiMu_cff.py                        ##
 ###################################################
 
+print("i am in the table!!")
+## TODO check variable types (int/float)
 
 ##################################################
  
@@ -190,9 +192,15 @@ genVariables = cms.PSet(
         bs_pt     = Var("userFloat('bs_gen_pt')",float),
         bs_eta    = Var("userFloat('bs_gen_eta')",float),
         bs_phi    = Var("userFloat('bs_gen_phi')",float),
+
         pv_x      = Var("userFloat('pv_x_gen')",float),
         pv_y      = Var("userFloat('pv_y_gen')",float),
         pv_z      = Var("userFloat('pv_z_gen')",float),
+
+        scnd_pv_x      = Var("userFloat('scnd_pv_x_gen')",float),
+        scnd_pv_y      = Var("userFloat('scnd_pv_y_gen')",float),
+        scnd_pv_z      = Var("userFloat('scnd_pv_z_gen')",float),
+        scnd_pv_idx    = Var("userFloat('scnd_pv_idx_gen')",float),
 
         bs_charge = Var("userFloat('bs_gen_charge')",float),
         bs_pdgid  = Var("userInt('bs_gen_pdgid')",int),
@@ -262,6 +270,8 @@ vertexVariables = cms.PSet(
         pv_chi2    = Var("userFloat('pv_chi2')",float),        
         pv_ndof    = Var("userFloat('pv_ndof')",float),        
         pv_redchi2 = Var("userFloat('pv_redchi2')",float),        
+        pv_prob    = Var("userFloat('pv_prob')",float),        
+        pv_idx     = Var("userFloat('pv_idx')",float),        
 
         sv_x = Var("userFloat('sv_x')",float),
         sv_y = Var("userFloat('sv_y')",float),
@@ -269,6 +279,7 @@ vertexVariables = cms.PSet(
         sv_chi2    = Var("userFloat('sv_chi2')",float),        
         sv_ndof    = Var("userFloat('sv_ndof')",float),        
         sv_redchi2 = Var("userFloat('sv_redchi2')",float),        
+        sv_prob    = Var("userFloat('sv_prob')",float),        
 
         tv_x = Var("userFloat('tv_x')",float),
         tv_y = Var("userFloat('tv_y')",float),
@@ -276,6 +287,7 @@ vertexVariables = cms.PSet(
         tv_chi2    = Var("userFloat('tv_chi2')",float),        
         tv_ndof    = Var("userFloat('tv_ndof')",float),        
         tv_redchi2 = Var("userFloat('tv_redchi2')",float),        
+        tv_prob    = Var("userFloat('tv_prob')",float),        
 
         fv_x = Var("userFloat('fv_x')",float),
         fv_y = Var("userFloat('fv_y')",float),
@@ -283,6 +295,7 @@ vertexVariables = cms.PSet(
         fv_chi2    = Var("userFloat('fv_chi2')",float),        
         fv_ndof    = Var("userFloat('fv_ndof')",float),        
         fv_redchi2 = Var("userFloat('fv_redchi2')",float),        
+        fv_prob    = Var("userFloat('fv_prob')",float),        
 
         ##easy_bs_vtx_x = Var("userFloat('easy_bs_vtx_x')",float),
         ##easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
@@ -574,11 +587,11 @@ bsMomentumVariables = cms.PSet(
         e_star_reco_1        = Var("userFloat('e_star_reco_1')",float),
         e_star_reco_2        = Var("userFloat('e_star_reco_2')",float),
 
-        arrived          = Var("userInt('arrived')",int),
+        #arrived          = Var("userInt('arrived')",int),
 )
 
 ##################################################
 
 ## this is for the ED Filter
-empty = cms.PSet(arrived = Var("userInt('arrived')",int))
+#empty = cms.PSet(arrived = Var("userInt('arrived')",int))
 

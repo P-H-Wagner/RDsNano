@@ -2,7 +2,8 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 import FWCore.ParameterSet.Config as cms
 
 # TODO: put different samples into parser (flag from command line)
-channel = 'sig'
+# channel = 'sig'
+channel = 'data'
 
 import os
 
@@ -39,26 +40,40 @@ process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(100)
 )
 
+def filesFromFolder(directory):
+  filenames = os.listdir(directory)
+  return ['file:' + directory + filename for filename in filenames ]
+
+def filesFromTxt(txtFile):
+  with open(txtFile) as dataFiles: 
+    filenames = [line for line in dataFiles]
+  return ['file:' + 'root://cms-xrd-global.cern.ch//' + filename for filename in filenames ]
+
 # Input source
 
 if channel == 'sig':
   directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #signal
+  inputfiles = filesFromFolder(directory)
 
 if channel == 'hb':
   directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' #hb 
+  inputfiles = filesFromFolder(directory)
 
-
-filenames = os.listdir(directory) 
-
-
-inputfiles = ['file:' + directory + filename for filename in filenames ]
-inputfiles = inputfiles
+if channel == 'data':
+  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data
+  inputfiles = filesFromTxt(txtFile)
 
 process.source = cms.Source(
     "PoolSource",
     #fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_97.root'),
-    fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'),
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50003/199766A2-70D0-674D-A9CE-D5EB255BD87A.root'), # data file which is always empty, investigate this 
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #data file to compare with riccs MA code
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/D0AE1369-0D7B-554C-BBB9-7B324AACCABD.root'), #data file to compare with riccs MA code
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/36CD4F31-A249-DF49-A3FF-32DCA7223D09.root'), #10
+    fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #7
+    #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
     secondaryFileNames = cms.untracked.vstring(),
+    skipEvents=cms.untracked.uint32(800) # skip first n events   
 )
 
 process.options = cms.untracked.PSet(
@@ -105,12 +120,19 @@ process.GlobalTag = GlobalTag(process.GlobalTag, globaltag, '')
 from PhysicsTools.RDsNano.nanoRDs_cff import *
 process = nanoAOD_customizeMuonTriggerBPark(process)  
 process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run only Trigger.cc for debugging
-process = nanoAOD_customizeGenMatching(process) 
 
-# Path and EndPath definitions
-process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+if channel != 'data':
+  #can only gen match on mc
+  process = nanoAOD_customizeGenMatching(process) 
+  # Path and EndPath definitions
+  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+
+else:
+  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence )
+ 
+
+
 #process.nanoAOD_Bs_step= cms.Path(process.triggerSequence) ## to run only Trigger.cc for debugging
-
 process.endjob_step = cms.EndPath(process.endOfProcess)
 
 process.NANOAODoutput_step = cms.EndPath(process.NANOAODoutput)
@@ -119,7 +141,7 @@ process.NANOAODoutput_step = cms.EndPath(process.NANOAODoutput)
 process.schedule = cms.Schedule(
     process.nanoAOD_Bs_step,
     process.endjob_step, 
-    process.NANOAODoutput_step
+    #process.NANOAODoutput_step # commented out ? not saving !!
                                )
 
 from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask

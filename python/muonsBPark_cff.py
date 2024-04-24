@@ -2,13 +2,21 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import *
 
 muonTrgSelector = cms.EDProducer("Trigger",
-                                 muonCollection        = cms.InputTag("slimmedMuons"), #same collection as in NanoAOD                                                           
-                                 trgResultsCollection  = cms.InputTag("TriggerResults", "", "HLT"),
-                                 trgObjectsCollection  = cms.InputTag("slimmedPatTrigger"),
-                                 trgPrescaleCollection = cms.InputTag("patTrigger"),
-                                 vtxCollection         = cms.InputTag("offlineSlimmedPrimaryVertices"),
-                                 #cuts and selections
-                                 maxdR_matching        = cms.double(0.02),                             
+
+muonCollection        = cms.InputTag("slimmedMuons"), #same collection as in NanoAOD                                                           
+trgResultsCollection  = cms.InputTag("TriggerResults", "", "HLT"),
+trgObjectsCollection  = cms.InputTag("slimmedPatTrigger"),
+trgPrescaleCollection = cms.InputTag("patTrigger"),
+vtxCollection         = cms.InputTag("offlineSlimmedPrimaryVertices"),
+#cuts and selections
+trgFilterLabel = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q"),
+muSelection    = cms.string(' &&  '.join([
+'pt > 7.0', 
+'eta > -1.5',
+'eta < 1.5',
+'isPFMuon',
+'isGlobalMuon'])), # pre-selection of hadrons (k1,k2 and pion)
+maxdR_matching = cms.double(0.05), #muon trg object matching                             
 )
 
 #countTrgMuons = cms.EDFilter("PATCandViewCountFilter",
@@ -31,5 +39,8 @@ muonTrgTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
         isTracker = Var("isTrackerMuon", bool, doc= "muon is tracker muon" ),
     ),
 )
+
+print( " ========> Parameters used:")
+print(muonTrgSelector.dumpPython)
 
 muonTrgSequence = cms.Sequence(muonTrgSelector)

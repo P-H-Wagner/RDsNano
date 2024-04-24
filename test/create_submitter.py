@@ -14,12 +14,20 @@ args = parser.parse_args()
 
 #500 jobs per user on std queue
 nMaxJobs = 500
-filesPerJob = int(args.nFiles) / nMaxJobs
+
+if int(args.nFiles) > nMaxJobs:
+  filesPerJob = int(args.nFiles) / nMaxJobs
+  queue = 'standard' # takes longer 
+else:
+  filesPerJob = 1
+  nMaxJobs = int(args.nFiles) # process less files
+  queue = 'short'
+
 print("========> processing ", filesPerJob, " files per job")
 
 ######################################
 
-queue = 'standard'
+#queue = 'standard'
 #time = 60
 nevents = -1
 nFiles = int(args.nFiles)
@@ -30,7 +38,7 @@ dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 def filesFromFolder(directory):
   filenames = os.listdir(directory)
-  return [directory + filename for filename in filenames ]
+  return ['file:' + directory + filename for filename in filenames ]
 
 def filesFromTxt(txtFile):
   with open(txtFile) as dataFiles: 
@@ -52,7 +60,8 @@ if args.channel == 'hb':
   naming = 'hb_inclusive'
 
 if args.channel == 'data':
-  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data
+  #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
+  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
   inputfiles = filesFromTxt(txtFile)
   naming = 'data'
 
@@ -65,7 +74,7 @@ os.makedirs(dt_string+"/errs")
 
 for i in range(0,nMaxJobs):
 
-  fin = inputfiles[i:i+filesPerJob] # this is a list!!
+  fin = inputfiles[i*filesPerJob:(i+1)*filesPerJob] # this is a list!!
   #template
   temp = open("temp_cfg.py", "rt")
   #file to write to
@@ -106,7 +115,7 @@ for i in range(0,nMaxJobs):
         '--account=t3',
         '-o {0}/logs/chunk_{1}.log'.format(dt_string,i),
         '-e {0}/errs/chunk_{1}.err'.format(dt_string,i),
-        '--mem=1200M',
+        #'--mem=1200M',
         '--job-name=MINI_{0}_{1}'.format(i,args.channel),
         #'--time={0}'.format(time),
         '{0}/submitter_chunk_{1}.sh'.format(dt_string,i),

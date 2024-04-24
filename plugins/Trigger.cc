@@ -30,6 +30,8 @@
 
 //B field 
 #include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+// for the cut as string
+#include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 
 #include <TLorentzVector.h>
 #include "helper.h" 
@@ -54,6 +56,8 @@ private:
    
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
+    // muon selection
+    const StringCutObjectSelector<pat::Muon> muSelection_;
  
     //physics heart ---- check the constant override stuff!!!
     void produce(edm::Event&, const edm::EventSetup&) override;
@@ -76,8 +80,6 @@ private:
 
     //the maximal dR you allow between pat muon and trigger muon candidate
     const string trgFilterLabel_;
-    const double minMuPt_;
-    const double maxMuEta_;
     const double maxdR_; 
     //for filter wrt trigger ????
     //const double dzTrg_cleaning_; 
@@ -92,7 +94,7 @@ private:
 Trigger::Trigger(const edm::ParameterSet& iConfig):
  
   //for the muons
-  
+  muSelection_(iConfig.getParameter<std::string>("muSelection")), 
   muonTag(iConfig.getParameter<edm::InputTag>("muonCollection")),
   muonSrc_(consumes<std::vector<pat::Muon>>(muonTag)),
   //for trigger info
@@ -111,8 +113,6 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
   //parameters
 
   trgFilterLabel_(iConfig.getParameter<string>("trgFilterLabel")),
-  minMuPt_(iConfig.getParameter<double>("minMuPt")),
-  maxMuEta_(iConfig.getParameter<double>("maxMuEta")),
   maxdR_(iConfig.getParameter<double>("maxdR_matching"))
   //dzTrg_cleaning_(iConfig.getParameter<double>("dzForCleaning_wrtTrgMuon")),
   //ptMin_(iConfig.getParameter<double>("ptMin")),
@@ -127,9 +127,7 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
 
 
 void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
-   
-  //std::cout << iEvent.id().event() << std::endl;
-
+ 
   //Define handles
   //edm::ESHandle<MagneticField> bFieldHandle;
   //iSetup.get<IdealMagneticFieldRecord>().get(bFieldHandle);
@@ -230,7 +228,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //only continue when we the event passes the HLT_Mu7_IP4
   if (pass_7_4_p0_path || pass_7_4_p1_path || pass_7_4_p2_path || pass_7_4_p3_path || pass_7_4_p4_path){
   //std::cout<<"found trigger!" << std::endl;
-
   // define vectors of ints of length muons->size(), all values set to 0
   std::vector<int> isTriggerMuon(muons->size(), 0);
 
@@ -244,14 +241,19 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   // now loop over all pat::muons
   for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
-    //std::cout<<"found pat muon!" << std::endl;
-
+    if (iEvent.id().event() != 121643971) continue;  
+    //if (iEvent.id().luminosityBlock() != 103) continue;  
+    //std::cout << iEvent.id().event() << std::endl;
     //access the muon at the muIdx-position
     const pat::Muon& muon = (*muons)[muIdx];    
 
+    std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
+    // muon cuts
+    if (!muSelection_(muon)) continue; 
+
     //check if the pat muon is matched to some trigger object (by using the function triggerObjectMatchByPath()
     //bool isMatched = !(muon.triggerObjectMatchByPath("HLT_Mu7_IP4")==nullptr);
-    //std::cout<< isMatched << std::endl;
+    std::cout<< "muon passed the muon selection!" << std::endl;
 
     // initialize start values
     float drMuonTrgObj = -1.;
@@ -276,7 +278,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       std::vector<std::string> filterLabels = trgObj.filterLabels();
   
       //check if the triggermuon was actually firing the trigger
-      if(!trgObj.hasFilterLabel(trgFilterLabel_) || trgObj.pt() < minMuPt_ || fabs(trgObj.eta()) > maxMuEta_) continue;
+      if(!trgObj.hasFilterLabel(trgFilterLabel_)) continue;
     
       iMatch++;
       //std::cout<< "we have a trg object, is it matching?!!" << std::endl;
@@ -308,6 +310,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             //the following line does a copy of muon with the name trgMatchedMuon (same properties different adress)
 	    pat::Muon trgMatchedMuon(muon);
 
+            std::cout<< "we found a trigger match!" << std::endl;
             //save also the tracks
             const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField);  
             if (!ttrackTrgMuon.isValid()) continue;
@@ -327,6 +330,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             counter++;
 
       }
+      else {std::cout << "did not find a trigger match" << std::endl;}
   } //close the loop over pat muons
   
   //std::cout <<  "wehave:" << counter << std::endl;   

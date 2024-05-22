@@ -744,13 +744,59 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                // Step1: the b Mother fixes the 10s
                switch(abs(bMotherId)){
-                 case 531:  sigId = 10;  break;  // Bs
-                 case 511:  sigId = 20;  break;  // B0
-                 case 521:  sigId = 30;  break;  // B+-
-                 case 5122: sigId = 40;  break;  // LambdaB
-                 default:   sigId = 50;          // anything else
+                 case 521:  sigId = 100;  break;  // B+
+                 case 511:  sigId = 200;  break;  // B0
+                 case 531:  sigId = 300;  break;  // Bs
+                 case 5122: sigId = 400;  break;  // LambdaB
+                 default:   sigId = 500;          // anything else
                }
- 
+
+               //bool isNotDoubleCharm = false;
+                
+               //std::cout << "candidate nr: " << nRecoCandidates << std::endl;
+               int dsID = getDsID(piPtrGen); // get charmed strange ID
+               //std::cout << "ds Id is: " << dsID << std::endl;
+               int dID  = getSecondCharmID(muPtrGen); // get charmed ID
+               //std::cout << "d Id is: " << dID << std::endl;
+               bool isTau = isAncestor(muPtrGen, 15); 
+
+               switch(dsID){
+                 case 431:   sigId += 0;  break; // Ds+
+                 case 433:   sigId += 10; break; // Ds+*
+                 case 10431: sigId += 20; break; // Ds+(2317)*
+                 case 20433: sigId += 30; break; // Ds+(2457)*
+                 default:    sigId = -9999; break; // anything else (should never enter here!)
+               }
+
+               // Signal candidates enter here
+               if ((dID == 0) && (abs(bMotherId) == 531)) {
+                 sigId -= 300; // signal should live in 0
+                 if (isTau) sigId += 1; 
+               }
+
+               // special case of B+ -> K nu mu / B+ -> K tau nu 
+               else if((dID == 0) && (abs(bMotherId) == 521)){
+               
+                 if (!isTau) sigId += 7;
+                 if (isTau)  sigId  += 8;
+
+               }
+
+               else {
+                 switch(dID){
+                   case 411:   sigId += 0;  break; // D+
+                   case 421:   sigId += 1; break;  // D0
+                   case 431:   sigId += 2; break;  // Ds
+                   case 413:   sigId += 3; break;  // D+*
+                   case 423:   sigId += 4; break;  // D0*
+                   case 433:   sigId += 5; break;  // Ds+*
+                   case 4122:   sigId += 6; break;  // Lambda c
+
+                   default:    sigId = -9999; break; // anything else
+                 }
+               }
+
+               /*
                bool isDsStar    = false;
                bool isDMeson    = false;
                bool isDMesonExc = false;
@@ -814,6 +860,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if (!isSignal && !isDMeson && !isDMesonExc)  sigId += 2; // if this is true, isDMesonEx should be false!
                if (isSignal && isTauSignal)                 sigId += 1; // only for signals
 
+               */
+
+               //printDaughters(bsFromMu); //-> for debugging
                //std::cout << "mom:" << bMotherId << std::endl; //for debugging
                //std::cout << "ID is:" << sigId     << std::endl;  //for debugging;
 

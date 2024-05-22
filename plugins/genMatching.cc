@@ -55,6 +55,28 @@
 #include "TVectorD.h"
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h" 
 
+
+// counters
+int nEventsGen = 0;
+int nMuonsGen  = 0;
+int nTracksGen = 0;
+int nRecoCandidates = 0;
+int nGenMatched = 0;
+
+int muSel1CounterGen = 0;
+int muSel2CounterGen = 0;
+int k1Sel1CounterGen = 0;
+int k1Sel2CounterGen = 0;
+int k2Sel1CounterGen = 0;
+int k2Sel2CounterGen = 0;
+int piSel1CounterGen = 0;
+int piSel2CounterGen = 0;
+int nKKPiMuGen = 0;
+int nFoundPhi  = 0;
+int nFoundDs   = 0;
+int nFoundB    = 0;
+int nBMassCut   = 0;
+
 class genMatching : public edm::global::EDProducer<> {
 
 public:
@@ -68,6 +90,8 @@ public:
   ~genMatching() override {}
   
   void produce(edm::StreamID, edm::Event&, const edm::EventSetup&) const override;
+  virtual void endJob() override;
+
   int  getPVIdx(const reco::VertexCollection*,const reco::TransientTrack&) const;
 
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions) {}
@@ -92,12 +116,15 @@ private:
   //const StringCutObjectSelector<pat::PackedGenParticle> hadSelectionGen_; // cut on gen hadrons
   const StringCutObjectSelector<reco::GenParticle> hadSelectionGen_; // cut on gen hadrons for test with pruned only!
 
+  const double minMuPt_;
+  const double maxMuEta_;
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
   const double maxdzDiffHadMuon_; 
   const double phiMassAllowance_;
   const double dsMassAllowance_;
   const double drMatchGen_;
+  const double maxBsMass_;
   const double piMass_;
   const double kMass_;
   const double phiMass_;
@@ -111,6 +138,10 @@ private:
   //anyway ... 
 
   //for the muons
+
+  // vertices
+  const edm::InputTag primaryVtxTag;
+  const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
 
   const edm::InputTag bsTag;
   const edm::EDGetTokenT<pat::CompositeCandidateCollection> bs_;
@@ -127,15 +158,18 @@ private:
 //define the constructor
 genMatching::genMatching(const edm::ParameterSet& iConfig):
     // f.e. hadSelection_ = cfg.getPatameter...
+
     hadSelection_(iConfig.getParameter<std::string>("hadSelection")),
     hadSelectionGen_(iConfig.getParameter<std::string>("hadSelectionGen")),
+    minMuPt_(iConfig.getParameter<double>("minMuPt")),
+    maxMuEta_(iConfig.getParameter<double>("maxMuEta")),
     maxdRHadMuon_(iConfig.getParameter<double>("maxdRHadMuon")),
     mindRHadMuon_(iConfig.getParameter<double>("mindRHadMuon")),
     maxdzDiffHadMuon_(iConfig.getParameter<double>("maxdzDiffHadMuon")),
     phiMassAllowance_(iConfig.getParameter<double>("phiMassAllowance")),
     dsMassAllowance_(iConfig.getParameter<double>("dsMassAllowance")),
     drMatchGen_(iConfig.getParameter<double>("drMatchGen")),
-   
+    maxBsMass_(iConfig.getParameter<double>("maxBsMass")),
 
     piMass_(iConfig.getParameter<double>("piMass")),
     kMass_(iConfig.getParameter<double>("kMass")),
@@ -145,6 +179,9 @@ genMatching::genMatching(const edm::ParameterSet& iConfig):
     muMass_(iConfig.getParameter<double>("muMass")),
     bsMass_(iConfig.getParameter<double>("bsMass")),
     isoCone_(iConfig.getParameter<double>("isoCone")),
+
+    primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
+    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)),
 
     bsTag(iConfig.getParameter<edm::InputTag>("bs")),
     bs_(consumes<pat::CompositeCandidateCollection>(bsTag)), 
@@ -165,6 +202,9 @@ genMatching::genMatching(const edm::ParameterSet& iConfig):
 void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSetup &iSetup) const {
 
   //input
+  edm::Handle<reco::VertexCollection> primaryVtx;
+  iEvent.getByToken(primaryVtx_,primaryVtx);
+
   edm::Handle<pat::CompositeCandidateCollection> bsColl;
   iEvent.getByToken(bs_,bsColl);
  
@@ -179,6 +219,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
   //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
+  nEventsGen++;
 
   //////////////////////////////////////////////////////
   // Match the bsCand (and all its final states) with //
@@ -188,7 +229,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
   pat::CompositeCandidate gen; 
   for(size_t bsIdx = 0; bsIdx < bsColl->size(); ++bsIdx){
-   
+  
+
+    nRecoCandidates++;
+ 
     pat::CompositeCandidate gen; 
     edm::Ptr<pat::CompositeCandidate> bsPtr(bsColl, bsIdx);
 
@@ -208,50 +252,50 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
     // find the gen-matched muon                      //
     ////////////////////////////////////////////////////
 
-    int nMuGen = 0;
     for(size_t muIdxGen = 0; muIdxGen < prunedGen->size(); ++muIdxGen){
+
+      nMuonsGen++;
 
       //define a pointer to the gen muon    
       edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, muIdxGen);
 
       //select only useful gen muons -> check this selection!
-      if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < 6.5 || fabs(muPtrGen->eta()) > 1.5 || (muBs->charge() * muPtrGen->charge() < 0)) continue; 
+      if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < minMuPt_ || fabs(muPtrGen->eta()) > maxMuEta_ || (muBs->charge() * muPtrGen->charge() < 0)) continue; 
+      muSel1CounterGen++;
 
       //now check the dR of the reco muon wrt to the gen Muon 
       float drMuonMatch = reco::deltaR(*muBs,*muPtrGen);
 
       //TODO:define as variable
       if(drMuonMatch > drMatchGen_) continue;
+      muSel2CounterGen++;
 
       //std::cout << "found a gen matched muon" << std::endl;
-      ++nMuGen;
 
       ////////////////////////////////////////////////
       // find gen matched k1                        //
       ////////////////////////////////////////////////
-      int nK1Gen = 0;
 
       for(size_t k1IdxGen = 0; k1IdxGen < prunedGen->size(); ++k1IdxGen){
            
+        nTracksGen++;
         //define a pointer to the gen kaon    
         edm::Ptr<reco::GenParticle> k1PtrGen(prunedGen, k1IdxGen);
 
         //select only useful kaons -> check this selection!
         if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Bs->charge() * k1PtrGen->charge() < 0)) continue; 
-
+        k1Sel1CounterGen++;
         //now check the dR of the reco muon wrt to the gen Muon 
         float drK1Match = reco::deltaR(*k1Bs,*k1PtrGen);
 
         //TODO:define as variable
         if(drK1Match > drMatchGen_) continue;
-
+        k1Sel2CounterGen++;
         //std::cout << "found a gen matched k1!" << std::endl;
-        ++nK1Gen;
 
         ////////////////////////////////////////////////
         // find gen matched k2                        //
         ////////////////////////////////////////////////
-        int nK2Gen = 0;
      
         for(size_t k2IdxGen = 0; k2IdxGen < prunedGen->size(); ++k2IdxGen){
      
@@ -263,21 +307,21 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
      
              //select only useful kaons -> check this selection!
              if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Bs->charge() * k2PtrGen->charge() < 0 )) continue; 
-     
+             k2Sel1CounterGen++;
+
              //now check the dR of the reco muon wrt to the gen Muon 
              float drK2Match = reco::deltaR(*k2Bs,*k2PtrGen);
      
              //TODO:define as variable
              if(drK2Match > drMatchGen_ ) continue;
+             k2Sel2CounterGen++;
 
              //std::cout << "found a gen matched k2!" << std::endl;
-             ++nK2Gen;
 
              ////////////////////////////////////////////////
              // find gen matched pion                      //
              ////////////////////////////////////////////////
 
-             int nPiGen = 0; 
              for(size_t piIdxGen = 0; piIdxGen < prunedGen->size(); ++piIdxGen){
       
                //avoid picking the same gen particle as for k1 or k2
@@ -288,6 +332,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
      
                //select only useful kaons -> check this selection!
                if((fabs(piPtrGen->pdgId()) != 211) || !hadSelectionGen_(*piPtrGen) || (piBs->charge() * piPtrGen->charge() < 0 )) continue; 
+               piSel1CounterGen++;
      
                //now check the dR of the reco muon wrt to the gen Muon 
                float drPiMatch = reco::deltaR(*piBs,*piPtrGen);
@@ -295,12 +340,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //TODO:define as variable
                if(drPiMatch > drMatchGen_) continue;
                //std::cout << "found a gen matched pion!" << std::endl;
-               ++nPiGen;
+               piSel2CounterGen++;
 
                //////////////////////////////////////////////////
                // Find resonances at gen level                 //
                //////////////////////////////////////////////////
-      
+               nKKPiMuGen++;     
+ 
                //Should we pick the best gen match (in terms of dR) only? -> No, like this is better 
 
                const reco::Candidate* k1Reco = k1PtrGen.get(); 
@@ -312,11 +358,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                auto phiFromK1 = getAncestor(k1Reco,333);
                auto phiFromK2 = getAncestor(k2Reco,333);
                if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
-                    
+               nFoundPhi++;               
+     
                // searching for ds resonance 
                auto dsFromPhi = getAncestor(phiFromK1,431);
                auto dsFromPi  = getAncestor(piReco,431);
                if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
+               nFoundDs++;               
 
                // we dont know what b mother we have
                int bMotherId = 0;
@@ -347,13 +395,18 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                auto bsFromMu = getAncestor(muReco,   bMotherId);
 
                if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
- 
+   
+               nFoundB++;
+               
+               if (bsFromMu->mass() > maxBsMass_) continue;
+               nBMassCut++;
+
                //remove oscillations
                auto bsFromMuWOOsc = removeOscillations(bsFromMu);
 
                nGenMatches++;
                genMatchSuccess = 1;
-
+               nGenMatched++;
                gen.addUserInt("gen_match_success",genMatchSuccess);
                
                //if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
@@ -400,6 +453,29 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float pv_y_gen = bsFromMuWOOsc->vy();
                float pv_z_gen = bsFromMuWOOsc->vz();
 
+               // Do a cross check on gen: Is there another primary vtx in the primary vertex collection which
+               // is closer to the gen truth?
+
+               float dummy = 10000;
+               int goldenIdxGen = -1;
+               reco::Vertex scndPvCandGen;
+               for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
+                 edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
+                 
+                 float minDz = std::sqrt(std::pow(vtxPtr->position().x() - pv_x_gen, 2) + std::pow(vtxPtr->position().y() - pv_y_gen, 2) + std::pow(vtxPtr->position().z() - pv_z_gen, 2));
+                 if(minDz < dummy){
+                   dummy = minDz;
+                   goldenIdxGen = vtxIdx;
+                 }
+               }
+
+               scndPvCandGen = primaryVtx->at(goldenIdxGen);
+               float scnd_pv_x_gen = scndPvCandGen.x();//This is the bs production vertex!
+               float scnd_pv_y_gen = scndPvCandGen.y();
+               float scnd_pv_z_gen = scndPvCandGen.z();
+ 
+               //std::cout << dsFromPi->vtx() << std::endl;
+
                float sv_x_gen = dsFromPi->vx(); //This is the ds production vertex!
                float sv_y_gen = dsFromPi->vy();
                float sv_z_gen = dsFromPi->vz();
@@ -412,6 +488,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float fv_y_gen = k1PtrGen->vy();
                float fv_z_gen = k1PtrGen->vz();
 
+               //std::cout << "on gen:" << fv_x_gen << std::endl; //This is the k1 production vertex!
                //save the gen info by adding gen candidates of final states
 
                //gen.addUserCand("mu_gen",muPtrGen);
@@ -492,9 +569,15 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("bs_gen_pt"     ,bsFromMu->pt());
                gen.addUserFloat("bs_gen_eta"    ,bsFromMu->eta());
                gen.addUserFloat("bs_gen_phi"    ,bsFromMu->phi());
+
                gen.addUserFloat("pv_x_gen"      ,pv_x_gen); //This is the bs production vertex!
                gen.addUserFloat("pv_y_gen"      ,pv_y_gen);
                gen.addUserFloat("pv_z_gen"      ,pv_z_gen);
+               gen.addUserFloat("scnd_pv_x_gen"      ,scnd_pv_x_gen); //This is the bs production vertex!
+               gen.addUserFloat("scnd_pv_y_gen"      ,scnd_pv_y_gen);
+               gen.addUserFloat("scnd_pv_z_gen"      ,scnd_pv_z_gen);
+               gen.addUserInt("scnd_pv_idx_gen"      ,goldenIdxGen);
+
                gen.addUserFloat("bs_gen_charge" ,bsFromMu->charge());
                gen.addUserInt(  "bs_gen_pdgid"  ,bsFromMu->pdgId());
                gen.addUserFloat("b_boost_gen"   ,genBsTlv.BoostVector().Mag());
@@ -509,14 +592,14 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //define vertex variables
  
-               float lxyBsGen   = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) ); 
-               float lxyzBsGen  = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) + std::pow((pv_z_gen - sv_z_gen),2) ); 
+               //float lxyBsGen   = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) ); 
+               //float lxyzBsGen  = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) + std::pow((pv_z_gen - sv_z_gen),2) ); 
        
-               float lxyDsGen   = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) ); 
-               float lxyzDsGen  = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) + std::pow((sv_z_gen - tv_z_gen),2) ); 
+               //float lxyDsGen   = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) ); 
+               //float lxyzDsGen  = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) + std::pow((sv_z_gen - tv_z_gen),2) ); 
        
-               float lxyPhiGen  = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) ); 
-               float lxyzPhiGen = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) + std::pow((tv_z_gen - fv_z_gen),2) ); 
+               //float lxyPhiGen  = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) ); 
+               //float lxyzPhiGen = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) + std::pow((tv_z_gen - fv_z_gen),2) ); 
 
                /*
                //gen.addUserFloat("lxy_bs_gen"   ,lxyBsGen);
@@ -563,7 +646,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //float dzK2ErrGen  = k2PtrGen->bestTrack()->dzError();  
                //float dzK2SigGen  = dzK2Gen/dzK2ErrGen ; 
        
-               std::cout << "10" << std::endl; 
+               //std::cout << "10" << std::endl; 
                gen.addUserFloat("dxy_mu_gen",     dxyMuGen);
                gen.addUserFloat("dz_mu_gen",      dzMuGen);
                //gen.addUserFloat("dxy_mu_err_gen", dxyMuErrGen);
@@ -592,24 +675,25 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //gen.addUserFloat("dxy_k2_sig_gen", dxyK2SigGen);
                //gen.addUserFloat("dz_k2_sig_gen",  dzK2SigGen);
                */
-               // muon isolation
-               float mu_iso_gen = 0;
- 
-               for(size_t trkIdxGen = 0; trkIdxGen < prunedGen->size(); ++trkIdxGen){
-   
-                 //define a pointer to the gen trk    
-                 edm::Ptr<reco::GenParticle> trkPtrGen(prunedGen, trkIdxGen);
-               
-                 // only consider for isolation when dR < isoCone_ and track is not final state (not k k pi mu)
-                 if ( (reco::deltaR(*trkPtrGen,*muPtrGen) > isoCone_ ) || (trkIdxGen == muIdxGen) || (trkIdxGen == k1IdxGen) || (trkIdxGen == k2IdxGen) || (trkIdxGen == piIdxGen) ) continue;
 
-                 mu_iso_gen += trkPtrGen->pt();
+               // muon isolation (simply looping and summing track pt's is too simple!)
+               /* there is no isolation on gen!
+               auto muIso03Gen   = muPtrGen->pfIsolationR03(); //dR = 0.3
+               auto muIso04Gen   = muPtrGen->pfIsolationR04(); //dR = 0.4
 
-               }
-     
-               //divide by pt to get relative isolation
-               gen.addUserFloat("mu_rel_iso_gen", mu_iso_gen / muPtrGen->pt());
- 
+               float iso03Gen    = muIso03Gen.sumChargedHadronPt() + max(muIso03Gen.sumNeutralHadronEt() + muIso03Gen.sumPhotonEt() - 0.5 * muIso03Gen.sumPUPt(), 0.0)           ,
+               float iso04Gen    = muIso04Gen.sumChargedHadronPt() + max(muIso04Gen.sumNeutralHadronEt() + muIso04Gen.sumPhotonEt() - 0.5 * muIso04Gen.sumPUPt(), 0.0)           ,
+               float relIso03Gen = iso03Gen / muPtrGen->pt();
+               float relIso04Gen = iso04Gen / muPtrGen->pt();
+
+               gen.addUserFloat("mu_iso_03_gen", iso03Gen);
+               gen.addUserFloat("mu_iso_04_gen", iso04Gen);
+               gen.addUserFloat("mu_rel_iso_03_gen", relIso03Gen);
+               gen.addUserFloat("mu_rel_iso_04_gen", relIso04Gen);
+               */
+
+
+               ///////////////////////////////////////////////////////// 
                // now find the channel ID, we have the following scheme:
               
                // SIGNAL:
@@ -730,8 +814,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if (!isSignal && !isDMeson && !isDMesonExc)  sigId += 2; // if this is true, isDMesonEx should be false!
                if (isSignal && isTauSignal)                 sigId += 1; // only for signals
 
-               //std::cout << bMotherId << std::endl; //for debugging
-               //std::cout << sigId     << std::endl  //for debugging;
+               //std::cout << "mom:" << bMotherId << std::endl; //for debugging
+               //std::cout << "ID is:" << sigId     << std::endl;  //for debugging;
 
                //define helicity angles
 
@@ -913,9 +997,16 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("bs_gen_pt"      ,std::nan(""));
           gen.addUserFloat("bs_gen_eta"     ,std::nan(""));
           gen.addUserFloat("bs_gen_phi"     ,std::nan(""));
+
           gen.addUserFloat("pv_x_gen"       ,std::nan(""));
           gen.addUserFloat("pv_y_gen"       ,std::nan(""));
           gen.addUserFloat("pv_z_gen"       ,std::nan(""));
+          gen.addUserFloat("scnd_pv_x_gen"  ,std::nan("")); //This is the bs production vertex!
+          gen.addUserFloat("scnd_pv_y_gen"  ,std::nan(""));
+          gen.addUserFloat("scnd_pv_z_gen"  ,std::nan(""));
+          gen.addUserInt("scnd_pv_idx_gen"  ,-9999);
+
+
           gen.addUserFloat("bs_gen_charge"  ,std::nan(""));
           gen.addUserInt(  "bs_gen_pdgid"   ,-9999);
           gen.addUserFloat("b_boost_gen" ,std::nan(""));
@@ -955,8 +1046,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
           gen.addUserFloat("cosPlaneBsGen"  ,std::nan(""));
           gen.addUserFloat("angPlaneDsGen"  ,std::nan(""));
           gen.addUserFloat("cosPlaneDsGen"  ,std::nan(""));
-      
-          gen.addUserFloat("mu_rel_iso_gen"  ,std::nan(""));
+
+          //gen.addUserFloat("mu_iso_03_gen"     ,std::nan(""));
+          //gen.addUserFloat("mu_iso_04_gen"     ,std::nan(""));
+          //gen.addUserFloat("mu_rel_iso_03_gen" ,std::nan(""));
+          //gen.addUserFloat("mu_rel_iso_04_gen" ,std::nan(""));
+
 
         }
 
@@ -970,5 +1065,30 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   } //closing loop over Bs
   iEvent.put(std::move(ret_value), "gen");
 }//closing event loop
+
+
+void genMatching::endJob(){
+// Printouts:
+std::cout << "\n--------- GEN MATCHING MODULE ----------\n" << std::endl;
+std::cout << "#Events in file        : " << nEventsGen  << std::endl;
+std::cout << "#Gen Muons in file     : " << nMuonsGen   << std::endl;
+std::cout << "#Gen Tracks in file    : " << nTracksGen  << std::endl;
+std::cout << "#Reco candidates found : " << nRecoCandidates << std::endl;
+std::cout << "#Gen matched candidates: " << nGenMatched << std::endl;
+
+std::cout << "#Gen Kaon 1 which passed the hadronic selection  : " << k1Sel1CounterGen << std::endl;
+std::cout << "#Gen Kaon 1 which passed the dR matching         : " << k1Sel2CounterGen << std::endl;
+std::cout << "#Gen Kaon 2 which passed the hadronic selection  : " << k2Sel1CounterGen << std::endl;
+std::cout << "#Gen Kaon 2 which passed the dR matching         : " << k2Sel2CounterGen << std::endl;
+std::cout << "#Gen Pions  which passed the hadronic selection  : " << piSel1CounterGen << std::endl;
+std::cout << "#Gen Pions  which passed the dR matching         : " << piSel2CounterGen << std::endl;
+
+std::cout << "\n#KKPiMu Gen combinations:" << nKKPiMuGen << std::endl;
+std::cout << "#KKPiMu Gen combinations for which we found a Phi        :" << nFoundPhi  << std::endl;
+std::cout << "#KKPiMu Gen combinations for which we found a Ds         :" << nFoundDs   << std::endl;
+std::cout << "#KKPiMu Gen combinations for which we found a B-mom      :" << nFoundB    << std::endl;
+std::cout << "#KKPiMu Gen combinations for which the B-mom < B mass cut:" << nBMassCut << std::endl;
+}
+
 
 DEFINE_FWK_MODULE(genMatching);

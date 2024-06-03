@@ -80,6 +80,11 @@ private:
 
     //the maximal dR you allow between pat muon and trigger muon candidate
     const string trgFilterLabel_;
+    const string hlt_7_4_p0_;
+    const string hlt_7_4_p1_;
+    const string hlt_7_4_p2_;
+    const string hlt_7_4_p3_;
+    const string hlt_7_4_p4_;
     const double maxdR_; 
     //for filter wrt trigger ????
     //const double dzTrg_cleaning_; 
@@ -113,6 +118,11 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
   //parameters
 
   trgFilterLabel_(iConfig.getParameter<string>("trgFilterLabel")),
+  hlt_7_4_p0_(iConfig.getParameter<string>("hlt_7_4_p0")),
+  hlt_7_4_p1_(iConfig.getParameter<string>("hlt_7_4_p1")),
+  hlt_7_4_p2_(iConfig.getParameter<string>("hlt_7_4_p2")),
+  hlt_7_4_p3_(iConfig.getParameter<string>("hlt_7_4_p3")),
+  hlt_7_4_p4_(iConfig.getParameter<string>("hlt_7_4_p4")),
   maxdR_(iConfig.getParameter<double>("maxdR_matching"))
   //dzTrg_cleaning_(iConfig.getParameter<double>("dzForCleaning_wrtTrgMuon")),
   //ptMin_(iConfig.getParameter<double>("ptMin")),
@@ -168,12 +178,14 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   std::unique_ptr<TransientTrackCollection> ttracksTrgMuons( new TransientTrackCollection);
  
   // Getting the indices of the HLT paths
-  unsigned int index_7_4_p0      = names.triggerIndex("HLT_Mu7_IP4_part0_v2"); 
-  unsigned int index_7_4_p1      = names.triggerIndex("HLT_Mu7_IP4_part1_v2"); 
-  unsigned int index_7_4_p2      = names.triggerIndex("HLT_Mu7_IP4_part2_v2"); 
-  unsigned int index_7_4_p3      = names.triggerIndex("HLT_Mu7_IP4_part3_v2"); 
-  unsigned int index_7_4_p4      = names.triggerIndex("HLT_Mu7_IP4_part4_v2"); 
-  //unsigned int index_8_3      = names.triggerIndex("HLT_Mu8_IP3");
+  unsigned int index_7_4_p0      = names.triggerIndex(hlt_7_4_p0_); 
+  unsigned int index_7_4_p1      = names.triggerIndex(hlt_7_4_p1_); 
+  unsigned int index_7_4_p2      = names.triggerIndex(hlt_7_4_p2_); 
+  unsigned int index_7_4_p3      = names.triggerIndex(hlt_7_4_p3_); 
+  unsigned int index_7_4_p4      = names.triggerIndex(hlt_7_4_p4_); 
+
+  // full lumi
+  //unsigned int index_8_3      = names.triggerIndex("HLT_Mu8_IP3"); 
   //unsigned int index_8_5      = names.triggerIndex("HLT_Mu8_IP5");
   //unsigned int index_8_6      = names.triggerIndex("HLT_Mu8_IP6");
   //unsigned int index_8p5_3p5  = names.triggerIndex("HLT_Mu8p5_IP3p5");
@@ -195,15 +207,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   bool pass_7_4_p3_path      = false;
   bool pass_7_4_p4_path      = false;
 
-  //bool pass_8_3_path      = false;
-  //bool pass_8_5_path      = false;
-  //bool pass_8_6_path      = false;
-  //bool pass_8p5_3p5_path  = false;
-  //bool pass_9_4_path      = false;
-  //bool pass_9_5_path      = false;
-  //bool pass_10p5_3p5_path = false;
-  //bool pass_12_6_path     = false;
-
   // check first if the index is valid, i.e. if it is not out of range (maximum is givrn by triggerBits->size())
   // and if so, check if the trigger has fired with accept() 
 
@@ -212,14 +215,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   pass_7_4_p2_path      = ((index_7_4_p2 < triggerBits->size())      && (triggerBits->accept(index_7_4_p2)));
   pass_7_4_p3_path      = ((index_7_4_p3 < triggerBits->size())      && (triggerBits->accept(index_7_4_p3)));
   pass_7_4_p4_path      = ((index_7_4_p4 < triggerBits->size())      && (triggerBits->accept(index_7_4_p4)));
-  //pass_8_3_path      = ((index_8_3 < triggerBits->size())      && (triggerBits->accept(index_8_3)));
-  //pass_8_5_path      = ((index_8_5 < triggerBits->size())      && (triggerBits->accept(index_8_5)));
-  //pass_8_6_path      = ((index_8_6 < triggerBits->size())      && (triggerBits->accept(index_8_6)));
-  //pass_8p5_3p5_path  = ((index_8p5_3p5 < triggerBits->size())  && (triggerBits->accept(index_8p5_3p5)));
-  //pass_9_4_path      = ((index_9_4 < triggerBits->size())      && (triggerBits->accept(index_9_4)));
-  //pass_9_5_path      = ((index_9_5 < triggerBits->size())      && (triggerBits->accept(index_9_5)));
-  //pass_10p5_3p5_path = ((index_10p5_3p5 < triggerBits->size()) && (triggerBits->accept(index_10p5_3p5)));
-  //pass_12_6_path     = ((index_12_6 < triggerBits->size())     && (triggerBits->accept(index_12_6)));
 
 
   //define vector out of bools
@@ -241,19 +236,19 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   // now loop over all pat::muons
   for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
-    if (iEvent.id().event() != 121643971) continue;  
+    //if (iEvent.id().event() != 128903846) continue;  
     //if (iEvent.id().luminosityBlock() != 103) continue;  
     //std::cout << iEvent.id().event() << std::endl;
     //access the muon at the muIdx-position
     const pat::Muon& muon = (*muons)[muIdx];    
 
-    std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
+    //std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
     // muon cuts
     if (!muSelection_(muon)) continue; 
 
     //check if the pat muon is matched to some trigger object (by using the function triggerObjectMatchByPath()
     //bool isMatched = !(muon.triggerObjectMatchByPath("HLT_Mu7_IP4")==nullptr);
-    std::cout<< "muon passed the muon selection!" << std::endl;
+    //std::cout<< "muon passed the muon selection!" << std::endl;
 
     // initialize start values
     float drMuonTrgObj = -1.;
@@ -310,7 +305,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             //the following line does a copy of muon with the name trgMatchedMuon (same properties different adress)
 	    pat::Muon trgMatchedMuon(muon);
 
-            std::cout<< "we found a trigger match!" << std::endl;
+            //std::cout<< "we found a trigger match!" << std::endl;
             //save also the tracks
             const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField);  
             if (!ttrackTrgMuon.isValid()) continue;
@@ -330,7 +325,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             counter++;
 
       }
-      else {std::cout << "did not find a trigger match" << std::endl;}
+      //else {std::cout << "did not find a trigger match" << std::endl;}
   } //close the loop over pat muons
   
   //std::cout <<  "wehave:" << counter << std::endl;   

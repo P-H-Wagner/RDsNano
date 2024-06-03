@@ -16,6 +16,11 @@ muSelection    = cms.string(' &&  '.join([
 'eta < 1.5',
 'isPFMuon',
 'isGlobalMuon'])), # pre-selection of hadrons (k1,k2 and pion)
+hlt_7_4_p0   = cms.string("HLT_Mu7_IP4_part0_v2"), # trigger menue
+hlt_7_4_p1   = cms.string("HLT_Mu7_IP4_part1_v2"), # "
+hlt_7_4_p2   = cms.string("HLT_Mu7_IP4_part2_v2"), # "
+hlt_7_4_p3   = cms.string("HLT_Mu7_IP4_part3_v2"), # "
+hlt_7_4_p4   = cms.string("HLT_Mu7_IP4_part4_v2"), # "
 maxdR_matching = cms.double(0.05), #muon trg object matching                             
 )
 

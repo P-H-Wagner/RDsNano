@@ -90,7 +90,6 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // counters for filters to know when we lose how many particles
 
-int nEvents = 0;        // counts the nr of events in total
 int nMuons  = 0;        // counts the nr of muons
 int nTracks = 0;        // counts the nr of tracks in total
 int nPv     = 0;        // counts the nr of tracks in total
@@ -315,7 +314,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   }
 
 
-  nEvents++;
 
   //////////////////////////////////////////////////////
   // Match the trigger muon with a muon from the      //
@@ -396,7 +394,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       // Loop over k2 and select the good tracks      //
       //////////////////////////////////////////////////
 
-      for(size_t k2Idx = 0; k2Idx < pcand->size()+ tracksLost->size() ; ++k2Idx) {
+      for(size_t k2Idx = k1Idx + 1; k2Idx < pcand->size()+ tracksLost->size() ; ++k2Idx) {
 
       //make sure k2 is not k1
       if (k2Idx == k1Idx) continue;
@@ -1453,25 +1451,24 @@ void BsToDsPhiKKPiMuBuilder::endJob(){
 // Printouts:
 
 std::cout << "\n--------- Bs BUIDLER MODULE ----------\n" << std::endl;
-std::cout << "#Events in file: " << nEvents << std::endl;
-std::cout << "#Muons  in file: " << nMuons  << std::endl;
-std::cout << "#Tracks in file: " << nTracks << std::endl;
-std::cout << "#Pv     in file: " << nPv     << std::endl;
-std::cout << "\n#Muons for which we found primary vertex   : " << muSelCounter  << std::endl;
-std::cout << "#Kaon 1 which passed the hadronic selection  : " << k1Sel1Counter << std::endl;
-std::cout << "#Kaon 1 which passed the angular  selection  : " << k1Sel2Counter << std::endl;
-std::cout << "#Kaon 2 which passed the hadronic selection  : " << k2Sel1Counter << std::endl;
-std::cout << "#Kaon 2 which passed the angular  selection  : " << k2Sel2Counter << std::endl;
-std::cout << "#Pions  which passed the hadronic selection  : " << piSel1Counter << std::endl;
-std::cout << "#Pions  which passed the angular  selection  : " << piSel2Counter << std::endl;
+std::cout << "#Muons  in file                                    : " << nMuons  << std::endl;
+std::cout << "#Tracks in file                                    : " << nTracks << std::endl;
+std::cout << "#Pv     in file                                    : " << nPv     << std::endl;
+std::cout << "\n#Muons for which we found primary vertex         : " << muSelCounter  << std::endl;
+std::cout << "#Kaon 1 which passed the hadronic selection        : " << k1Sel1Counter << std::endl;
+std::cout << "#Kaon 1 which passed the angular  selection        : " << k1Sel2Counter << std::endl;
+std::cout << "#Kaon 2 which passed the hadronic selection        : " << k2Sel1Counter << std::endl;
+std::cout << "#Kaon 2 which passed the angular  selection        : " << k2Sel2Counter << std::endl;
+std::cout << "#Pions  which passed the hadronic selection        : " << piSel1Counter << std::endl;
+std::cout << "#Pions  which passed the angular  selection        : " << piSel2Counter << std::endl;
 
 std::cout << "\n#KKPiMu combinations:" << nKKPiMu << std::endl;
-std::cout << "#KKPiMu combinations which passed the Phi Mass cut:" << nPhiMassCut << std::endl;
-std::cout << "#KKPiMu combinations which passed the Ds Mass cut :" << nDsMassCut << std::endl;
-std::cout << "#KKPiMu combinations which passed the Bs Mass cut :" << nBsMassCut << std::endl;
-std::cout << "#KKPiMu combinations which passed the Phi fit     :" << nPhiFit << std::endl;
-std::cout << "#KKPiMu combinations which passed the Ds  fit     :" << nDsFit << std::endl;
-std::cout << "#KKPiMu combinations which passed the Bs  fit     :" << nBsFit << std::endl;
+std::cout << "#KKPiMu combinations which passed the Phi Mass cut : " << nPhiMassCut << std::endl;
+std::cout << "#KKPiMu combinations which passed the Ds Mass cut  : " << nDsMassCut << std::endl;
+std::cout << "#KKPiMu combinations which passed the Bs Mass cut  : " << nBsMassCut << std::endl;
+std::cout << "#KKPiMu combinations which passed the Phi fit      : " << nPhiFit << std::endl;
+std::cout << "#KKPiMu combinations which passed the Ds  fit      : " << nDsFit << std::endl;
+std::cout << "#KKPiMu combinations which passed the Bs  fit      : " << nBsFit << std::endl;
 }
 
 

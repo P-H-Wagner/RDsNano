@@ -298,7 +298,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         // find gen matched k2                        //
         ////////////////////////////////////////////////
      
-        for(size_t k2IdxGen = 0; k2IdxGen < prunedGen->size(); ++k2IdxGen){
+        for(size_t k2IdxGen = k1IdxGen + 1; k2IdxGen < prunedGen->size(); ++k2IdxGen){
      
              //avoid picking the same gen particle as for k1
              if(k2IdxGen == k1IdxGen) continue; 

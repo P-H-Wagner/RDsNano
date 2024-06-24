@@ -241,6 +241,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
     auto k1Bs = bsPtr->userCand("k1");
     auto k2Bs = bsPtr->userCand("k2");
     auto piBs = bsPtr->userCand("pi");
+ 
+
+    // reco cand
+    //std::cout << "mu pt: " << muBs->pt() << std::endl;
+    //std::cout << "k1 pt: " << k1Bs->pt() << std::endl;
+
 
     int sigId = -9999;
     int bId = 0;
@@ -271,6 +277,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
       if(drMuonMatch > drMatchGen_) continue;
       muSel2CounterGen++;
 
+      //std::cout << muPtrGen->pt() << std::endl;
       //std::cout << "found a gen matched muon" << std::endl;
 
       ////////////////////////////////////////////////
@@ -286,6 +293,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         //select only useful kaons -> check this selection!
         if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Bs->charge() * k1PtrGen->charge() < 0)) continue; 
         k1Sel1CounterGen++;
+
+        //std::cout << k1PtrGen->pt() << std::endl;
+        //std::cout << "passed selection for k1!" << std::endl;
         //now check the dR of the reco muon wrt to the gen Muon 
         float drK1Match = reco::deltaR(*k1Bs,*k1PtrGen);
 
@@ -298,7 +308,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         // find gen matched k2                        //
         ////////////////////////////////////////////////
      
-        for(size_t k2IdxGen = k1IdxGen + 1; k2IdxGen < prunedGen->size(); ++k2IdxGen){
+        for(size_t k2IdxGen = 0; k2IdxGen < prunedGen->size(); ++k2IdxGen){
      
              //avoid picking the same gen particle as for k1
              if(k2IdxGen == k1IdxGen) continue; 
@@ -308,8 +318,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
      
              //select only useful kaons -> check this selection!
              if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Bs->charge() * k2PtrGen->charge() < 0 )) continue; 
+             //std::cout << "reco  pt " << k2Bs->pt() << "reco eta " << k2Bs->eta() << std::endl;
+             //std::cout << "gen pt " << k2PtrGen->pt() << "gen eta " << k2PtrGen->eta() << std::endl;
              k2Sel1CounterGen++;
-
+             //std::cout << "passed selection for k2" << std::endl;
              //now check the dR of the reco muon wrt to the gen Muon 
              float drK2Match = reco::deltaR(*k2Bs,*k2PtrGen);
      

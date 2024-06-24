@@ -357,6 +357,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     pv = primaryVtx->at(goldenIdx);
     }
 
+    //if (true ) std::cout << "found mu: " << muPtr->pt() << std::endl;
     //////////////////////////////////////////////////
     // Loop over k1 and select the good tracks      //
     //////////////////////////////////////////////////
@@ -370,7 +371,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       if (k1Idx < pcand->size()) k1Ptr = edm::Ptr<pat::PackedCandidate>(pcand, k1Idx); //normal tracks
       else k1Ptr = edm::Ptr<pat::PackedCandidate>(tracksLost, k1Idx - pcand->size());  //lost tracks
 
-      //if (k1Ptr->pt() > 2.05273 & k1Ptr->pt() < 2.05274) std::cout << "possible k1: " << k1Ptr->pt() << std::endl;
+
+      //if (k1Ptr->pt() > 2.05273 & k1Ptr->pt() < 2.05274) //std::cout << "possible k1: " << k1Ptr->pt() << std::endl;
 
       if (!hadSelection_(*k1Ptr)) continue; 
       k1Sel1Counter++;
@@ -388,7 +390,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       (abs(k1Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
       if (!k1Sel) continue;
-      //std::cout << "found k1 (passed 2nd selection): " << k1Ptr->pt() << std::endl;
+      //if (true) std::cout << " found k1: " << k1Ptr->pt() << std::endl;
       k1Sel2Counter++;
       //////////////////////////////////////////////////
       // Loop over k2 and select the good tracks      //
@@ -414,6 +416,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
       (abs(k2Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
+      //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
       //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
@@ -421,7 +424,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
       if (!k2Sel) continue;
-      //std::cout << "found k2: " << k2Ptr->pt() << std::endl;
+      //if (true) std::cout << " --- found k2: " << k2Ptr->pt() << std::endl;
       k2Sel2Counter++;
 
       //////////////////////////////////////////////////
@@ -448,6 +451,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         (abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
         (abs(piPtr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
 
+        //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
         //pi and mu must have opposite charge -> only for signal tests, later we keep everything
         int piMuCharge = piPtr->charge() * muPtr->charge();
         
@@ -456,7 +460,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!piSel) continue;
         piSel2Counter++;
 
-        //std::cout << "found pi: " << piPtr->pt() << std::endl;
+        //std::cout << " ----- found pi: " << piPtr->pt() << std::endl;
         //////////////////////////////////////////////////
         // Build Phi resonance                          //
         //////////////////////////////////////////////////
@@ -473,18 +477,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
         kk.setP4(k1P4 + k2P4);
       
-        //std::cout << "found kkpi candidate with pt: mu k1 k2 pi and mass (KK) "  << std::endl; 
-        //std::cout << muPtr->pt() << std::endl;
-        //std::cout << k1Ptr->pt() << std::endl;
-        //std::cout << k2Ptr->pt() << std::endl;
-        //std::cout << piPtr->pt() << std::endl;
-        //std::cout << kk.mass() << std::endl;
+        std::cout << "found kkpi candidate with pt: mu k1 k2 pi and mass (KK) "  << std::endl; 
+        std::cout << muPtr->pt() << std::endl;
+        std::cout << k1Ptr->pt() << std::endl;
+        std::cout << k2Ptr->pt() << std::endl;
+        std::cout << piPtr->pt() << std::endl;
+        std::cout << kk.mass() << std::endl;
  
 
-        //std::cout << "we have a kkpi candidate" << std::endl; 
         //only continue when they build a phi resonance, allow 15MeV:
         if (fabs(kk.mass() - phiMass_) > phiMassAllowance_) continue;     
-        //std::cout << "we passed the phi resonance" << std::endl; 
+        std::cout << "we passed the phi resonance" << std::endl; 
         kk.setCharge(k1Ptr->charge() + k2Ptr->charge());
         nPhiMassCut++;
 
@@ -514,7 +517,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if(dsMu.mass() > maxBsMass_) continue;
         nBsMassCut++;
 
-        //std::cout << "we passed the bs cut" << std::endl; 
+        std::cout << "we passed the bs cut" << std::endl; 
         //std::cout << "and have ds mass"<< dsMu.mass() << std::endl; 
         //build bs with collinear approximation
         pat::CompositeCandidate bs;
@@ -593,16 +596,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // PHI VERTEX FIT
 
         // baby phi fit
-        //KinVtxFitter easyFitter(
-        //{ttK1, ttK2},
-        //{K_MASS, K_MASS},
-        //{0.00005,0.00005}
-        //);
-        //if(!easyFitter.success()) continue;
-        //std::cout << "phi easy fit chi2: " << easyFitter.chi2() << std::endl;
-        //std::cout << "phi easy fit ndof: " << easyFitter.dof() << std::endl;
-        //std::cout << "phi easy fit prob: " << easyFitter.prob() << std::endl;
-        //std::cout << "phi easy fit vx " << easyFitter.fitted_vtx().x() << std::endl;
+        KinVtxFitter easyFitter(
+        {ttK1, ttK2, getTransientTrack(piTrackCorr)},
+        {kMass, kMass, piMass},
+        {kMassSigma,kMassSigma,piMassSigma}
+        );
+        if(!easyFitter.success()) continue;
+        std::cout << "ds easy fit chi2: " << easyFitter.chi2() << std::endl;
+        std::cout << "ds easy fit ndof: " << easyFitter.dof() << std::endl;
+        std::cout << "ds easy fit prob: " << easyFitter.prob() << std::endl;
+        std::cout << "ds easy fit vx " << easyFitter.fitted_vtx().x() << std::endl;
+        
 
 
         RefCountedKinematicTree phiTree  = vertexFit(phiToFit, phiMass, constrainPhiMass_);
@@ -619,17 +623,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!phiVtx->vertexIsValid() || !phiParticle->currentState().isValid() ) continue; //check if fit result is valid
 
         float phiVtxChi2    = phiVtx->chiSquared();
+        std::cout << "phi chi2:" << phiVtxChi2 << std::endl;
         if (phiVtxChi2 < 0) continue;
 
         float phiVtxNDof    = phiVtx->degreesOfFreedom();
         float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
         float phiVtxProb    = ChiSquaredProbability(phiVtxChi2, phiVtxNDof); 
-        //std::cout << "phi chi2:" << phiVtxChi2 << std::endl;
-        //std::cout << "phi ndof:" << phiVtxNDof << std::endl;
-        //std::cout << "phi prob:" << phiVtxProb << std::endl;
+        std::cout << "phi ndof:" << phiVtxNDof << std::endl;
+        std::cout << "phi prob:" << phiVtxProb << std::endl;
         if (phiVtxProb < 0.01) continue;
-        //std::cout << "we passed the phi vtx fit prob" << std::endl; 
-        //std::cout << "phi prob:" << ChiSquaredProbability(phiVtxChi2,phiVtxNDof) << std::endl;
+        std::cout << "we passed the phi vtx fit prob" << std::endl; 
+        std::cout << "phi prob:" << ChiSquaredProbability(phiVtxChi2,phiVtxNDof) << std::endl;
         
         nPhiFit++;
 
@@ -662,22 +666,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!dsVtx->vertexIsValid()) continue; //check if fit result is valid
 
         float dsVtxChi2    = dsVtx->chiSquared();
+        std::cout << "chi2 of ds fit is:" << dsVtxChi2 << std::endl;
         if (dsVtxChi2 < 0) continue;
         float dsVtxNDof    = dsVtx->degreesOfFreedom();
         float dsVtxRedChi2 = dsVtxChi2 / dsVtxNDof; 
         float dsVtxProb    = ChiSquaredProbability(dsVtxChi2, dsVtxNDof); 
-        //std::cout << "red chi2 of ds fit is:" << dsVtxRedChi2 << std::endl;
-        //std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
-        //std::cout << "ds ndof:" << dsVtxNDof << std::endl;
-        //std::cout << "ds prob:" << dsVtxProb << std::endl;
+        std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
+        std::cout << "ds ndof:" << dsVtxNDof << std::endl;
+        std::cout << "ds prob:" << dsVtxProb << std::endl;
 
         if (dsVtxProb < 0.01) continue;
-        //std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
-        //std::cout << "ds prob:" << ChiSquaredProbability(dsVtxChi2,dsVtxNDof) << std::endl;
+        std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
+        std::cout << "ds prob:" << ChiSquaredProbability(dsVtxChi2,dsVtxNDof) << std::endl;
 
         nDsFit++;
 
-        //std::cout << "we passed the ds vtx fit prob" << std::endl; 
+        std::cout << "we passed the ds vtx fit prob" << std::endl; 
         dsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle dsDau1 = dsTree->currentParticle();
         dsTree->movePointerToTheNextChild();
@@ -697,7 +701,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         RefCountedKinematicTree bsTree = bsFitter.fit(bsToFit); // no constraint for bs because missing momentum
         if (!bsTree->isValid() || bsTree->isEmpty() ) continue; //check if fit result is valid 
 
-        //std::cout << "we passed the bs tree" << std::endl;
+        std::cout << "we passed the bs tree" << std::endl;
         // access the fitted resonance and the refitted children
         bsTree->movePointerToTheTop();
         RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
@@ -706,7 +710,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         RefCountedKinematicVertex bsVtx = bsTree->currentDecayVertex();
         if (!bsVtx->vertexIsValid()) continue; //check if fit result is valid
 
-        //std::cout << "bs vtx valid " << std::endl;
+        std::cout << "bs vtx valid " << std::endl;
         float bsVtxChi2    = bsVtx->chiSquared();
         if (bsVtxChi2 < 0) continue;
         float bsVtxNDof    = bsVtx->degreesOfFreedom();
@@ -715,11 +719,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
         nBsFit++;
 
-        //std::cout << "bs chi2 > 0 " << std::endl;
-        //std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
-        //std::cout << "bs ndof:" << bsVtxNDof << std::endl;
-        //std::cout << "bs prob:" << bsVtxProb << std::endl;
-        //std::cout << "bs prob:" << ChiSquaredProbability(bsVtxChi2,bsVtxNDof) << std::endl;
+        std::cout << "bs chi2 > 0 " << std::endl;
+        std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
+        std::cout << "bs ndof:" << bsVtxNDof << std::endl;
+        std::cout << "bs prob:" << bsVtxProb << std::endl;
+        std::cout << "bs prob:" << ChiSquaredProbability(bsVtxChi2,bsVtxNDof) << std::endl;
 
         bsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle bsDau1 = bsTree->currentParticle();
@@ -731,7 +735,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
         AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
-        //std::cout << "we passed all the vtx fit" << std::endl;
+        std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of global fitter /////////////////////////////////////
 

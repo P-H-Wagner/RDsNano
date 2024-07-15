@@ -329,7 +329,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
              if(drK2Match > drMatchGen_ ) continue;
              k2Sel2CounterGen++;
 
-             //std::cout << "found a gen matched k2!" << std::endl;
+             //std::cout << "found a gen matched k2!\n" << std::endl;
 
              ////////////////////////////////////////////////
              // find gen matched pion                      //
@@ -347,9 +347,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if((fabs(piPtrGen->pdgId()) != 211) || !hadSelectionGen_(*piPtrGen) || (piBs->charge() * piPtrGen->charge() < 0 )) continue; 
                piSel1CounterGen++;
      
+               //std::cout << "gen pt " << piPtrGen->pt() << "gen eta " << piPtrGen->eta() << std::endl;
                //now check the dR of the reco muon wrt to the gen Muon 
                float drPiMatch = reco::deltaR(*piBs,*piPtrGen);
-     
+               //std::cout << drPiMatch << std::endl; 
                //TODO:define as variable
                if(drPiMatch > drMatchGen_) continue;
                //std::cout << "found a gen matched pion!" << std::endl;

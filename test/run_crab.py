@@ -2,8 +2,8 @@ from FWCore.ParameterSet.VarParsing import VarParsing
 import FWCore.ParameterSet.Config as cms
 
 # TODO: put different samples into parser (flag from command line)
-# channel = 'sig'
-channel = 'sig'
+#channel = 'sig'
+channel = 'data'
 
 import os
 
@@ -35,9 +35,9 @@ process.Timing = cms.Service("Timing",
 )
 
 #load all the chosen options
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery = 5000
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(200)
+    input = cms.untracked.int32(-1)
 )
 
 process.source = cms.Source(

@@ -5,6 +5,7 @@ import FWCore.ParameterSet.Config as cms
 import os
 
 channel = 'HOOK_CHANNEL'
+print('========> Processing the miniAOD from: HOOK_INPUT')
 
 #globaltag = '102X_dataRun2_v11' if not options.isMC else '102X_upgrade2018_realistic_v15'
 globaltag = '106X_upgrade2018_realistic_v11_L1v1'

@@ -15,6 +15,7 @@
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 #include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
 
@@ -49,8 +50,8 @@ constexpr float PI_MASS = 0.139571;
 inline void printDaughters(const auto mom){
 
   for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
-    std::cout << " Now mom is: "<< mom->pdgId() << std::endl;
-    std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
+    //std::cout << " Now mom is: "<< mom->pdgId() << std::endl;
+    //std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
     printDaughters(mom->daughter(dauIdx)); 
   }
   return;
@@ -124,6 +125,27 @@ inline auto getAncestor(const auto dau, const int id){
   return empty;
 }
 
+inline int getDsID(auto pi){
+  int dsID = 0; 
+  if (isAncestor(pi, 431))   dsID = 431;   // Ds+ 
+  if (isAncestor(pi, 433))   dsID = 433;   // Ds+* 
+  if (isAncestor(pi, 10431)) dsID = 10431; // Ds*(2317)+ 
+  if (isAncestor(pi, 20433)) dsID = 20433; // Ds*(2457)+
+  return dsID;
+}
+
+inline int getSecondCharmID(auto mu){
+  int dID = 0; 
+  if (isAncestor(mu, 411))   dID = 411;   // D+
+  if (isAncestor(mu, 421))   dID = 421;   // D0
+  if (isAncestor(mu, 431))   dID = 431;   // Ds+
+  
+  if (isAncestor(mu, 413))   dID = 413;  // D+* 
+  if (isAncestor(mu, 423))   dID = 423;  // D0* 
+  if (isAncestor(mu, 433))   dID = 433;  // Ds*+ 
+  if (isAncestor(mu, 4122))  dID = 4122; // Lambdac+ 
+  return dID;
+}
 ///////////////////////////////////////////////////////////////////////////////////
 // function which removes the un-oscillated ancestor of dau
 // f.e. dau is -531 and comes from 531 via oscillation, then this function removes oscillation
@@ -509,6 +531,13 @@ inline reco::Track correctCovMat(const reco::Track *tk, double delta){
             cov(i,i) -= min_eig - delta;
     }
 
+    // Debug: check if it worked!
+    //for (i = 0; i < cov.kRows; i++) {
+    //    for (j = 0; j < cov.kRows; j++) {
+    //      std::cout << cov(i,j) << std::endl;
+    //    }
+    //}
+
     return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
     }
 
@@ -528,11 +557,14 @@ inline RefCountedKinematicTree vertexFit(std::vector<RefCountedKinematicParticle
 
   //define fitter
   KinematicConstrainedVertexFitter fitter;
+  //KinematicParticleVertexFitter fitter; // test
 
   //define constraint
   MultiTrackKinematicConstraint* constr = new TwoTrackMassKinematicConstraint(massConstr);
 
   RefCountedKinematicTree fitTree;
+
+  // fitTree = fitter.fit(toFit); //test
 
   if(applyConstr) {
   // perform the fit

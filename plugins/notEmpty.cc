@@ -42,6 +42,7 @@ bool notEmpty::filter(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
         // Check the condition: Only pass events where arrived == 1
         if (arrivedValue >0) {
+            std::cout << "arrived! id is:" << iEvent.id().event() << std::endl; 
             return true;  // Event passes the filter
         }
     }

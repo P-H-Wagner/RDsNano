@@ -37,6 +37,11 @@
 #include "helper.h" 
 
 using namespace std;
+int nEvents        = 0;
+int passesHLT      = 0;
+int passesHLTFilter= 0;
+int patTriggerCand = 0;
+int trgCand        = 0;
 
 class Trigger : public edm::EDProducer {
 
@@ -49,7 +54,8 @@ public:
     explicit Trigger(const edm::ParameterSet&);
     //destructor
     ~Trigger() override {};
-   
+    virtual void endJob() override; // NEW! 
+
     int counter = 0;
 
 private:
@@ -142,6 +148,8 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //edm::ESHandle<MagneticField> bFieldHandle;
   //iSetup.get<IdealMagneticFieldRecord>().get(bFieldHandle);
 
+  //std::cout << "New event!" << std::endl;
+
   edm::Handle<reco::VertexCollection> vertexHandle;
   iEvent.getByToken(vertexSrc_, vertexHandle);
 
@@ -159,12 +167,12 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   ///////////// Debugging:
   //std::cout << "Available trigger names:" << std::endl;
   //for (unsigned int i = 0; i < names.size(); ++i) {
-  //  if("HLT_Mu7_IP4" in names.triggerName(i)){
   //  std::cout << names.triggerName(i) << std::endl;
   //}
-  //}
   /////////////
-  
+ 
+  nEvents++; 
+
   //taken from https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD2016#Trigger
   edm::Handle<std::vector<pat::TriggerObjectStandAlone>> triggerObjects;
   iEvent.getByToken(triggerObjects_, triggerObjects);
@@ -194,11 +202,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //unsigned int index_10p5_3p5 = names.triggerIndex("HLT_Mu10p5_IP3p5");
   //unsigned int index_12_6     = names.triggerIndex("HLT_Mu12_IP6");
 
-  //std::cout << (index_7_4_p0 < triggerBits->size())  << "and" <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
-  //std::cout << (index_7_4_p1 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
-  //std::cout << (index_7_4_p2 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
-  //std::cout << (index_7_4_p3 < triggerBits->size())  << "and" <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
-  //std::cout << (index_7_4_p4 < triggerBits->size())  << "and" <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
+  //std::cout <<"index is valid? "<< (index_7_4_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
+  //std::cout <<"index is valid? "<< (index_7_4_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
+  //std::cout <<"index is valid? "<< (index_7_4_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
+  //std::cout <<"index is valid? "<< (index_7_4_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
+  //std::cout <<"index is valid? "<< (index_7_4_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
 
   //default is false  
   bool pass_7_4_p0_path      = false;
@@ -210,11 +218,11 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // check first if the index is valid, i.e. if it is not out of range (maximum is givrn by triggerBits->size())
   // and if so, check if the trigger has fired with accept() 
 
-  pass_7_4_p0_path      = ((index_7_4_p0 < triggerBits->size())      && (triggerBits->accept(index_7_4_p0)));
-  pass_7_4_p1_path      = ((index_7_4_p1 < triggerBits->size())      && (triggerBits->accept(index_7_4_p1)));
-  pass_7_4_p2_path      = ((index_7_4_p2 < triggerBits->size())      && (triggerBits->accept(index_7_4_p2)));
-  pass_7_4_p3_path      = ((index_7_4_p3 < triggerBits->size())      && (triggerBits->accept(index_7_4_p3)));
-  pass_7_4_p4_path      = ((index_7_4_p4 < triggerBits->size())      && (triggerBits->accept(index_7_4_p4)));
+  pass_7_4_p0_path      = ((index_7_4_p0 < triggerBits->size())   && (triggerBits->accept(index_7_4_p0)));
+  pass_7_4_p1_path      = ((index_7_4_p1 < triggerBits->size())   && (triggerBits->accept(index_7_4_p1)));
+  pass_7_4_p2_path      = ((index_7_4_p2 < triggerBits->size())   && (triggerBits->accept(index_7_4_p2)));
+  pass_7_4_p3_path      = ((index_7_4_p3 < triggerBits->size())   && (triggerBits->accept(index_7_4_p3)));
+  pass_7_4_p4_path      = ((index_7_4_p4 < triggerBits->size())   && (triggerBits->accept(index_7_4_p4)));
 
 
   //define vector out of bools
@@ -222,6 +230,10 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   //only continue when we the event passes the HLT_Mu7_IP4
   if (pass_7_4_p0_path || pass_7_4_p1_path || pass_7_4_p2_path || pass_7_4_p3_path || pass_7_4_p4_path){
+
+  //std::cout << "i pass the pathes" << std::endl;
+  passesHLT++;
+
   //std::cout<<"found trigger!" << std::endl;
   // define vectors of ints of length muons->size(), all values set to 0
   std::vector<int> isTriggerMuon(muons->size(), 0);
@@ -236,15 +248,23 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   // now loop over all pat::muons
   for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
-    //if (iEvent.id().event() != 128903846) continue;  
-    //if (iEvent.id().luminosityBlock() != 103) continue;  
+    //if (iEvent.id().event() != 31516) continue;  
+    //if (iEvent.id().luminosityBlock() != 2007) continue;  
     //std::cout << iEvent.id().event() << std::endl;
+    //std::cout << "event found! "<< std::endl;
     //access the muon at the muIdx-position
     const pat::Muon& muon = (*muons)[muIdx];    
 
     //std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
     // muon cuts
+    //std::cout << muons->size() << std::endl;
+    //std::cout << muon.pt() << std::endl;
+    //std::cout << muon.eta() << std::endl; 
+    //std::cout << muon.isPFMuon() << std::endl;
+    //std::cout << muon.isGlobalMuon() << std::endl;
     if (!muSelection_(muon)) continue; 
+    
+    patTriggerCand++;
 
     //check if the pat muon is matched to some trigger object (by using the function triggerObjectMatchByPath()
     //bool isMatched = !(muon.triggerObjectMatchByPath("HLT_Mu7_IP4")==nullptr);
@@ -274,7 +294,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   
       //check if the triggermuon was actually firing the trigger
       if(!trgObj.hasFilterLabel(trgFilterLabel_)) continue;
-    
+ 
+      passesHLTFilter++;   
+ 
       iMatch++;
       //std::cout<< "we have a trg object, is it matching?!!" << std::endl;
       //std::cout << "Filter labels for trigger object:" << std::endl;
@@ -302,6 +324,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     //save pat muon if we found a matching candidate 
     if(muonIdx != -1)
      {
+
+            trgCand++;
+ 
             //the following line does a copy of muon with the name trgMatchedMuon (same properties different adress)
 	    pat::Muon trgMatchedMuon(muon);
 
@@ -337,6 +362,15 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
 //close the if condition for the HLT_Mu7_IP4
 }//close produce function
+void Trigger::endJob(){
+std::cout << "\n--------- TRIGGER MODULE ----------\n" << std::endl;
+std::cout << "#Events                                                   : " << nEvents  << std::endl;
+std::cout << "#Events where HLT fired                                   : " << passesHLT  << std::endl;
+std::cout << "#Events where HLT fired and HLT Filter passed             : " << passesHLTFilter  << std::endl;
+std::cout << "#Muon candidates which possibly fire HLT (unmatched)      : " << patTriggerCand  << std::endl;
+std::cout << "#Muon candidates which fired HLT (matched to trg object!) : " << patTriggerCand  << std::endl;
+
+}
 
 DEFINE_FWK_MODULE(Trigger);
 

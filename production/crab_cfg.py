@@ -17,22 +17,24 @@ config.General.workArea        = date_time   # save logs at
 
 # set in- and output data parameters
 config.section_('Data')
-config.Data.inputDataset       = '/store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/5D552231-6643-F042-9DD8-4CFC0CFD1B26.root' 
+config.Data.inputDataset       = '/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD' # dataset
+#config.Data.inputBlocks        = ['/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD#007c47d2-b6e8-433a-9b32-5effbf767314'] #process only these files (format: ['dataset#id'])
 config.Data.publication        = False       # dont save on the DAS
 config.Data.outLFNDirBase      = '/store/user/pahwagne/%s' % date_time # destination on T2
 config.Data.inputDBS           = 'global'
 config.Data.allowNonValidInputDataset = True # allow to process data which is not in CMS valid state yet
-#config.Data.splitting          = 'FileBased' # split via files
-#config.Data.unitsPerJob        = 1           # 1 file per job
+#config.Data.totalUnits         = 200 #200 events when splitting automatic
+config.Data.splitting          = 'FileBased' # split via files
+config.Data.unitsPerJob        = 10           # 1 file per job
 
 # job settings
 config.section_('JobType')
 config.JobType.pluginName      = 'Analysis'       #naming
-config.JobType.psetName        = '../test/run_crab.py' #cmssw cfg file to run
-#config.JobType.inputFiles      = ['../test/run_crab.py' ] #'file1.py','file2.txt','file3.yml'] #specify here additional input files
+config.JobType.psetName        =  '../test/run_crab.py' #cmssw cfg file to run
+config.JobType.inputFiles      = ['../test/run_crab.py' ] #'file1.py','file2.txt','file3.yml'] #specify here additional input files
 #config.JobType.psetName       = 'PSet.py'
-config.JobType.scriptExe      = 'crab_script.sh' # only needed for more complex scrips (more input files and diff. environment)
-#config.JobType.maxJobRuntimeMin = 3000
+#config.JobType.scriptExe      = 'crab_script.sh' # only needed for more complex scrips (more input files and diff. environment)
+#config.JobType.maxJobRuntimeMin = 100
 config.JobType.allowUndistributedCMSSW = True #allow to run on single node
 config.JobType.outputFiles     = ["test_crab.root"]
 

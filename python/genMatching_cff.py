@@ -12,12 +12,13 @@ from PhysicsTools.RDsNano.variables_cff import genVariables
 
 genMatcher = cms.EDProducer(
     'genMatching',
+    pvCand       = cms.InputTag('offlineSlimmedPrimaryVertices'),
     bs           = cms.InputTag('BsToDsPhiKKPiMu', 'bs'),
     prunedCand   = cms.InputTag("prunedGenParticles"),
     packedCand   = cms.InputTag("packedGenParticles"),
     hadSelection = cms.string(' &&  '.join([
-'pdgId != 11',
-'pdgId != 13',
+'abs(pdgId) != 11',
+'abs(pdgId) != 13',
 'charge != 0',
 'pt > 0.7', 
 'eta > -2.1',

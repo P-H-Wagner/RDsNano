@@ -12,17 +12,19 @@ args = parser.parse_args()
 
 ######################################
 
-#500 jobs per user on std queue
-nMaxJobs = 500
+#800 jobs per user on short queue
+nMaxJobs = 800
 
-if int(args.nFiles) > nMaxJobs:
-  filesPerJob = int(args.nFiles) / nMaxJobs
-  queue = 'standard' # takes longer 
+#default
+filesPerJob = 3
+
+if (int(args.nFiles) < nMaxJobs) and (int(args.nFiles) != -1):
+  filesPerJob = 1 #below 500 jobs we can take 1 file per job and thus short
+  queue = 'short' 
+  time = 60
 else:
-  filesPerJob = 1
-  nMaxJobs = int(args.nFiles) # process less files
-  queue = 'short'
-
+  queue = 'standard'
+  time = 3*60
 print("========> processing ", filesPerJob, " files per job")
 
 ######################################
@@ -36,9 +38,9 @@ dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 ######################################
 
-def filesFromFolder(directory):
-  filenames = os.listdir(directory)
-  return ['file:' + directory + filename for filename in filenames ]
+def filesFromFolder(direc):
+  filenames = os.listdir(direc)
+  return ['file:' + direc + filename for filename in filenames ]
 
 def filesFromTxt(txtFile):
   with open(txtFile) as dataFiles: 
@@ -50,8 +52,10 @@ def filesFromTxt(txtFile):
 # Input source
 
 if args.channel == 'sig':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #signal
-  inputfiles = filesFromFolder(directory)
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signal from MA thesis
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  #inputfiles = filesFromFolder(directory)
+  inputfiles = filesFromTxt(directory)
   naming = 'all_signals'
 
 if args.channel == 'hb':
@@ -59,22 +63,51 @@ if args.channel == 'hb':
   inputfiles = filesFromFolder(directory)
   naming = 'hb_inclusive'
 
+if args.channel == 'b0':
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/b0/b0.txt' #b0 
+  inputfiles = filesFromTxt(directory)
+
+  naming = 'b0'
+
+if args.channel == 'bplus':
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bplus/bplus.txt' #b0 
+  inputfiles = filesFromTxt(directory)
+  naming = 'bplus'
+
+if args.channel == 'bs':
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bs/bs.txt' #bs 
+  inputfiles = filesFromTxt(directory)
+  naming = 'bs'
+
+if args.channel == 'lambdab':
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/lambdab/lambdab.txt' #bs 
+  inputfiles = filesFromTxt(directory)
+  naming = 'lambdab'
+
 if args.channel == 'data':
-  #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
-  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
-  inputfiles = filesFromTxt(txtFile)
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/three_parts/BPark_2018D_part1.txt' #data bParking 2018 part D
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/ten_parts/BPark_2018D_part5.txt' #data bParking 2018 part D
+  print("processing files from ... ", directory)
+  #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
+  inputfiles = filesFromTxt(directory)
   naming = 'data'
 
-
-#inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
+if nFiles != -1:
+  #process not the whole dataset but only nFiles
+  inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
 
 os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/"+dt_string)
 os.makedirs(dt_string+"/logs")
 os.makedirs(dt_string+"/errs")
 
-for i in range(0,nMaxJobs):
+for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
 
-  fin = inputfiles[i*filesPerJob:(i+1)*filesPerJob] # this is a list!!
+  fin = inputfiles[j:j+filesPerJob]
+  #print(fin)
   #template
   temp = open("temp_cfg.py", "rt")
   #file to write to
@@ -84,6 +117,7 @@ for i in range(0,nMaxJobs):
 
   for line in temp:
     if   "HOOK_CHANNEL" in line: cfg.write(line.replace("HOOK_CHANNEL", args.channel))
+    elif "HOOK_INPUT" in line: cfg.write(line.replace("HOOK_INPUT", directory))
     elif "HOOK_N_EVENTS" in line: cfg.write(line.replace("HOOK_N_EVENTS", str(nevents)))
     elif "HOOK_FILE_IN" in line: cfg.write(line.replace("HOOK_FILE_IN", str(fin)))
     elif "HOOK_FILE_OUT" in line: cfg.write(line.replace("HOOK_FILE_OUT", fout))
@@ -117,7 +151,7 @@ for i in range(0,nMaxJobs):
         '-e {0}/errs/chunk_{1}.err'.format(dt_string,i),
         #'--mem=1200M',
         '--job-name=MINI_{0}_{1}'.format(i,args.channel),
-        #'--time={0}'.format(time),
+        '--time={0}'.format(time),
         '{0}/submitter_chunk_{1}.sh'.format(dt_string,i),
      ])
 

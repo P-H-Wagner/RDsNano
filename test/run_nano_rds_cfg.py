@@ -3,7 +3,7 @@ import FWCore.ParameterSet.Config as cms
 
 # TODO: put different samples into parser (flag from command line)
 # channel = 'sig'
-channel = 'data'
+channel = 'sig'
 
 import os
 
@@ -35,7 +35,7 @@ process.Timing = cms.Service("Timing",
 )
 
 #load all the chosen options
-process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.FwkReport.reportEvery =1 
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(100)
 )
@@ -52,28 +52,41 @@ def filesFromTxt(txtFile):
 # Input source
 
 if channel == 'sig':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #signal
-  inputfiles = filesFromFolder(directory)
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signals MA Thesis
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  inputfiles = filesFromFolder(directory)[0]
+  #inputfiles = filesFromTxt(directory)
+  #inputfiles = inputfiles[0]
 
 if channel == 'hb':
   directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' #hb 
   inputfiles = filesFromFolder(directory)
 
+if channel == 'bplus':
+  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bplus/bplus.txt' #data
+  inputfiles = filesFromTxt(txtFile)
+
 if channel == 'data':
   txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data
+  txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/run_325117.txt' # only one run
   inputfiles = filesFromTxt(txtFile)
 
 process.source = cms.Source(
     "PoolSource",
     #fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_97.root'),
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch//store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/5D552231-6643-F042-9DD8-4CFC0CFD1B26.root'),
+    #fileNames = cms.untracked.vstring("file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH3/MINIAOD/UL2018_MiniAODv2-v1/50000/0B26935C-81C7-1D4F-8994-23CBB40DA54C.root"),
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50003/199766A2-70D0-674D-A9CE-D5EB255BD87A.root'), # data file which is always empty, investigate this 
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #data file to compare with riccs MA code
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/D0AE1369-0D7B-554C-BBB9-7B324AACCABD.root'), #data file to compare with riccs MA code
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/36CD4F31-A249-DF49-A3FF-32DCA7223D09.root'), #10
-    fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #7
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #7
     #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
+    fileNames = cms.untracked.vstring(inputfiles),
     secondaryFileNames = cms.untracked.vstring(),
-    skipEvents=cms.untracked.uint32(800) # skip first n events   
+    #eventsToProcess = cms.untracked.VEventRange('325117:316225000', '325117:317459950', '325117:316794666', '325117:316199657'),
+    #eventsToProcess = cms.untracked.VEventRange('1:43928','1:130853','1:151252','1:182132'),
+    skipEvents=cms.untracked.uint32(0) # skip first n events   
 )
 
 process.options = cms.untracked.PSet(
@@ -141,7 +154,7 @@ process.NANOAODoutput_step = cms.EndPath(process.NANOAODoutput)
 process.schedule = cms.Schedule(
     process.nanoAOD_Bs_step,
     process.endjob_step, 
-    #process.NANOAODoutput_step # commented out ? not saving !!
+    process.NANOAODoutput_step # commented out ? not saving !!
                                )
 
 from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask

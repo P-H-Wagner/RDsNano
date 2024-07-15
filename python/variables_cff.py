@@ -172,12 +172,12 @@ genVariables = cms.PSet(
         phi_charge= Var("userFloat('phi_gen_charge')",float),
         phi_pdgid = Var("userInt('phi_gen_pdgid')",int),
 
-        ds_px_gen     = Var("userFloat('ds_gen_px')",float),
-        ds_py_gen     = Var("userFloat('ds_gen_py')",float),
-        ds_pz_gen     = Var("userFloat('ds_gen_pz')",float),
-        ds_pt_gen     = Var("userFloat('ds_gen_pt')",float),
-        ds_eta_gen    = Var("userFloat('ds_gen_eta')",float),
-        ds_phi_gen    = Var("userFloat('ds_gen_phi')",float),
+        ds_px     = Var("userFloat('ds_gen_px')",float),
+        ds_py     = Var("userFloat('ds_gen_py')",float),
+        ds_pz     = Var("userFloat('ds_gen_pz')",float),
+        ds_pt     = Var("userFloat('ds_gen_pt')",float),
+        ds_eta    = Var("userFloat('ds_gen_eta')",float),
+        ds_phi    = Var("userFloat('ds_gen_phi')",float),
         ds_boost  = Var("userFloat('ds_gen_boost')",float),
 
         sv_x      = Var("userFloat('sv_x_gen')",float),
@@ -200,7 +200,7 @@ genVariables = cms.PSet(
         scnd_pv_x      = Var("userFloat('scnd_pv_x_gen')",float),
         scnd_pv_y      = Var("userFloat('scnd_pv_y_gen')",float),
         scnd_pv_z      = Var("userFloat('scnd_pv_z_gen')",float),
-        scnd_pv_idx    = Var("userFloat('scnd_pv_idx_gen')",float),
+        scnd_pv_idx    = Var("userInt('scnd_pv_idx_gen')",int),
 
         bs_charge = Var("userFloat('bs_gen_charge')",float),
         bs_pdgid  = Var("userInt('bs_gen_pdgid')",int),
@@ -253,11 +253,16 @@ genVariables = cms.PSet(
 
         match_success = uint('gen_match_success'),
 
-        mu_rel_iso    = Var("userFloat('mu_rel_iso_gen')",float),
+        #mu_iso_03     = Var("userFloat('mu_iso_03_gen')", float),
+        #mu_iso_04     = Var("userFloat('mu_iso_04_gen')", float),
+        #mu_rel_iso_03 = Var("userFloat('mu_rel_iso_03_gen')", float),
+        #mu_rel_iso_04 = Var("userFloat('mu_rel_iso_04_gen')", float),
+
         e_gamma       = Var("userFloat('e_gamma_gen')",float),
 
         ## signal id
-        sig               = Var("userFloat('sig')",int),
+        sig               = Var("userInt('sig')",int),
+        b_mother_id       = Var("userInt('b_mother_id')",int),
 )
 
 ##################################################
@@ -271,7 +276,7 @@ vertexVariables = cms.PSet(
         pv_ndof    = Var("userFloat('pv_ndof')",float),        
         pv_redchi2 = Var("userFloat('pv_redchi2')",float),        
         pv_prob    = Var("userFloat('pv_prob')",float),        
-        pv_idx     = Var("userFloat('pv_idx')",float),        
+        pv_idx     = Var("userInt('pv_idx')",int),        
 
         sv_x = Var("userFloat('sv_x')",float),
         sv_y = Var("userFloat('sv_y')",float),
@@ -301,14 +306,29 @@ vertexVariables = cms.PSet(
         ##easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
         ##easy_bs_vtx_z = Var("userFloat('easy_bs_vtx_z')",float),
 
-        lxy_bs     = Var("userFloat('lxy_bs')",float),        
-        lxyz_bs    = Var("userFloat('lxyz_bs')",float),        
+        lxy_bs         = Var("userFloat('lxy_bs')",float),        
+        lxy_bs_err     = Var("userFloat('lxy_bs_err')",float),        
+        lxy_bs_sig     = Var("userFloat('lxy_bs_sig')",float),        
 
-        lxy_ds     = Var("userFloat('lxy_ds')",float),        
-        lxyz_ds    = Var("userFloat('lxyz_ds')",float),        
+        lxyz_bs        = Var("userFloat('lxyz_bs')",float),        
+        lxyz_bs_err    = Var("userFloat('lxyz_bs_err')",float),        
+        lxyz_bs_sig    = Var("userFloat('lxyz_bs_sig')",float),        
 
-        lxy_phi    = Var("userFloat('lxy_phi')",float),        
-        lxyz_phi   = Var("userFloat('lxyz_phi')",float),        
+        lxy_ds         = Var("userFloat('lxy_ds')",float),        
+        lxy_ds_err     = Var("userFloat('lxy_ds_err')",float),        
+        lxy_ds_sig     = Var("userFloat('lxy_ds_sig')",float),        
+
+        lxyz_ds        = Var("userFloat('lxyz_ds')",float),        
+        lxyz_ds_err    = Var("userFloat('lxyz_ds_err')",float),        
+        lxyz_ds_sig    = Var("userFloat('lxyz_ds_sig')",float),        
+
+        lxy_phi        = Var("userFloat('lxy_phi')",float),        
+        lxy_phi_err    = Var("userFloat('lxy_phi_err')",float),        
+        lxy_phi_sig    = Var("userFloat('lxy_phi_sig')",float),        
+
+        lxyz_phi       = Var("userFloat('lxyz_phi')",float),        
+        lxyz_phi_err   = Var("userFloat('lxyz_phi_err')",float),        
+        lxyz_phi_sig   = Var("userFloat('lxyz_phi_sig')",float),        
 
         dxy_mu     = Var("userFloat('dxy_mu')",float),
         dz_mu      = Var("userFloat('dz_mu')",float),
@@ -431,7 +451,13 @@ postfitBasicVariables = cms.PSet(
         bs_fitted_phi    = Var("userFloat('bs_fitted_phi')",float),
         bs_fitted_m      = Var("userFloat('bs_fitted_m')",float),
 
-        mu_rel_iso       = Var("userFloat('mu_rel_iso')",float),
+        mu_iso_03     = Var("userFloat('mu_iso_03')", float),
+        mu_iso_04     = Var("userFloat('mu_iso_04')", float),
+        mu_rel_iso_03 = Var("userFloat('mu_rel_iso_03')", float),
+        mu_rel_iso_04 = Var("userFloat('mu_rel_iso_04')", float),
+        mu_rel_iso_03_refitted = Var("userFloat('mu_rel_iso_03_refitted')", float),
+        mu_rel_iso_04_refitted = Var("userFloat('mu_rel_iso_04_refitted')", float),
+
         e_gamma          = Var("userFloat('e_gamma')",float),
 )
 

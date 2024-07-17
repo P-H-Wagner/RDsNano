@@ -7,6 +7,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('channel') # sig or hb or data
 parser.add_argument('nFiles')  # nr of miniAOD files to process
+parser.add_argument('-f', '--failedCrab') #date_time of crab, if given, the ntuplizer will run on minis which failed during crab
 args = parser.parse_args()
 
 
@@ -91,10 +92,22 @@ if args.channel == 'data':
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/three_parts/BPark_2018D_part1.txt' #data bParking 2018 part D
   directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/ten_parts/BPark_2018D_part5.txt' #data bParking 2018 part D
-  print("processing files from ... ", directory)
   #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
   inputfiles = filesFromTxt(directory)
   naming = 'data'
+
+######################################
+
+if args.failedCrab is not None:
+  print("Re-batching failed crab jobs!")
+
+  dt_string  = args.failedCrab # take the same naming as in crab
+  directory  = "/work/pahwagne/CMSSW_10_6_37/src/PhysicsTools/RDsNano/production/failedJobMinis/"+dt_string+"/all_minis_job.txt" 
+  inputfiles = filesFromTxt(directory)
+  naming     = 'data_toRetry'
+
+
+#####################################
 
 if nFiles != -1:
   #process not the whole dataset but only nFiles

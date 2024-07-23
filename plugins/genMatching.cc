@@ -131,6 +131,7 @@ private:
   const double dsMass_;
   const double dsStarMass_;
   const double muMass_;
+  const double tauMass_;
   const double bsMass_;
   const double isoCone_;
   //tokens to access data later
@@ -177,6 +178,7 @@ genMatching::genMatching(const edm::ParameterSet& iConfig):
     dsMass_(iConfig.getParameter<double>("dsMass")),
     dsStarMass_(iConfig.getParameter<double>("dsStarMass")),
     muMass_(iConfig.getParameter<double>("muMass")),
+    tauMass_(iConfig.getParameter<double>("tauMass")),
     bsMass_(iConfig.getParameter<double>("bsMass")),
     isoCone_(iConfig.getParameter<double>("isoCone")),
 
@@ -576,6 +578,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("sv_z_gen"      ,sv_z_gen);
                gen.addUserFloat("ds_gen_charge" ,dsFromPi->charge());
                gen.addUserInt(  "ds_gen_pdgid"  ,dsFromPi->pdgId());
+               gen.addUserFloat(  "ds_gen_m"  ,dsFromPi->mass());
 
                gen.addUserFloat("bs_gen_px"     ,bsFromMu->px());
                gen.addUserFloat("bs_gen_py"     ,bsFromMu->py());
@@ -594,6 +597,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                gen.addUserFloat("bs_gen_charge" ,bsFromMu->charge());
                gen.addUserInt(  "bs_gen_pdgid"  ,bsFromMu->pdgId());
+               gen.addUserFloat(  "bs_gen_m"      ,bsFromMu->mass());
                gen.addUserFloat("b_boost_gen"   ,genBsTlv.BoostVector().Mag());
                gen.addUserFloat("b_boost_gen_pt"   ,genBsTlv.BoostVector().Pt());
                gen.addUserFloat("b_boost_gen_eta"   ,genBsTlv.BoostVector().Eta());
@@ -811,6 +815,138 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    default:    sigId += 9; break; // anything else
                  }
                }
+
+               ////////////////////////////////////
+               // SPECIAL FOR HAMMER:            //
+               // Save also tau and Ds* info     //
+               ////////////////////////////////////
+  
+               float tau_gen_pt;
+               float tau_gen_eta;
+               float tau_gen_phi;
+               float tau_gen_m;
+               //int   tau_gen_pdgid; 
+ 
+               float dsStar_gen_pt;
+               float dsStar_gen_eta;
+               float dsStar_gen_phi;
+               float dsStar_gen_m;
+               //int   dsStar_gen_pdgid; 
+  
+               if (sigId == 0){
+  
+                 //  Bs -> Ds + mu + nu 
+                 tau_gen_pt       = std::nan("nan");
+                 tau_gen_eta      = std::nan("nan");
+                 tau_gen_phi      = std::nan("nan");
+                 tau_gen_m        = std::nan("nan");
+                 //tau_gen_pdgid    = -9999;
+  
+                 dsStar_gen_pt    = std::nan("nan");
+                 dsStar_gen_eta   = std::nan("nan");
+                 dsStar_gen_phi   = std::nan("nan");
+                 dsStar_gen_m     = std::nan("nan");
+                 //dsStar_gen_pdgid = -9999;
+  
+               }
+  
+  
+               else if (sigId == 1){
+  
+                 //  Bs -> Ds + tau + nu 
+  
+                 // get the tau (we know its there)
+                 auto tauFromMu   = getAncestor(muReco,15);
+  
+                 tau_gen_pt       = tauFromMu->pt();
+                 tau_gen_eta      = tauFromMu->eta();
+                 tau_gen_phi      = tauFromMu->phi();
+                 tau_gen_m        = tauMass_; 
+                 //tau_gen_pdgid    = tauFromMu->pdgId();
+  
+                 dsStar_gen_pt    = std::nan("nan");
+                 dsStar_gen_eta   = std::nan("nan");
+                 dsStar_gen_phi   = std::nan("nan");
+                 dsStar_gen_m     = std::nan("nan");
+                 //dsStar_gen_pdgid = -9999;
+  
+               }
+  
+               else if (sigId == 10){
+  
+                 //  Bs -> Ds* + mu + nu 
+  
+                 tau_gen_pt       = std::nan("nan");
+                 tau_gen_eta      = std::nan("nan");
+                 tau_gen_phi      = std::nan("nan");
+                 tau_gen_m        = std::nan("nan");
+                 //tau_gen_pdgid    = -9999;
+  
+                 // get the Ds* (we know its there)
+                 auto dsStarFromDs = getAncestor(dsFromPi,433);
+  
+                 dsStar_gen_pt    = dsStarFromDs->pt();
+                 dsStar_gen_eta   = dsStarFromDs->eta();
+                 dsStar_gen_phi   = dsStarFromDs->phi();
+                 dsStar_gen_m     = dsStarMass_; 
+                 //dsStar_gen_pdgid = dsStarFromDs->pdgId();
+  
+               }
+  
+               else if (sigId == 11){
+  
+                 //  Bs -> Ds* + tau + nu 
+  
+                 // get the tau (we know its there)
+                 auto tauFromMu = getAncestor(muReco,15);
+  
+                 tau_gen_pt       = tauFromMu->pt();
+                 tau_gen_eta      = tauFromMu->eta();
+                 tau_gen_phi      = tauFromMu->phi();
+                 tau_gen_m        = tauMass_; 
+                 //tau_gen_pdgid    = tauFromMu->pdgId();
+  
+                 // get the Ds* (we know its there)
+                 auto dsStarFromDs = getAncestor(dsFromPi,433);
+  
+                 dsStar_gen_pt     = dsStarFromDs->pt();
+                 dsStar_gen_eta    = dsStarFromDs->eta();
+                 dsStar_gen_phi    = dsStarFromDs->phi();
+                 dsStar_gen_m      = dsStarMass_; 
+                 //dsStar_gen_pdgid  = dsStarFromDs->pdgId();
+  
+               }
+  
+               else{
+  
+                 tau_gen_pt      = std::nan("nan");
+                 tau_gen_eta     = std::nan("nan");
+                 tau_gen_phi     = std::nan("nan");
+                 tau_gen_m       = std::nan("nan");
+                 //tau_gen_pdgid   = -9999;
+  
+                 dsStar_gen_pt     = std::nan("nan");
+                 dsStar_gen_eta    = std::nan("nan");
+                 dsStar_gen_phi    = std::nan("nan");
+                 dsStar_gen_m      = std::nan("nan");
+                 //dsStar_gen_pdgid  = -9999;
+  
+               }
+  
+  
+               gen.addUserFloat("tau_gen_pt",         tau_gen_pt);
+               gen.addUserFloat("tau_gen_eta",        tau_gen_eta);
+               gen.addUserFloat("tau_gen_phi",        tau_gen_phi);
+               gen.addUserFloat("tau_gen_m",          tau_gen_m);
+               //gen.addUserInt("tau_gen_pdgid",      tau_gen_pdgid);
+  
+               gen.addUserFloat("dsStar_gen_pt",      dsStar_gen_pt);
+               gen.addUserFloat("dsStar_gen_eta",     dsStar_gen_eta);
+               gen.addUserFloat("dsStar_gen_phi",     dsStar_gen_phi);
+               gen.addUserFloat("dsStar_gen_m",       dsStar_gen_m);
+               //gen.addUserInt("dsStar_gen_pdgid",   dsStar_gen_pdgid);
+
+
 
                /*
                bool isDsStar    = false;
@@ -1050,6 +1186,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("ds_gen_pt"      ,std::nan(""));
             gen.addUserFloat("ds_gen_eta"     ,std::nan(""));
             gen.addUserFloat("ds_gen_phi"     ,std::nan(""));
+            //gen.addUserFloat("ds_gen_m"       ,std::nan(""));
             gen.addUserFloat("sv_x_gen"       ,std::nan(""));
             gen.addUserFloat("sv_y_gen"       ,std::nan(""));
             gen.addUserFloat("sv_z_gen"       ,std::nan(""));
@@ -1063,6 +1200,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("bs_gen_pt"      ,std::nan(""));
             gen.addUserFloat("bs_gen_eta"     ,std::nan(""));
             gen.addUserFloat("bs_gen_phi"     ,std::nan(""));
+            //gen.addUserFloat("bs_gen_m"       ,std::nan(""));
   
             gen.addUserFloat("pv_x_gen"       ,std::nan(""));
             gen.addUserFloat("pv_y_gen"       ,std::nan(""));
@@ -1117,7 +1255,20 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             //gen.addUserFloat("mu_iso_04_gen"     ,std::nan(""));
             //gen.addUserFloat("mu_rel_iso_03_gen" ,std::nan(""));
             //gen.addUserFloat("mu_rel_iso_04_gen" ,std::nan(""));
-  
+ 
+
+            gen.addUserFloat("tau_gen_pt",  std::nan(""));
+            gen.addUserFloat("tau_gen_eta", std::nan(""));
+            gen.addUserFloat("tau_gen_phi", std::nan(""));
+            gen.addUserFloat("tau_gen_m",  std::nan(""));
+            //gen.addUserInt("tau_gen_pdgid",  -9999);
+
+            gen.addUserFloat("dsStar_gen_pt",  std::nan(""));
+            gen.addUserFloat("dsStar_gen_eta", std::nan(""));
+            gen.addUserFloat("dsStar_gen_phi", std::nan(""));
+            gen.addUserFloat("dsStar_gen_m",   std::nan(""));
+            //gen.addUserInt("dsStar_gen_pdgid",   -9999);
+ 
   
           }
   

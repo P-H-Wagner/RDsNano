@@ -179,6 +179,7 @@ genVariables = cms.PSet(
         ds_eta    = Var("userFloat('ds_gen_eta')",float),
         ds_phi    = Var("userFloat('ds_gen_phi')",float),
         ds_boost  = Var("userFloat('ds_gen_boost')",float),
+        #ds_m      = Var("userFloat('ds_gen_m')",float),
 
         sv_x      = Var("userFloat('sv_x_gen')",float),
         sv_y      = Var("userFloat('sv_y_gen')",float),
@@ -208,6 +209,7 @@ genVariables = cms.PSet(
         bs_boost_pt   = Var("userFloat('b_boost_gen_pt')",float),
         bs_boost_eta  = Var("userFloat('b_boost_gen_eta')",float),
         bs_boost_phi  = Var("userFloat('b_boost_gen_phi')",float),
+        #bs_m          = Var("userFloat('bs_gen_m')",float),
 
         
         disc_is_negative = Var("userInt('disc_is_negative_gen')",int),
@@ -263,6 +265,21 @@ genVariables = cms.PSet(
         ## signal id
         sig               = Var("userInt('sig')",int),
         b_mother_id       = Var("userInt('b_mother_id')",int),
+
+
+        tau_pt      = Var("userFloat('tau_gen_pt')",float),
+        tau_eta     = Var("userFloat('tau_gen_eta')",float),
+        tau_phi     = Var("userFloat('tau_gen_phi')",float),
+        tau_m       = Var("userFloat('tau_gen_m')",float),
+        #tau_pdgid   = Var("userInt('tau_gen_pdgid')",int),
+
+        dsStar_pt      = Var("userFloat('dsStar_gen_pt')",float),
+        dsStar_eta     = Var("userFloat('dsStar_gen_eta')",float),
+        dsStar_phi     = Var("userFloat('dsStar_gen_phi')",float),
+        dsStar_m       = Var("userFloat('dsStar_gen_m')",float),
+        #dsStar_pdgid   = Var("userInt('dsStar_gen_pdgid')",int),
+
+
 )
 
 ##################################################

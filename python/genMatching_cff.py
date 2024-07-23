@@ -45,6 +45,7 @@ phiMass = cms.double(1.019461),       # phi mass
 dsMass = cms.double(1.96834),         # ds mass
 dsStarMass = cms.double(2.112204),    # ds star mass
 muMass = cms.double(0.105658),        # mu mass
+tauMass = cms.double(1.77686),        # tau mass
 bsMass = cms.double(5.36688),         # bs mass
 isoCone = cms.double(0.5)             # cut on dR for the mu isolation cone
 )

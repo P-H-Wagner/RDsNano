@@ -89,11 +89,12 @@ if args.channel == 'lambdab':
   naming = 'lambdab'
 
 if args.channel == 'data':
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/three_parts/BPark_2018D_part1.txt' #data bParking 2018 part D
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/ten_parts/BPark_2018D_part5.txt' #data bParking 2018 part D
   #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
   inputfiles = filesFromTxt(directory)
+  #inputfiles = [inputfiles[0]] #debugging only first file
   naming = 'data'
 
 ######################################

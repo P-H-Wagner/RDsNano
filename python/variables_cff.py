@@ -284,6 +284,13 @@ genVariables = cms.PSet(
 
 vertexVariables = cms.PSet(
 
+        bs_x0 = Var("userFloat('bs_x0')",float),        
+        bs_y0 = Var("userFloat('bs_y0')",float),        
+        bs_z0 = Var("userFloat('bs_z0')",float),        
+
+        bs_x_wrt_pv = Var("userFloat('bs_x_wrt_pv_z')",float),        
+        bs_y_wrt_pv = Var("userFloat('bs_y_wrt_pv_z')",float),        
+
         pv_x = Var("userFloat('pv_x')",float),        
         pv_y = Var("userFloat('pv_y')",float),        
         pv_z = Var("userFloat('pv_z')",float),        
@@ -373,6 +380,7 @@ vertexVariables = cms.PSet(
         dxy_k2_sig = Var("userFloat('dxy_k2_sig')",float),
         dz_k2_sig  = Var("userFloat('dz_k2_sig')",float),
 
+        ds_vtx_cosine = Var("userFloat('ds_vtx_cosine')",float),
 
 )
 

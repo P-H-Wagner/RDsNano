@@ -62,7 +62,7 @@ if log == '': print("No log csv file found!"); sys.exit();
 # Dump Ids of failed jobs into list
 jobDetails = pd.read_csv(path + log)
 jobIDs     = list(jobDetails["data.CRAB_Id"])
-jobIDs     = jobIDs[0:3] #debug
+#jobIDs     = jobIDs[0:3] #debug
 jobIDs     = [str(jobID) for jobID in jobIDs] #convert elements to str
 
 jobIDsStr = ','.join(jobIDs) # comma separate 
@@ -87,10 +87,14 @@ for name in jobIDs:
   minis = open(outMini + "minis_job_"+name+".txt","wt")
 
   for line in temp:
+
+    #covers error code 8022
     if "/store/data/Run2018D/ParkingBPH" in line and "eos" not in line and "cms" not in line:
       minis.write(line.strip().strip(",").strip("'") + "\n")    #remove whitespaces, etc.
       allminis.write(line.strip().strip(",").strip("'") + "\n") #remove whitespaces, etc.
- 
+  
+    # todo: cover other errors
+
   temp.close()
   minis.close()
 

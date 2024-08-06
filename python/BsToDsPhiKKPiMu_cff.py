@@ -14,6 +14,7 @@ from PhysicsTools.RDsNano.variables_cff import prefitBasicVariables, vertexVaria
 
 BsToDsPhiKKPiMu = cms.EDProducer(
     'BsToDsPhiKKPiMuBuilder',
+    offBeamSpot = cms.InputTag('offlineBeamSpot'),
     pfCand = cms.InputTag('packedPFCandidates'),
     muCand = cms.InputTag('muonTrgSelector', 'trgMuons'),
     pvCand = cms.InputTag("offlineSlimmedPrimaryVertices"),
@@ -47,10 +48,10 @@ piMassSigma      = cms.double( 0.00000018),      # pi mass
 kMass            = cms.double( 0.493677),         # kaon mass
 kMassSigma       = cms.double( 0.000016),         # kaon mass
 phiMass          = cms.double( 1.019461),       # phi mass
-constrainPhiMass = cms.bool(True),    # constrain phi mass in the vtx fit?
+constrainPhiMass = cms.bool(False),    # constrain phi mass in the vtx fit?
 minPhiVtxProb    = cms.double(0.01),
 dsMass           = cms.double( 1.96834),         # ds mass
-constrainDsMass  = cms.bool(True),     # constrain Ds mass in the vtx fit?
+constrainDsMass  = cms.bool(False),     # constrain Ds mass in the vtx fit?
 minDsVtxProb     = cms.double(0.01),
 dsStarMass       = cms.double( 2.112204),    # ds star mass
 muMass           = cms.double( 0.105658),        # mu ma

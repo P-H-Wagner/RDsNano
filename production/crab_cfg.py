@@ -4,6 +4,8 @@ import datetime
 from fnmatch import fnmatch
 from argparse import ArgumentParser
 
+test = False
+
 date_time = datetime.date.today().strftime('%Y%b%d')
 
 # create instace
@@ -16,16 +18,28 @@ config.General.transferLogs    = True        # save logs
 config.General.workArea        = date_time   # save logs at
 
 # set in- and output data parameters
-config.section_('Data')
-config.Data.inputDataset       = '/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD' # dataset
-#config.Data.inputBlocks        = ['/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD#007c47d2-b6e8-433a-9b32-5effbf767314'] #process only these files (format: ['dataset#id'])
-config.Data.publication        = False       # dont save on the DAS
-config.Data.outLFNDirBase      = '/store/user/pahwagne/%s' % date_time # destination on T2
-config.Data.inputDBS           = 'global'
-config.Data.allowNonValidInputDataset = True # allow to process data which is not in CMS valid state yet
-#config.Data.totalUnits         = 200 #200 events when splitting automatic
-config.Data.splitting          = 'FileBased' # split via files
-config.Data.unitsPerJob        = 10           # 1 file per job
+if not test:
+  config.section_('Data')
+  config.Data.inputDataset       = '/ParkingBPH5/Run2018D-UL2018_MiniAODv2-v1/MINIAOD' # dataset
+  #config.Data.inputBlocks        = ['/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD#007c47d2-b6e8-433a-9b32-5effbf767314'] #process only these files (format: ['dataset#id'])
+  config.Data.publication        = False       # dont save on the DAS
+  config.Data.outLFNDirBase      = '/store/user/pahwagne/%s' % date_time # destination on T2
+  config.Data.inputDBS           = 'global'
+  config.Data.allowNonValidInputDataset = True # allow to process data which is not in CMS valid state yet
+  #config.Data.totalUnits         = 200 #200 events when splitting automatic
+  config.Data.splitting          = 'FileBased' # split via files
+  config.Data.unitsPerJob        = 10           # 1 file per job
+else:
+  # ONLY WHEN TESTING SINGLE FILE
+  config.Data.inputDataset = None
+  config.Data.userInputFiles = ['file:root://eoscms.cern.ch//eos/cms/store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530009/33EBB973-79DA-114A-9C72-1CC48E0ED7C6.root']  # Replace with your input file
+  config.Data.splitting = 'FileBased'
+  config.Data.unitsPerJob = 1
+  config.Data.totalUnits = 1
+  config.Data.publication        = False       # dont save on the DAS
+  config.Data.outLFNDirBase      = '/store/user/pahwagne/%s' % date_time # destination on T2
+  config.Data.inputDBS           = 'global'
+  config.Data.allowNonValidInputDataset = True # allow to process data which is not in CMS valid state yet
 
 # job settings
 config.section_('JobType')

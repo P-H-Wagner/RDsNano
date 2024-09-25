@@ -822,9 +822,48 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("mu_is_standalone",  muPtr->isStandAloneMuon());
 
         // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
-        bs.addUserInt("mu_id_medium",      muPtr->passed(1)); // 
-        bs.addUserInt("mu_id_loose",       muPtr->passed(0)); // 
-        bs.addUserInt("mu_id_tight",       muPtr->passed(3)); // 
+
+        bs.addUserInt("mu_id_loose",               muPtr->passed(0)); // 
+        bs.addUserInt("mu_id_medium",              muPtr->passed(1)); // 
+        bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(2)); // 
+        bs.addUserInt("mu_id_tight",               muPtr->passed(3)); // 
+        bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(4)); // 
+        bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(5)); // 
+        bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(6)); // 
+        bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(7)); // 
+        bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(8)); // 
+        bs.addUserInt("mu_pf_iso_tight",           muPtr->passed(9)); // 
+        bs.addUserInt("mu_pf_iso_very_tight",      muPtr->passed(10)); // 
+
+        bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(11)); // 
+        bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(12)); // 
+        bs.addUserInt("mu_id_soft",                muPtr->passed(13)); // 
+        bs.addUserInt("mu_id_soft_mva",            muPtr->passed(14)); // 
+        bs.addUserInt("mu_mva_loose",              muPtr->passed(15)); // 
+        bs.addUserInt("mu_mva_medium",             muPtr->passed(16)); // 
+        bs.addUserInt("mu_mva_tight",              muPtr->passed(17)); // 
+        bs.addUserInt("mu_mini_iso_loose",         muPtr->passed(18)); // 
+        bs.addUserInt("mu_mini_iso_medium",        muPtr->passed(19)); // 
+        bs.addUserInt("mu_mini_iso_tight",         muPtr->passed(20)); // 
+
+        bs.addUserInt("mu_mini_iso_very_tight",    muPtr->passed(21)); // 
+        bs.addUserInt("mu_trigger_id_loose",       muPtr->passed(22)); // 
+        bs.addUserInt("mu_in_time_muon",           muPtr->passed(23)); // 
+        bs.addUserInt("mu_pf_iso_very_very_tight", muPtr->passed(24)); // 
+        bs.addUserInt("mu_multi_iso_loose",        muPtr->passed(25)); // 
+        bs.addUserInt("mu_multi_iso_medium",       muPtr->passed(26)); // 
+        bs.addUserInt("mu_puppi_iso_loose",        muPtr->passed(27)); // 
+        bs.addUserInt("mu_puppi_iso_medium",       muPtr->passed(28)); // 
+        bs.addUserInt("mu_puppi_iso_tight",        muPtr->passed(29)); // 
+        bs.addUserInt("mu_mva_v_tight",            muPtr->passed(30)); // 
+
+        bs.addUserInt("mu_mva_vv_tight",           muPtr->passed(31)); // 
+        bs.addUserInt("mu_low_pt_mva_loose",       muPtr->passed(32)); // 
+        bs.addUserInt("mu_low_pt_mva_medium",      muPtr->passed(33)); // 
+        bs.addUserInt("mu_mv_id_wp_medium",        muPtr->passed(34)); // 
+        bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(35)); // 
+
+
 
         //add prefit resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
@@ -1088,6 +1127,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         refittedK2.SetXYZM(  phiDau2Params(3), phiDau2Params(4), phiDau2Params(5),  phiDau2Params(6));
         refittedPi.SetXYZM(  dsDau1Params(3),  dsDau1Params(4),  dsDau1Params(5),   dsDau1Params(6));
         refittedMu.SetXYZM(  bsDau1Params(3),  bsDau1Params(4),  bsDau1Params(5),   bsDau1Params(6));
+
 
         // For the ds mass
         TLorentzVector refittedPhiPi;
@@ -1498,6 +1538,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float e_gamma = getEGamma(fittedDs, dsMass_,dsStarMass_);
         bs.addUserFloat("e_gamma", e_gamma);
 
+        // add kappa
+        float kappa = getKappa(fittedDs, muTlv);
+        bs.addUserFloat("kappa", kappa);
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
         //std::cout << "mu pt is" << muPtr->pt() << std::endl;

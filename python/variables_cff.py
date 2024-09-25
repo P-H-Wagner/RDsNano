@@ -44,6 +44,43 @@ prefitBasicVariables = cms.PSet(
         mu_id_medium     = Var("userInt('mu_id_medium')",int),
         mu_id_tight      = Var("userInt('mu_id_tight')",int),
 
+        mu_id_medium_promt        = Var("userInt('mu_id_medium_prompt')",       int),
+        mu_id_global_high_pt      = Var("userInt('mu_id_global_high_pt')",      int),
+        mu_id_trk_high_pt         = Var("userInt('mu_id_trk_high_pt')",         int),
+        mu_pf_iso_very_loose      = Var("userInt('mu_pf_iso_very_loose')",      int),
+        mu_pf_iso_loose           = Var("userInt('mu_pf_iso_loose')",           int),
+        mu_pf_iso_medium          = Var("userInt('mu_pf_iso_medium')",          int),
+        mu_pf_iso_tight           = Var("userInt('mu_pf_iso_tight')",           int),
+        mu_pf_iso_very_tight      = Var("userInt('mu_pf_iso_very_tight')",      int),
+
+        mu_tk_iso_loose           = Var("userInt('mu_tk_iso_loose')",           int),
+        mu_tk_iso_tight           = Var("userInt('mu_tk_iso_tight')",           int),
+        mu_id_soft                = Var("userInt('mu_id_soft')",                int),
+        mu_id_soft_mva            = Var("userInt('mu_id_soft_mva')",            int),
+        mu_mva_loose              = Var("userInt('mu_mva_loose')",              int),
+        mu_mva_medium             = Var("userInt('mu_mva_medium')",             int),
+        mu_mvs_tight              = Var("userInt('mu_mva_tight')",              int),
+        mu_mini_iso_loose         = Var("userInt('mu_mini_iso_loose')",         int),
+        mu_mini_iso_medium        = Var("userInt('mu_mini_iso_medium')",        int),
+        mu_mini_iso_tight         = Var("userInt('mu_mini_iso_tight')",         int),
+
+        mu_mini_iso_very_tight    = Var("userInt('mu_mini_iso_very_tight')",    int),
+        mu_trigger_id_loose       = Var("userInt('mu_trigger_id_loose')",       int),
+        mu_in_time_muon           = Var("userInt('mu_in_time_muon')",           int),
+        mu_pf_iso_very_very_tight = Var("userInt('mu_pf_iso_very_very_tight')", int),
+        mu_multi_iso_loose        = Var("userInt('mu_multi_iso_loose')",        int),
+        mu_multi_iso_medium       = Var("userInt('mu_multi_iso_medium')",       int),
+        mu_puppi_iso_loose        = Var("userInt('mu_puppi_iso_loose')",        int),
+        mu_puppi_iso_medium       = Var("userInt('mu_puppi_iso_medium')",       int),
+        mu_puppi_iso_tight        = Var("userInt('mu_puppi_iso_tight')",        int),
+        mu_mva_v_tight            = Var("userInt('mu_mva_v_tight')",            int),
+
+        mu_mva_vv_tight           = Var("userInt('mu_mva_vv_tight')",           int),
+        mu_low_pt_mva_loose       = Var("userInt('mu_low_pt_mva_loose')",       int),
+        mu_low_pt_mva_medium      = Var("userInt('mu_low_pt_mva_medium')",      int),
+        mu_mv_id_wp_medium        = Var("userInt('mu_mv_id_wp_medium')",        int),
+        mu_mv_id_wp_tight         = Var("userInt('mu_mv_id_wp_tight')",         int),
+
 
         k1_px         = Var("userCand('k1').px()",float),
         k1_py         = Var("userCand('k1').py()",float),
@@ -482,6 +519,7 @@ postfitBasicVariables = cms.PSet(
         mu_rel_iso_04_refitted = Var("userFloat('mu_rel_iso_04_refitted')", float),
 
         e_gamma          = Var("userFloat('e_gamma')",float),
+        kappa            = Var("userFloat('kappa')",float),
 )
 
 ##################################################

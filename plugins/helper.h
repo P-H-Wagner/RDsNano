@@ -179,15 +179,22 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   TVector3 bBoost = b.BoostVector();
   d.Boost(-bBoost);
 
+
   //get W via Ds 
   TLorentzVector w;
   w.SetVectM(-d.Vect(),std::sqrt(q2));           
+
+
   // boost it back into lab frame
   w.Boost(bBoost);
+
   // now take the boost vector of w
   TVector3 wBoost = w.BoostVector();
+  //std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
+
   //boost the muon into the w rest frame
   mu.Boost(-wBoost); 
+
   //boost the W back into the bs rest frame
   w.Boost(-bBoost);
  
@@ -294,7 +301,7 @@ inline float getEStar(TLorentzVector b, TLorentzVector mu){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
-//function which returns E*, the momentum of mu in b rest frame
+//function which returns Egamma, the energy of the photon (Ds* artificially created) 
 
 inline float getEGamma(TLorentzVector ds, const double dsMass_, const double dsStarMass_ ){
 
@@ -308,6 +315,16 @@ inline float getEGamma(TLorentzVector ds, const double dsMass_, const double dsS
 
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns the angle between the Ds and mu 
+
+inline double getKappa(TLorentzVector ds, TLorentzVector mu){
+
+  double kappa = ds.Vect().Angle(mu.Vect());
+ 
+  return kappa;
+
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////

@@ -30,6 +30,8 @@
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" 
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h" 
+// photon and taus
+#include "DataFormats/EgammaCandidates/interface/PhotonCore.h"
 
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -61,6 +63,9 @@
 #include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
 
+// for lxy
+#include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 // TODOS:
 //
@@ -70,7 +75,7 @@
 // - redefine all variables after the fit? save both ? - YES 
 // - beautify the bs.addUserFloat (...)                - DONE
 // - pos. def. cov matrix                              - DONE
-// - add counters before every selection  
+// - add counters before every selection               - DONE 
 // - pruned vs packed -> discuss                       - DONE
 // - output tree has now empty entries when there is no trigger/signal -> DONE (ed filter)
 // - adapt for Hb background sample                    - DONE
@@ -83,8 +88,9 @@
 // - put hel angle calc. etc into functions!           - DONE
 // - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
 // - add Ds boost as dicrimanting variable             - DONE
-// - add all impact parameters correctly and use refitted tracks
+// - add all impact parameters correctly and use refitted tracks - DONE
 // - add mu isolation, e* miss and pt miss, photon energy - DONE 
+// - add and save Vcb Variables
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -210,6 +216,10 @@ private:
   const edm::InputTag packedGenTag; //packed contains much more info->most likely not needed!
   const edm::EDGetTokenT<pat::PackedGenParticleCollection> packedGen_;
 
+  const edm::InputTag photonTag; 
+  const edm::EDGetTokenT<reco::PhotonCoreCollection> photon_;
+
+
 };
 
 //define the constructor
@@ -263,7 +273,10 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     prunedGenTag(iConfig.getParameter<edm::InputTag>("prunedCand")),
     prunedGen_(consumes<reco::GenParticleCollection>(prunedGenTag)),
     packedGenTag(iConfig.getParameter<edm::InputTag>("packedCand")),
-    packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)){
+    packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)),
+ 
+    photonTag(iConfig.getParameter<edm::InputTag>("photonCand")),
+    photon_(consumes<reco::PhotonCoreCollection>(photonTag)){
        // output collection
        produces<pat::CompositeCandidateCollection>("bs");
        //produces<pat::CompositeCandidateCollection>("gen");
@@ -299,6 +312,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   edm::Handle<pat::PackedGenParticleCollection> packedGen;
   iEvent.getByToken(packedGen_,packedGen);
+
+  edm::Handle<reco::PhotonCoreCollection> photon;
+  iEvent.getByToken(photon_,photon);
+
+
 
   edm::ESHandle<TransientTrackBuilder> ttBuilder;
   iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", ttBuilder);
@@ -362,6 +380,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     if (goldenIdx >= 0){
     pv = primaryVtx->at(goldenIdx);
     }
+
 
     //if (true ) std::cout << "found mu: " << muPtr->pt() << std::endl;
     //////////////////////////////////////////////////
@@ -511,6 +530,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         phiPi.setCharge(kk.charge() + piPtr->charge());
         //std::cout << "found ds resonance" << std::endl;
         nDsMassCut++;
+
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
@@ -974,19 +994,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // lxy(z) is the flight distance in the xy(z) plane(space)
 
-        auto lxyBsVect   = VertexDistanceXY().distance( bsVtx->vertexState(), dsVtx->vertexState());
-        auto lxyDsVect   = VertexDistanceXY().distance( bsVtx->vertexState(), dsVtx->vertexState()); 
-        auto lxyPhiVect  = VertexDistanceXY().distance( dsVtx->vertexState(), phiVtx->vertexState()); 
-        auto lxyzBsVect  = VertexDistanceXY().distance( pv,                   bsVtx->vertexState()); 
-        auto lxyzDsVect  = VertexDistanceXY().distance( bsVtx->vertexState(), dsVtx->vertexState()); 
-        auto lxyzPhiVect = VertexDistanceXY().distance( dsVtx->vertexState(), phiVtx->vertexState()); 
+        Measurement1D lxyDsVect       = lxyz(bsVtx->vertexState(), dsVtx->vertexState(),  true);        
+        Measurement1D lxyzDsVect      = lxyz(bsVtx->vertexState(), dsVtx->vertexState(),  false);        
 
-        //lxyDsVect = ROOT::Math::DisplacementVector3D("ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag"); //(sv_x - tv_x, sv_y - tv_y , 0);
-        //dsPtVect.SetXYZ(phiPi.px(),phiPi.py(), 0);
+        Measurement1D lxyPhiVect      = lxyz(dsVtx->vertexState(), phiVtx->vertexState(), true);        
+        Measurement1D lxyzPhiVect     = lxyz(dsVtx->vertexState(), phiVtx->vertexState(), false);        
 
-        // require that the vectorial Pt of the Ds candidate is not too far away from the vectorial Lxy
-        //float angDsPt = lxyDsVect.Dot(dsPtVect) / (lxyDsVect.Mag() * dsPtVect.Mag());
-        //if (angDsPt < 0.8) continue; // this is actually a cosine
+        Measurement1D lxyBsVect       = VertexDistanceXY().distance(  pv, dsVtx->vertexState());
+        Measurement1D lxyzBsVect      = VertexDistance3D().distance( pv, dsVtx->vertexState()); 
 
         bs.addUserFloat("lxy_bs",     lxyBsVect.value());
         bs.addUserFloat("lxy_bs_err", lxyBsVect.error());

@@ -111,6 +111,8 @@ int k2Sel2Counter = 0;
 int piSel1Counter = 0;
 int piSel2Counter = 0;
 
+int gSelCounter   = 0;   
+
 int nKKPiMu       = 0;
 int nPhiMassCut   = 0;
 int nDsMassCut    = 0;
@@ -156,15 +158,17 @@ private:
 
   //cuts 
   const StringCutObjectSelector<pat::PackedCandidate> hadSelection_; // cut on hadrons
-  //const StringCutObjectSelector<pat::PackedGenParticle> hadSelectionGen_; // cut on gen hadrons
+  const StringCutObjectSelector<pat::PackedCandidate> gSelection_; // cut on hadrons
   const StringCutObjectSelector<reco::GenParticle> hadSelectionGen_; // cut on gen hadrons for test with pruned only!
 
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
+  const double maxdRPhotonDs_;
   const double maxdzDiffHadMuon_; 
   const double maxdxyHadPv_; 
   const double phiMassAllowance_;
   const double dsMassAllowance_;
+  const double dsStarMassAllowance_;
   const double drMatchGen_;
   const double maxBsMass_;
   const double piMass_;
@@ -226,13 +230,16 @@ private:
 BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig):
     // f.e. hadSelection_ = cfg.getPatameter...
     hadSelection_(iConfig.getParameter<std::string>("hadSelection")),
+    gSelection_(iConfig.getParameter<std::string>("gSelection")),
     hadSelectionGen_(iConfig.getParameter<std::string>("hadSelectionGen")),
     maxdRHadMuon_(iConfig.getParameter<double>("maxdRHadMuon")),
     mindRHadMuon_(iConfig.getParameter<double>("mindRHadMuon")),
+    maxdRPhotonDs_(iConfig.getParameter<double>("maxdRPhotonDs")),
     maxdzDiffHadMuon_(iConfig.getParameter<double>("maxdzDiffHadMuon")),
     maxdxyHadPv_(iConfig.getParameter<double>("maxdxyHadPv")),
     phiMassAllowance_(iConfig.getParameter<double>("phiMassAllowance")),
     dsMassAllowance_(iConfig.getParameter<double>("dsMassAllowance")),
+    dsStarMassAllowance_(iConfig.getParameter<double>("dsStarMassAllowance")),
     drMatchGen_(iConfig.getParameter<double>("drMatchGen")),
     maxBsMass_(iConfig.getParameter<double>("maxBsMass")),
 
@@ -484,6 +491,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << piPtr->pt() <<"and" <<piPtr->pdgId() << std::endl;
         if (!piSel) continue;
         piSel2Counter++;
+	
 
         //std::cout << " ----- found pi: " << piPtr->pt() << std::endl;
         //////////////////////////////////////////////////
@@ -530,6 +538,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         phiPi.setCharge(kk.charge() + piPtr->charge());
         //std::cout << "found ds resonance" << std::endl;
         nDsMassCut++;
+
 
 
         //////////////////////////////////////////////////
@@ -769,6 +778,64 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //std::cout << "we passed all the vtx fit" << std::endl;
 
+        //////////////////////////////////////////////////
+        // Look for possible photons (g for gamma)      //
+        //////////////////////////////////////////////////
+
+        int foundPhoton       = 0;
+        float minDeltaDsStar  = 0;
+        int photonIdx         = -1;
+
+        float dr_photon_ds = -9999; 
+        float dsPhoton_m   = -9999;
+        float photon_pt    = -9999; 
+        float photon_eta   = -9999; 
+        float photon_phi   = -9999; 
+        int   photon_pdgid = -9999; 
+
+        edm::Ptr<pat::PackedCandidate> phtPtr;
+
+        for (size_t gIdx = 0; gIdx < pcand->size() + tracksLost->size() ; ++gIdx){
+
+          edm::Ptr<pat::PackedCandidate> gPtr;
+          if (gIdx < pcand->size()) gPtr = edm::Ptr<pat::PackedCandidate>(pcand, gIdx); //normal tracks
+          else gPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, gIdx - pcand->size());  //lost tracks 
+  
+          // if the photon does not pass the selection, jump to the next!
+          if(!gSelection_(*gPtr)) continue;
+         
+          gSelCounter++;
+          
+          // define photon momentum
+          //math::PtEtaPhiMLorentzVector photonP4(gPtr->pt(), gPtr->eta(), gPtr->phi(), 0.0);
+          pat::CompositeCandidate dsStar;
+          dsStar.setP4(gPtr->p4() + phiPi.p4());
+ 
+          float dr           = reco::deltaR(*gPtr, phiPi);
+          float mDsStar      = dsStar.mass();
+          float deltaDsStar = abs(mDsStar - DSSTAR_MASS);
+  
+          if (((deltaDsStar < minDeltaDsStar) || (foundPhoton == 0))  && ( deltaDsStar < dsStarMassAllowance_)){
+
+            foundPhoton    = 1;
+            minDeltaDsStar = deltaDsStar; 
+            photonIdx      = gIdx;        
+            phtPtr         = gPtr;
+            dr_photon_ds   = dr;       
+            dsPhoton_m     = mDsStar;
+ 
+          }
+        }   
+
+        if (photonIdx != -1){
+
+          photon_pt    = phtPtr->pt();     
+          photon_eta   = phtPtr->eta();     
+          photon_phi   = phtPtr->phi();     
+          photon_pdgid = phtPtr->pdgId();     
+
+        }
+
         //////////////////////////////////// end of global fitter /////////////////////////////////////
 
         // get vertices
@@ -840,6 +907,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("mu_is_pf",          muPtr->isPFMuon());
         bs.addUserInt("mu_is_global",      muPtr->isGlobalMuon());
         bs.addUserInt("mu_is_standalone",  muPtr->isStandAloneMuon());
+
+        bs.addUserFloat("photon_pt",    photon_pt);
+        bs.addUserFloat("photon_eta",   photon_eta);
+        bs.addUserFloat("photon_phi",   photon_phi);
+        bs.addUserInt("photon_pdgid", photon_pdgid);
+        bs.addUserFloat("dr_photon_ds", dr_photon_ds);
+        bs.addUserFloat("dsPhoton_m", dsPhoton_m);
+        bs.addUserInt("foundPhoton", foundPhoton);
+
 
         // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
 

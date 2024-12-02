@@ -511,6 +511,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //gen.addUserCand("k1_gen",k1PtrGen);
                //gen.addUserCand("k2_gen",k2PtrGen);
                //gen.addUserCand("pi_gen",piPtrGen);
+
+
+               //printDaughters(bsFromMu); //-> for debugging
+
                gen.addUserFloat("mu_gen_px"      ,muPtrGen->px());
                gen.addUserFloat("mu_gen_py"      ,muPtrGen->py());
                gen.addUserFloat("mu_gen_pz"      ,muPtrGen->pz());
@@ -832,22 +836,43 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float dsStar_gen_phi;
                float dsStar_gen_m;
                int   dsStar_gen_pdgid; 
-  
+ 
+               ////////////////////////////////////
+               // SPECIAL FOR STAR SIGNALS:      //
+               // Save also photon info          //
+               ////////////////////////////////////
+
+               float photon_gen_pt;
+               float photon_gen_eta;
+               float photon_gen_phi;
+               float photon_gen_pdgid;
+               
+               float dr_gen_photon_ds;
+ 
+
                if (sigId == 0){
   
                  //  Bs -> Ds + mu + nu 
-                 tau_gen_pt       = std::nan("nan");
-                 tau_gen_eta      = std::nan("nan");
-                 tau_gen_phi      = std::nan("nan");
-                 tau_gen_m        = std::nan("nan");
+                 tau_gen_pt       = -9999;
+                 tau_gen_eta      = -9999;
+                 tau_gen_phi      = -9999;
+                 tau_gen_m        = -9999;
                  tau_gen_pdgid    = -9999;
   
-                 dsStar_gen_pt    = std::nan("nan");
-                 dsStar_gen_eta   = std::nan("nan");
-                 dsStar_gen_phi   = std::nan("nan");
-                 dsStar_gen_m     = std::nan("nan");
+                 dsStar_gen_pt    = -9999;
+                 dsStar_gen_eta   = -9999;
+                 dsStar_gen_phi   = -9999;
+                 dsStar_gen_m     = -9999;
                  dsStar_gen_pdgid = -9999;
-  
+ 
+                 photon_gen_pt     = -9999; 
+                 photon_gen_eta    = -9999; 
+                 photon_gen_phi    = -9999; 
+                 photon_gen_pdgid  = -9999; 
+
+                 dr_gen_photon_ds  = -9999; 
+ 
+ 
                }
   
   
@@ -864,33 +889,59 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  tau_gen_m        = tauMass_; 
                  tau_gen_pdgid    = tauFromMu->pdgId();
   
-                 dsStar_gen_pt    = std::nan("nan");
-                 dsStar_gen_eta   = std::nan("nan");
-                 dsStar_gen_phi   = std::nan("nan");
-                 dsStar_gen_m     = std::nan("nan");
+                 dsStar_gen_pt    = -9999;
+                 dsStar_gen_eta   = -9999;
+                 dsStar_gen_phi   = -9999;
+                 dsStar_gen_m     = -9999;
                  dsStar_gen_pdgid = -9999;
-  
+ 
+                 photon_gen_pt     = -9999; 
+                 photon_gen_eta    = -9999; 
+                 photon_gen_phi    = -9999; 
+                 photon_gen_pdgid  = -9999; 
+ 
+                 dr_gen_photon_ds  = -9999; 
                }
   
                else if (sigId == 10){
   
                  //  Bs -> Ds* + mu + nu 
-  
-                 tau_gen_pt       = std::nan("nan");
-                 tau_gen_eta      = std::nan("nan");
-                 tau_gen_phi      = std::nan("nan");
-                 tau_gen_m        = std::nan("nan");
+                 tau_gen_pt       = -9999;
+                 tau_gen_eta      = -9999;
+                 tau_gen_phi      = -9999;
+                 tau_gen_m        = -9999;
                  tau_gen_pdgid    = -9999;
   
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
-  
+                 auto gFromDs      = getDaughter(dsStarFromDs, 22); 
+ 
                  dsStar_gen_pt    = dsStarFromDs->pt();
                  dsStar_gen_eta   = dsStarFromDs->eta();
                  dsStar_gen_phi   = dsStarFromDs->phi();
                  dsStar_gen_m     = dsStarMass_; 
                  dsStar_gen_pdgid = dsStarFromDs->pdgId();
-  
+
+                 if (gFromDs != nullptr){ 
+                   //can be nullptr if f.e. Ds* -> Ds + pi^0
+                   photon_gen_pt     = gFromDs->pt(); 
+                   photon_gen_eta    = gFromDs->eta();
+                   photon_gen_phi    = gFromDs->phi();
+                   photon_gen_pdgid  = gFromDs->pdgId();
+ 
+                   dr_gen_photon_ds  = reco::deltaR(*gFromDs, *dsFromPi); 
+                 }
+
+                 else{
+                   photon_gen_pt     = -9999; 
+                   photon_gen_eta    = -9999; 
+                   photon_gen_phi    = -9999; 
+                   photon_gen_pdgid  = -9999; 
+   
+                   dr_gen_photon_ds  = -9999; 
+                 }
+
+
                }
   
                else if (sigId == 11){
@@ -908,13 +959,31 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
+                 auto gFromDs      = getDaughter(dsStarFromDs, 22);
   
                  dsStar_gen_pt     = dsStarFromDs->pt();
                  dsStar_gen_eta    = dsStarFromDs->eta();
                  dsStar_gen_phi    = dsStarFromDs->phi();
                  dsStar_gen_m      = dsStarMass_; 
                  dsStar_gen_pdgid  = dsStarFromDs->pdgId();
-  
+ 
+                 if (gFromDs != nullptr){ 
+                   //can be nullptr if f.e. Ds* -> Ds + pi^0
+                   photon_gen_pt     = gFromDs->pt(); 
+                   photon_gen_eta    = gFromDs->eta();
+                   photon_gen_phi    = gFromDs->phi();
+                   photon_gen_pdgid  = gFromDs->pdgId();
+ 
+                   dr_gen_photon_ds  = reco::deltaR(*gFromDs, *dsFromPi); 
+                 }
+                 else{
+                   photon_gen_pt     = -9999; 
+                   photon_gen_eta    = -9999; 
+                   photon_gen_phi    = -9999; 
+                   photon_gen_pdgid  = -9999; 
+   
+                   dr_gen_photon_ds  = -9999; 
+                 }
                }
   
                else{
@@ -930,6 +999,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  dsStar_gen_phi    = std::nan("nan");
                  dsStar_gen_m      = std::nan("nan");
                  dsStar_gen_pdgid  = -9999;
+
+                 photon_gen_pt     = std::nan("nan");
+                 photon_gen_eta    = std::nan("nan");
+                 photon_gen_phi    = std::nan("nan");
+                 photon_gen_pdgid  = -9999;
+
+                 dr_gen_photon_ds      = std::nan("nan");
   
                }
   
@@ -946,6 +1022,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("dsStar_gen_m",       dsStar_gen_m);
                gen.addUserInt("dsStar_gen_pdgid",   dsStar_gen_pdgid);
 
+               gen.addUserFloat("photon_gen_pt",      photon_gen_pt);
+               gen.addUserFloat("photon_gen_eta",     photon_gen_eta);
+               gen.addUserFloat("photon_gen_phi",     photon_gen_phi);
+               gen.addUserInt("photon_gen_pdgid",   photon_gen_pdgid);
+
+               gen.addUserFloat("dr_gen_photon_ds",   dr_gen_photon_ds);
 
 
                /*
@@ -1267,7 +1349,14 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("dsStar_gen_phi", std::nan(""));
             gen.addUserFloat("dsStar_gen_m",   std::nan(""));
             gen.addUserInt("dsStar_gen_pdgid",   -9999);
-  
+ 
+            gen.addUserFloat("photon_gen_pt",     std::nan("") );
+            gen.addUserFloat("photon_gen_eta",    std::nan("") );
+            gen.addUserFloat("photon_gen_phi",    std::nan("") );
+            gen.addUserInt("photon_gen_pdgid",   -9999);
+
+            gen.addUserFloat("dr_gen_photon_ds", std::nan("") );
+ 
   
           }
   

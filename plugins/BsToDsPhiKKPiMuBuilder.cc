@@ -788,12 +788,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float dr_photon_ds = -9999; 
         float dsPhoton_m   = -9999;
+        float dsPhotonMu_m = -9999;
         float photon_pt    = -9999; 
         float photon_eta   = -9999; 
         float photon_phi   = -9999; 
         int   photon_pdgid = -9999; 
 
+        TLorentzVector photonTlv(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
         edm::Ptr<pat::PackedCandidate> phtPtr;
+
+
+        int photonMultiplicity = 0;
 
         for (size_t gIdx = 0; gIdx < pcand->size() + tracksLost->size() ; ++gIdx){
 
@@ -803,22 +808,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   
           // if the photon does not pass the selection, jump to the next!
           if(!gSelection_(*gPtr)) continue;
-         
+        
+          photonMultiplicity++; 
           gSelCounter++;
           
           // define photon momentum
           //math::PtEtaPhiMLorentzVector photonP4(gPtr->pt(), gPtr->eta(), gPtr->phi(), 0.0);
           pat::CompositeCandidate dsStar;
+
           dsStar.setP4(gPtr->p4() + phiPi.p4());
  
           float dr           = reco::deltaR(*gPtr, phiPi);
           float mDsStar      = dsStar.mass();
-          float deltaDsStar = abs(mDsStar - DSSTAR_MASS);
-  
-          if (((deltaDsStar < minDeltaDsStar) || (foundPhoton == 0))  && ( deltaDsStar < dsStarMassAllowance_)){
+          float deltaDsStar  = abs(mDsStar - DSSTAR_MASS); 
+ 
+          if (((dr < minDeltaDsStar) || (foundPhoton == 0))  && ( deltaDsStar < dsStarMassAllowance_)){
 
             foundPhoton    = 1;
-            minDeltaDsStar = deltaDsStar; 
+            minDeltaDsStar = dr; 
             photonIdx      = gIdx;        
             phtPtr         = gPtr;
             dr_photon_ds   = dr;       
@@ -834,7 +841,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           photon_phi   = phtPtr->phi();     
           photon_pdgid = phtPtr->pdgId();     
 
+          pat::CompositeCandidate dsStarMu;
+          dsStarMu.setP4(phtPtr->p4() + phiPi.p4() + muPtr->p4());
+          dsPhotonMu_m   = dsStarMu.mass();
+
+          photonTlv.SetXYZM(phtPtr->px(), phtPtr->py(), phtPtr->pz(), 0.0);
+
         }
+
 
         //////////////////////////////////// end of global fitter /////////////////////////////////////
 
@@ -914,7 +928,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("photon_pdgid", photon_pdgid);
         bs.addUserFloat("dr_photon_ds", dr_photon_ds);
         bs.addUserFloat("dsPhoton_m", dsPhoton_m);
+        bs.addUserFloat("dsPhotonMu_m", dsPhotonMu_m);
         bs.addUserInt("foundPhoton", foundPhoton);
+        bs.addUserInt("photonMultiplicity", photonMultiplicity);
 
 
         // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
@@ -1237,6 +1253,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         collMissTlv = collBsTlv - (fittedDs + refittedMu); //bs - ds+mu
         collQTlv = collBsTlv - fittedDs; // bs - ds
+
+        double q2_coll_photon = -9999;
+        //test!
+        if (foundPhoton){
+          TLorentzVector collQTlvPhoton = collBsTlv - fittedDs - photonTlv;
+          q2_coll_photon = collQTlvPhoton.M2();
+        }
+        bs.addUserFloat("q2_coll_photon",q2_coll_photon); 
+
         double m2_miss_coll = collMissTlv.M2();
         double pt_miss_coll = collMissTlv.Pt();
         double q2_coll      = collQTlv.M2();

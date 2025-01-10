@@ -362,30 +362,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
     std::vector<float> dzMuPV;
 
-    //Fix the primary vertex to be the one closest to the trg Muon in dz
-    // more accurate for mu than for tau signals
+    // For the first candidate selection, we pick the PV 
+    // to be the one closest to the trg Muon in dz.
+    // The final PV is calculated later.
+    // More accurate for mu than for tau signals
 
     float dummy = 1.0;
-    int goldenIdx = -1;
-    reco::Vertex pv;
+    int pvIdx_dz= -1;
+    reco::Vertex pv_dz;
+
     for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
       nPv++;
       edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
       float minDz = fabs(muPtr->bestTrack()->dz(vtxPtr->position())); 
       if(minDz < dummy){
         dummy = minDz;
-        goldenIdx = vtxIdx;
+        pvIdx_dz = vtxIdx;
       }
 
     }
-    // take as the primary vertex the one which has minimal dz with the muon 
-    //auto dzMuPVMin = std::min_element(std::begin(dzMuPV),std::end(dzMuPV));
-    //int pvIdx = std::distance(std::begin(dzMuPV), dzMuPVMin); 
 
-    if (goldenIdx<0) continue;
+    if (pvIdx_dz <0) continue;
     muSelCounter++;
-    if (goldenIdx >= 0){
-    pv = primaryVtx->at(goldenIdx);
+    if (pvIdx_dz >= 0){
+    pv_dz = primaryVtx->at(pvIdx_dz);
     }
 
    
@@ -420,8 +420,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && 
       (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && 
-      (abs(k1Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
-      (abs(k1Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
+      (abs(k1Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
+      (abs(k1Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
       if (!k1Sel) continue;
       //if (true) std::cout << " found k1: " << k1Ptr->pt() << std::endl;
@@ -447,8 +447,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && 
       (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && 
-      (abs(k2Ptr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
-      (abs(k2Ptr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
+      (abs(k2Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
+      (abs(k2Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
       //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
       //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
@@ -482,8 +482,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bool piSel = ((muonPidR < maxdRHadMuon_) && 
         (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&
-        (abs(piPtr->bestTrack()->dz(pv.position()) - muPtr->bestTrack()->dz(pv.position())) < maxdzDiffHadMuon_)) &&
-        (abs(piPtr->bestTrack()->dxy(pv.position()) < maxdxyHadPv_ )) ;
+        (abs(piPtr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
+        (abs(piPtr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
         //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
         //pi and mu must have opposite charge -> only for signal tests, later we keep everything
@@ -853,13 +853,38 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         }
 
+        //Define 4 vectors of fitted and refitted resonances
+        TLorentzVector fittedPhi;
+        TLorentzVector fittedDs;
+        TLorentzVector fittedBs;
+
+        TLorentzVector refittedPhi;
+        TLorentzVector refittedDs;
+        // bs does not have a refitted state :)
+
+        fittedPhi.SetXYZM(   phiParams(3),     phiParams(4),     phiParams(5),      phiParams(6));
+        fittedDs.SetXYZM(    dsParams(3),      dsParams(4),      dsParams(5),       dsParams(6));
+        fittedBs.SetXYZM(    bsParams(3),      bsParams(4),      bsParams(5),       bsParams(6));
+
+        refittedPhi.SetXYZM( dsDau2Params(3),  dsDau2Params(4),  dsDau2Params(5),   dsDau2Params(6));
+        refittedDs.SetXYZM(  bsDau2Params(3),  bsDau2Params(4),  bsDau2Params(5),   bsDau2Params(6));
+
+        //Define 4 vectors of refitted final states
+        TLorentzVector refittedK1;
+        TLorentzVector refittedK2;
+        TLorentzVector refittedPi;
+        TLorentzVector refittedMu;
+
+        refittedK1.SetXYZM(  phiDau1Params(3), phiDau1Params(4), phiDau1Params(5),  phiDau1Params(6));
+        refittedK2.SetXYZM(  phiDau2Params(3), phiDau2Params(4), phiDau2Params(5),  phiDau2Params(6));
+        refittedPi.SetXYZM(  dsDau1Params(3),  dsDau1Params(4),  dsDau1Params(5),   dsDau1Params(6));
+        refittedMu.SetXYZM(  bsDau1Params(3),  bsDau1Params(4),  bsDau1Params(5),   bsDau1Params(6));
+
+        // refitted ds+mu 
+        TLorentzVector refittedDsMu = refittedDs + refittedMu ;
 
 
-        // get vertices
-        float pv_x = pv.x();
-        float pv_y = pv.y();
-        float pv_z = pv.z();
-
+        // set sv,tv, and fv from fit
         float sv_x = bsParams(0);
         float sv_y = bsParams(1);
         float sv_z = bsParams(2);
@@ -872,11 +897,47 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float fv_y = phiParams(1);
         float fv_z = phiParams(2);
 
+        ///////////////////////////////////////////////////////////////
+        // Redefinition of PV, this is more excact! (Around 5%)      //
+        // Use this definition for all the variables depending on PV //
+        ///////////////////////////////////////////////////////////////
+
+        float dummy2   = 1.0;
+        int pvIdx      = -1;
+        reco::Vertex pv;
+ 
+        for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
+          edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
+
+          float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, refittedDs, refittedMu);
+
+          if(ip3d < dummy2){
+            dummy2 = ip3d;
+            pvIdx  = vtxIdx;
+           }
+
+         }
+
+        if (pvIdx <  0) continue;
+        if (pvIdx >= 0){
+          pv = primaryVtx->at(pvIdx);
+        }
+
+
+        // get the x,y position of the pv by evaluating the beamspot density
+        // at pv_z
+
+        if (!beamSpotHandle.isValid()) continue;
+        const reco::BeamSpot& beamSpot = *beamSpotHandle;
+
+        float pv_z = pv.z();
+        float pv_x = beamSpot.x(pv_z);
+        float pv_y = beamSpot.y(pv_z);
+       
+
         //////////////////////////////////////////////
 
         //2d cosine
-        if (!beamSpotHandle.isValid()) continue;
-        const reco::BeamSpot& beamSpot = *beamSpotHandle;
 
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> kkPi_xy;
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xy;
@@ -964,36 +1025,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("k_k_charge"  ,kkCharge); 
 
 
-        //Define 4 vectors of fitted and refitted resonances
-        TLorentzVector fittedPhi;
-        TLorentzVector fittedDs;
-        TLorentzVector fittedBs;
-
-        TLorentzVector refittedPhi;
-        TLorentzVector refittedDs;
-        // bs does not have a refitted state :)
-
-        fittedPhi.SetXYZM(   phiParams(3),     phiParams(4),     phiParams(5),      phiParams(6));
-        fittedDs.SetXYZM(    dsParams(3),      dsParams(4),      dsParams(5),       dsParams(6));
-        fittedBs.SetXYZM(    bsParams(3),      bsParams(4),      bsParams(5),       bsParams(6));
-
-        refittedPhi.SetXYZM( dsDau2Params(3),  dsDau2Params(4),  dsDau2Params(5),   dsDau2Params(6));
-        refittedDs.SetXYZM(  bsDau2Params(3),  bsDau2Params(4),  bsDau2Params(5),   bsDau2Params(6));
-
-        //Define 4 vectors of refitted final states
-        TLorentzVector refittedK1;
-        TLorentzVector refittedK2;
-        TLorentzVector refittedPi;
-        TLorentzVector refittedMu;
-
-        refittedK1.SetXYZM(  phiDau1Params(3), phiDau1Params(4), phiDau1Params(5),  phiDau1Params(6));
-        refittedK2.SetXYZM(  phiDau2Params(3), phiDau2Params(4), phiDau2Params(5),  phiDau2Params(6));
-        refittedPi.SetXYZM(  dsDau1Params(3),  dsDau1Params(4),  dsDau1Params(5),   dsDau1Params(6));
-        refittedMu.SetXYZM(  bsDau1Params(3),  bsDau1Params(4),  bsDau1Params(5),   bsDau1Params(6));
-
-        // refitted ds+mu 
-        TLorentzVector refittedDsMu = refittedDs + refittedMu ;
-
         ///////////////////////////////////////////////////////////////////////////////////////////
         // store  ID's                                                                           //
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1066,9 +1097,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_y0",         beamSpot.y0());
         bs.addUserFloat("bs_z0",         beamSpot.z0());
 
-        bs.addUserFloat("bs_x_wrt_pv_z", beamSpot.x(pv_z));
-        bs.addUserFloat("bs_y_wrt_pv_z", beamSpot.y(pv_z));
-
         // primary vertex ( = Bs production vertex)
 
         bs.addUserFloat("pv_x",       pv_x); 
@@ -1078,7 +1106,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_ndof",    pv.ndof());
         bs.addUserFloat("pv_redchi2", pv.normalizedChi2());
         bs.addUserFloat("pv_prob",    ChiSquaredProbability(pv.chi2(), pv.ndof()));
-        bs.addUserInt("pv_idx", goldenIdx);
+        bs.addUserInt  ("pv_idx",     pvIdx);
+
+        // save also the x,y components without beamspot calculation 
+        bs.addUserFloat("pv_x_wout_bs",  pv.x()); 
+        bs.addUserFloat("pv_y_wout_bs",  pv.y()); 
+
+        // The first definition using minimal dz between pv and muon
+        bs.addUserFloat("pv_dz_x",  pv_dz.x()); 
+        bs.addUserFloat("pv_dz_y",  pv_dz.y()); 
+        bs.addUserFloat("pv_dz_z",  pv_dz.z()); 
 
         // secondary vertex ( = Bs decay vertex)  
 
@@ -1112,34 +1149,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // opening angle between bs - ds vtx directioini and kkpi flight direction
         bs.addUserFloat("ds_vtx_cosine", ds_vtx_cosine);
-
-        // Test: is this the better choice for pv?
-        // fix the pv as the one to minimize the ip3D to the ds + mu track
-
-        float dummy2   = 1.0;
-        int goldenIdx2 = -1;
-        reco::Vertex pv2;
- 
-        for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
-          edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
-
-          float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, refittedDs, refittedMu);
-
-          if(ip3d < dummy2){
-            dummy2 = ip3d;
-            goldenIdx2 = vtxIdx;
-          }
-
-         }
-
-        if (goldenIdx2<0) continue;
-        if (goldenIdx2 >= 0){
-        pv2 = primaryVtx->at(goldenIdx2);
-        }
-
-        bs.addUserFloat("pv2_x",  pv2.x()); 
-        bs.addUserFloat("pv2_y",  pv2.y()); 
-        bs.addUserFloat("pv2_z",  pv2.z()); 
 
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1255,21 +1264,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //////////////////////////perp Ds+Mu and /corrected Bs mass ///////////////////////////////////////////
         //accoring to https://journals.aps.org/prd/pdf/10.1103/PhysRevD.100.112006 eq 3.
 
-        double dsPerp;
-        double dsMuPerp;
-        double bsMassCorr;
-       
         TVector3 bFlightDir;
         bFlightDir.SetXYZ(pv_x - sv_x, pv_y - sv_y, pv_z - sv_z);
 
-        double dsPerp   = refittedDs.  Vect().Perp(bFlightDir);
-        double dsMuPerp = refittedDsMu.Vect().Perp(bFlightDir);
+        double dsPerp     = refittedDs.  Vect().Perp(bFlightDir);
+        double dsMuPerp   = refittedDsMu.Vect().Perp(bFlightDir);
+        double bsMassCorr = std::sqrt(std::pow(refittedDsMu.M(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
 
-        bsMassCorr = std::sqrt(std::pow(refittedDsMu.mass(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
-
-        bs.addUserFloat("dsPerp",    dsPerp);
-        bs.addUserFloat("dsMuPerp",  dsMuPerp);
-        bs.addUserFloat("bs_m_corr", bsMassCorr);
+        bs.addUserFloat("bs_m_corr",  bsMassCorr);
+        bs.addUserFloat("ds_perp",    dsPerp);
+        bs.addUserFloat("ds_mu_perp", dsMuPerp);
 
 
         ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
@@ -1448,6 +1452,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ////////////////////////////////////////////////
         // Redo all the methods if we have a photon!  //
         ////////////////////////////////////////////////
+        double dsPerpPhoton                 = -9999;
+        double dsMuPerpPhoton               = -9999;
+        double bsMassCorrPhoton             = -9999;
 
         double m2_miss_coll_photon          = -9999;
         double pt_miss_coll_photon          = -9999;
@@ -1461,10 +1468,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_coll_photon           = -9999;
         double bs_phi_coll_photon           = -9999;
 
-        double bs_boost_coll_photon         = -9999;
-        double bs_boost_coll_pt_photon      = -9999;
-        double bs_boost_coll_eta_photon     = -9999;
-        double bs_boost_coll_phi_photon     = -9999;
+        double b_boost_coll_photon         = -9999;
+        double b_boost_coll_pt_photon      = -9999;
+        double b_boost_coll_eta_photon     = -9999;
+        double b_boost_coll_phi_photon     = -9999;
 
         double m2_miss_lhcb_alt_photon      = -9999;
         double pt_miss_lhcb_alt_photon      = -9999; 
@@ -1478,10 +1485,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_lhcb_alt_photon       = -9999;
         double bs_phi_lhcb_alt_photon       = -9999;
 
-        double bs_boost_lhcb_alt_photon     = -9999;
-        double bs_boost_lhcb_alt_pt_photon  = -9999;
-        double bs_boost_lhcb_alt_eta_photon = -9999;
-        double bs_boost_lhcb_alt_phi_photon = -9999;
+        double b_boost_lhcb_alt_photon     = -9999;
+        double b_boost_lhcb_alt_pt_photon  = -9999;
+        double b_boost_lhcb_alt_eta_photon = -9999;
+        double b_boost_lhcb_alt_phi_photon = -9999;
 
         double m2_miss_reco_1_photon        = -9999;
         double pt_miss_reco_1_photon        = -9999; 
@@ -1495,10 +1502,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_reco_1_photon         = -9999;
         double bs_phi_reco_1_photon         = -9999;
 
-        double bs_boost_reco_1_photon       = -9999;
-        double bs_boost_reco_1_pt_photon    = -9999;
-        double bs_boost_reco_1_eta_photon   = -9999;
-        double bs_boost_reco_1_phi_photon   = -9999;
+        double b_boost_reco_1_photon       = -9999;
+        double b_boost_reco_1_pt_photon    = -9999;
+        double b_boost_reco_1_eta_photon   = -9999;
+        double b_boost_reco_1_phi_photon   = -9999;
 
         double m2_miss_reco_2_photon        = -9999;
         double pt_miss_reco_2_photon        = -9999; 
@@ -1512,15 +1519,37 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_reco_2_photon         = -9999;
         double bs_phi_reco_2_photon         = -9999;
 
-        double bs_boost_reco_2_photon       = -9999;
-        double bs_boost_reco_2_pt_photon    = -9999;
-        double bs_boost_reco_2_eta_photon   = -9999;
-        double bs_boost_reco_2_phi_photon   = -9999;
+        double b_boost_reco_2_photon       = -9999;
+        double b_boost_reco_2_pt_photon    = -9999;
+        double b_boost_reco_2_eta_photon   = -9999;
+        double b_boost_reco_2_phi_photon   = -9999;
+
+        double discNegativityPhoton         = -9999;
+        double discIsNegativePhoton         = -9999;
 
 
         if (foundPhoton){
 
           TLorentzVector refittedDsMuPhoton = refittedDsMu + photonTlv;
+          TLorentzVector refittedDsPhoton   = refittedDs   + photonTlv;
+
+          /////////////////////////////
+          // Ds + mu perp variable   //
+          /////////////////////////////
+         
+          double dsPerpPhoton   = refittedDsPhoton.  Vect().Perp(bFlightDir);
+          double dsMuPerpPhoton = refittedDsMuPhoton.Vect().Perp(bFlightDir);
+  
+          bsMassCorrPhoton = std::sqrt(std::pow(refittedDsMuPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
+  
+          bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
+          bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
+          bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
+
+          /////////////////////////////
+          // Collinear approximation //
+          /////////////////////////////
+
   
           TLorentzVector collBsTlvPhoton = collMethod(refittedDsMuPhoton, bsMass_);
   
@@ -1530,12 +1559,108 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           collMissTlvPhoton = collBsTlvPhoton - refittedDsMuPhoton; // bs - ds+mu
           collQTlvPhoton    = collBsTlvPhoton - refittedDsPhoton;   // bs - ds
   
-          m2_miss_coll_photon = collMissTlvPhoton.M2();
-          pt_miss_coll_photon = collMissTlvPhoton.Pt();
-          q2_coll_photon      = collQTlvPhoton.M2();
-          e_star_coll_photon  = getEStar(collBsTlvPhoton,refittedMu); 
+          m2_miss_coll_photon         = collMissTlvPhoton.M2();
+          pt_miss_coll_photon         = collMissTlvPhoton.Pt();
+          q2_coll_photon              = collQTlvPhoton.M2();
+          e_star_coll_photon          = getEStar(collBsTlvPhoton,refittedMu); 
+
+          bs_px_coll_photon           = collBsTlvPhoton.Px(); 
+          bs_py_coll_photon           = collBsTlvPhoton.Py(); 
+          bs_pz_coll_photon           = collBsTlvPhoton.Pz(); 
+          bs_pt_coll_photon           = collBsTlvPhoton.Pt(); 
+          bs_eta_coll_photon          = collBsTlvPhoton.Eta(); 
+          bs_phi_coll_photon          = collBsTlvPhoton.Phi(); 
+
+          b_boost_coll_photon        = collBsTlvPhoton.BoostVector().Mag(); 
+          b_boost_coll_pt_photon     = collBsTlvPhoton.BoostVector().Pt(); 
+          b_boost_coll_eta_photon    = collBsTlvPhoton.BoostVector().Eta(); 
+          b_boost_coll_phi_photon    = collBsTlvPhoton.BoostVector().Phi(); 
+ 
+          /////////////////////////////
+          // Lhcb method             //
+          /////////////////////////////
+
+          TLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
   
+          TLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - refittedDsMuPhoton; // bs - ds+mu
+          TLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - refittedDsPhoton;   // bs - ds 
+  
+          m2_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.M2();
+          pt_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.Pt();
+          q2_lhcb_alt_photon           = lhcbAltQTlvPhoton.M2();
+          e_star_lhcb_alt_photon       = getEStar(lhcbAltBsTlvPhoton,refittedMu); 
+
+          bs_px_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Px(); 
+          bs_py_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Py(); 
+          bs_pz_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pz(); 
+          bs_pt_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pt(); 
+          bs_eta_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Eta(); 
+          bs_phi_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Phi(); 
+
+          b_boost_lhcb_alt_photon     = lhcbAltBsTlvPhoton.BoostVector().Mag(); 
+          b_boost_lhcb_alt_pt_photon  = lhcbAltBsTlvPhoton.BoostVector().Pt(); 
+          b_boost_lhcb_alt_eta_photon = lhcbAltBsTlvPhoton.BoostVector().Eta(); 
+          b_boost_lhcb_alt_phi_photon = lhcbAltBsTlvPhoton.BoostVector().Phi(); 
+
+          /////////////////////////////
+          // Reco method             //
+          /////////////////////////////
+
+          std::tuple<std::vector<TLorentzVector>,float> recoResultPhoton = recoMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
+  
+          std::vector<TLorentzVector> recosBsPhoton = std::get<0>(recoResultPhoton);
+          discNegativityPhoton                      = std::get<1>(recoResultPhoton);
+  
+          discIsNegativePhoton = 0;
+          if (discNegativityPhoton > 0) discIsNegativePhoton = 1;
+  
+          TLorentzVector recoBsTlv1Photon = recosBsPhoton.at(0);
+          TLorentzVector recoBsTlv2Photon = recosBsPhoton.at(1);
+  
+          TLorentzVector miss_1Photon     = recoBsTlv1Photon - refittedDsMuPhoton;  
+          TLorentzVector miss_2Photon     = recoBsTlv2Photon - refittedDsMuPhoton;  
+          TLorentzVector Q_1Photon        = recoBsTlv1Photon - refittedDsPhoton;  
+          TLorentzVector Q_2Photon        = recoBsTlv2Photon - refittedDsPhoton;  
+  
+          m2_miss_reco_1_photon           = miss_1Photon.M2();
+          pt_miss_reco_1_photon           = miss_1Photon.Pt();
+          q2_reco_1_photon                = Q_1Photon.M2();
+          e_star_reco_1_photon            = getEStar(recoBsTlv1Photon,refittedMu); 
+ 
+          bs_px_reco_1_photon             = recoBsTlv1Photon.Px(); 
+          bs_py_reco_1_photon             = recoBsTlv1Photon.Py(); 
+          bs_pz_reco_1_photon             = recoBsTlv1Photon.Pz(); 
+          bs_pt_reco_1_photon             = recoBsTlv1Photon.Pt(); 
+          bs_eta_reco_1_photon            = recoBsTlv1Photon.Eta(); 
+          bs_phi_reco_1_photon            = recoBsTlv1Photon.Phi(); 
+
+          b_boost_reco_1_photon          = recoBsTlv1Photon.BoostVector().Mag(); 
+          b_boost_reco_1_pt_photon       = recoBsTlv1Photon.BoostVector().Pt(); 
+          b_boost_reco_1_eta_photon      = recoBsTlv1Photon.BoostVector().Eta(); 
+          b_boost_reco_1_phi_photon      = recoBsTlv1Photon.BoostVector().Phi(); 
+
+          m2_miss_reco_2_photon           = miss_2Photon.M2();
+          pt_miss_reco_2_photon           = miss_2Photon.Pt();
+          q2_reco_2_photon                = Q_2Photon.M2();
+          e_star_reco_2_photon            = getEStar(recoBsTlv2Photon,refittedMu); 
+
+          bs_px_reco_2_photon             = recoBsTlv2Photon.Px(); 
+          bs_py_reco_2_photon             = recoBsTlv2Photon.Py(); 
+          bs_pz_reco_2_photon             = recoBsTlv2Photon.Pz(); 
+          bs_pt_reco_2_photon             = recoBsTlv2Photon.Pt(); 
+          bs_eta_reco_2_photon            = recoBsTlv2Photon.Eta(); 
+          bs_phi_reco_2_photon            = recoBsTlv2Photon.Phi(); 
+
+          b_boost_reco_2_photon          = recoBsTlv2Photon.BoostVector().Mag(); 
+          b_boost_reco_2_pt_photon       = recoBsTlv2Photon.BoostVector().Pt(); 
+          b_boost_reco_2_eta_photon      = recoBsTlv2Photon.BoostVector().Eta(); 
+          b_boost_reco_2_phi_photon      = recoBsTlv2Photon.BoostVector().Phi(); 
+
         }
+
+        bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
+        bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
+        bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
 
         bs.addUserFloat("bs_px_coll_photon",        bs_px_coll_photon);
         bs.addUserFloat("bs_py_coll_photon",        bs_py_coll_photon);
@@ -1554,22 +1679,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("b_boost_coll_eta_photon",  b_boost_coll_eta_photon);
         bs.addUserFloat("b_boost_coll_phi_photon",  b_boost_coll_phi_photon);
 
-        bs.addUserFloat("bs_px_lhcb_photon",        bs_px_lhcb_photon);
-        bs.addUserFloat("bs_py_lhcb_photon",        bs_py_lhcb_photon);
-        bs.addUserFloat("bs_pz_lhcb_photon",        bs_pz_lhcb_photon);
-        bs.addUserFloat("bs_pt_lhcb_photon",        bs_pt_lhcb_photon);
-        bs.addUserFloat("bs_eta_lhcb_photon",       bs_eta_lhcb_photon);
-        bs.addUserFloat("bs_phi_lhcb_photon",       bs_phi_lhcb_photon);
+        bs.addUserFloat("bs_px_lhcb_alt_photon",        bs_px_lhcb_alt_photon);
+        bs.addUserFloat("bs_py_lhcb_alt_photon",        bs_py_lhcb_alt_photon);
+        bs.addUserFloat("bs_pz_lhcb_alt_photon",        bs_pz_lhcb_alt_photon);
+        bs.addUserFloat("bs_pt_lhcb_alt_photon",        bs_pt_lhcb_alt_photon);
+        bs.addUserFloat("bs_eta_lhcb_alt_photon",       bs_eta_lhcb_alt_photon);
+        bs.addUserFloat("bs_phi_lhcb_alt_photon",       bs_phi_lhcb_alt_photon);
 
-        bs.addUserFloat("m2_miss_lhcb_photon",      m2_miss_lhcb_photon);
-        bs.addUserFloat("pt_miss_lhcb_photon",      pt_miss_lhcb_photon);
-        bs.addUserFloat("q2_lhcb_photon",           q2_lhcb_photon);
-        bs.addUserFloat("e_star_lhcb_photon",       e_star_lhcb_photon);
+        bs.addUserFloat("m2_miss_lhcb_alt_photon",      m2_miss_lhcb_alt_photon);
+        bs.addUserFloat("pt_miss_lhcb_alt_photon",      pt_miss_lhcb_alt_photon);
+        bs.addUserFloat("q2_lhcb_alt_photon",           q2_lhcb_alt_photon);
+        bs.addUserFloat("e_star_lhcb_alt_photon",       e_star_lhcb_alt_photon);
 
-        bs.addUserFloat("b_boost_lhcb_photon",      b_boost_lhcb_photon);
-        bs.addUserFloat("b_boost_lhcb_pt_photon",   b_boost_lhcb_pt_photon);
-        bs.addUserFloat("b_boost_lhcb_eta_photon",  b_boost_lhcb_eta_photon);
-        bs.addUserFloat("b_boost_lhcb_phi_photon",  b_boost_lhcb_phi_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_photon",      b_boost_lhcb_alt_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_pt_photon",   b_boost_lhcb_alt_pt_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_eta_photon",  b_boost_lhcb_alt_eta_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_phi_photon",  b_boost_lhcb_alt_phi_photon);
 
         bs.addUserFloat("bs_px_reco_1_photon",      bs_px_reco_1_photon);
         bs.addUserFloat("bs_py_reco_1_photon",      bs_py_reco_1_photon);
@@ -1605,9 +1730,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("b_boost_reco_2_eta_photon", b_boost_reco_2_eta_photon);
         bs.addUserFloat("b_boost_reco_2_phi_photon", b_boost_reco_2_phi_photon);
 
-
-
-
+        bs.addUserInt("disc_is_negative_photon",discIsNegativePhoton);
+        bs.addUserFloat("disc_negativity_photon",discNegativityPhoton);
 
         ////////////////// Save momenta (and masses for consistency, even if constrained /////////////////////////
 
@@ -1700,17 +1824,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         /////////////////////// helicity angles in all possibe variations /////////////////////////
 
         //angle between Mu and W
-        float angMuWColl    = angMuW(fittedDs,collBsTlv,   refittedMu);
-        float angMuWLhcb    = angMuW(fittedDs,lhcbBsTlv,   refittedMu);
-        float angMuWLhcbAlt = angMuW(fittedDs,lhcbAltBsTlv,refittedMu);
-        float angMuWReco1   = angMuW(fittedDs,recoBsTlv1,  refittedMu);
-        float angMuWReco2   = angMuW(fittedDs,recoBsTlv2,  refittedMu);
-
-        bs.addUserFloat("angMuWColl",       angMuWColl); 
-        bs.addUserFloat("angMuWLhcb",       angMuWLhcb); 
-        bs.addUserFloat("angMuWLhcbAlt",    angMuWLhcbAlt); 
-        bs.addUserFloat("angMuWReco1",      angMuWReco1); 
-        bs.addUserFloat("angMuWReco2",      angMuWReco2); 
+        float angMuWColl    = angMuW(refittedDs,collBsTlv,   refittedMu);
+        float angMuWLhcb    = angMuW(refittedDs,lhcbBsTlv,   refittedMu);
+        float angMuWLhcbAlt = angMuW(refittedDs,lhcbAltBsTlv,refittedMu);
+        float angMuWReco1   = angMuW(refittedDs,recoBsTlv1,  refittedMu);
+        float angMuWReco2   = angMuW(refittedDs,recoBsTlv2,  refittedMu);
 
         bs.addUserFloat("cosMuWColl",       cos(angMuWColl)); 
         bs.addUserFloat("cosMuWLhcb",       cos(angMuWLhcb)); 
@@ -1720,35 +1838,21 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         //angle between k1(k2) and pion in phi rest frame
-        float angPiK1  = angDoubleDecay(fittedPhi,refittedK1, refittedPi);
-        float angPiK2  = angDoubleDecay(fittedPhi,refittedK2, refittedPi);
+        float angPiK1  = angDoubleDecay(refittedPhi,refittedK1, refittedPi);
+        float angPiK2  = angDoubleDecay(refittedPhi,refittedK2, refittedPi);
         // equivalently, angle between phi(pi) and bs in ds rest frame
-        float angPhiDsColl    = angDsPi(fittedDs, fittedPhi,  collBsTlv);
-        float angPhiDsLhcb    = angDsPi(fittedDs, fittedPhi,  lhcbBsTlv);
-        float angPhiDsLhcbAlt = angDsPi(fittedDs, fittedPhi,  lhcbAltBsTlv);
-        float angPhiDsReco1   = angDsPi(fittedDs, fittedPhi,  recoBsTlv1);
-        float angPhiDsReco2   = angDsPi(fittedDs, fittedPhi,  recoBsTlv2);
+        float angPhiDsColl    = angDsPi(refittedDs, refittedPhi,  collBsTlv);
+        float angPhiDsLhcb    = angDsPi(refittedDs, refittedPhi,  lhcbBsTlv);
+        float angPhiDsLhcbAlt = angDsPi(refittedDs, refittedPhi,  lhcbAltBsTlv);
+        float angPhiDsReco1   = angDsPi(refittedDs, refittedPhi,  recoBsTlv1);
+        float angPhiDsReco2   = angDsPi(refittedDs, refittedPhi,  recoBsTlv2);
 
-        float angPiDsColl    = angDsPi(fittedDs, refittedPi,  collBsTlv);
-        float angPiDsLhcb    = angDsPi(fittedDs, refittedPi,  lhcbBsTlv);
-        float angPiDsLhcbAlt = angDsPi(fittedDs, refittedPi,  lhcbAltBsTlv);
-        float angPiDsReco1   = angDsPi(fittedDs, refittedPi,  recoBsTlv1);
-        float angPiDsReco2   = angDsPi(fittedDs, refittedPi,  recoBsTlv2);
+        float angPiDsColl    = angDsPi(refittedDs, refittedPi,  collBsTlv);
+        float angPiDsLhcb    = angDsPi(refittedDs, refittedPi,  lhcbBsTlv);
+        float angPiDsLhcbAlt = angDsPi(refittedDs, refittedPi,  lhcbAltBsTlv);
+        float angPiDsReco1   = angDsPi(refittedDs, refittedPi,  recoBsTlv1);
+        float angPiDsReco2   = angDsPi(refittedDs, refittedPi,  recoBsTlv2);
         
-        bs.addUserFloat("angPiK1",         angPiK1); 
-        bs.addUserFloat("angPiK2",         angPiK2); 
-
-        bs.addUserFloat("angPhiDsColl",    angPhiDsColl); 
-        bs.addUserFloat("angPhiDsLhcb",    angPhiDsLhcb); 
-        bs.addUserFloat("angPhiDsLhcbAlt", angPhiDsLhcbAlt); 
-        bs.addUserFloat("angPhiDsReco1",   angPhiDsReco1); 
-        bs.addUserFloat("angPhiDsReco2",   angPhiDsReco2); 
-
-        bs.addUserFloat("angPiDsColl",     angPiDsColl); 
-        bs.addUserFloat("angPiDsLhcb",     angPiDsLhcb); 
-        bs.addUserFloat("angPiDsLhcbAlt",  angPiDsLhcbAlt); 
-        bs.addUserFloat("angPiDsReco1",    angPiDsReco1); 
-        bs.addUserFloat("angPiDsReco2",    angPiDsReco2); 
 
         bs.addUserFloat("cosPiK1",         cos(angPiK1)); 
         bs.addUserFloat("cosPiK2",         cos(angPiK2)); 
@@ -1766,11 +1870,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPiDsReco2",    cos(angPiDsReco2)); 
 
         // helicity plane angle
-        float angPlaneBsColl    = angPlane(fittedDs, collBsTlv,    refittedMu, refittedPi);
-        float angPlaneBsLhcb    = angPlane(fittedDs, lhcbBsTlv,    refittedMu, refittedPi);
-        float angPlaneBsLhcbAlt = angPlane(fittedDs, lhcbAltBsTlv, refittedMu, refittedPi);
-        float angPlaneBsReco1   = angPlane(fittedDs, recoBsTlv1,   refittedMu, refittedPi);
-        float angPlaneBsReco2   = angPlane(fittedDs, recoBsTlv2,   refittedMu, refittedPi);
+        float angPlaneBsColl    = angPlane(refittedDs, collBsTlv,    refittedMu, refittedPi);
+        float angPlaneBsLhcb    = angPlane(refittedDs, lhcbBsTlv,    refittedMu, refittedPi);
+        float angPlaneBsLhcbAlt = angPlane(refittedDs, lhcbAltBsTlv, refittedMu, refittedPi);
+        float angPlaneBsReco1   = angPlane(refittedDs, recoBsTlv1,   refittedMu, refittedPi);
+        float angPlaneBsReco2   = angPlane(refittedDs, recoBsTlv2,   refittedMu, refittedPi);
 
         bs.addUserFloat("cosPlaneBsColl",    cos(angPlaneBsColl));
         bs.addUserFloat("cosPlaneBsLhcb",    cos(angPlaneBsLhcb));
@@ -1778,11 +1882,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPlaneBsReco1",   cos(angPlaneBsReco1));
         bs.addUserFloat("cosPlaneBsReco2",   cos(angPlaneBsReco2));
 
-        float angPlaneDsColl    = angPlane2(fittedDs, collBsTlv,    refittedK1, refittedPi);
-        float angPlaneDsLhcb    = angPlane2(fittedDs, lhcbBsTlv,    refittedK1, refittedPi);
-        float angPlaneDsLhcbAlt = angPlane2(fittedDs, lhcbAltBsTlv, refittedK1, refittedPi);
-        float angPlaneDsReco1   = angPlane2(fittedDs, recoBsTlv1,   refittedK1, refittedPi);
-        float angPlaneDsReco2   = angPlane2(fittedDs, recoBsTlv2,   refittedK1, refittedPi);
+        float angPlaneDsColl    = angPlane2(refittedDs, collBsTlv,    refittedK1, refittedPi);
+        float angPlaneDsLhcb    = angPlane2(refittedDs, lhcbBsTlv,    refittedK1, refittedPi);
+        float angPlaneDsLhcbAlt = angPlane2(refittedDs, lhcbAltBsTlv, refittedK1, refittedPi);
+        float angPlaneDsReco1   = angPlane2(refittedDs, recoBsTlv1,   refittedK1, refittedPi);
+        float angPlaneDsReco2   = angPlane2(refittedDs, recoBsTlv2,   refittedK1, refittedPi);
 
         bs.addUserFloat("cosPlaneDsColl",    cos(angPlaneDsColl));
         bs.addUserFloat("cosPlaneDsLhcb",    cos(angPlaneDsLhcb));
@@ -1844,11 +1948,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "mu iso 03: " << relIso03 << std::endl;
 
         // e gamma
-        float e_gamma = getEGamma(fittedDs, dsMass_,dsStarMass_);
+        float e_gamma = getEGamma(refittedDs, dsMass_,dsStarMass_);
         bs.addUserFloat("e_gamma", e_gamma);
 
         // add kappa
-        float kappa = getKappa(fittedDs, muTlv);
+        float kappa = getKappa(refittedDs, muTlv);
         bs.addUserFloat("kappa", kappa);
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////

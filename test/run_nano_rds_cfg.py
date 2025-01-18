@@ -3,7 +3,7 @@ import FWCore.ParameterSet.Config as cms
 
 # TODO: put different samples into parser (flag from command line)
 # channel = 'sig'
-channel = 'data'
+channel = 'sig'
 
 import os
 
@@ -37,7 +37,7 @@ process.Timing = cms.Service("Timing",
 #load all the chosen options
 process.MessageLogger.cerr.FwkReport.reportEvery =1 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(200)
+    input = cms.untracked.int32(300)
 )
 
 def filesFromFolder(directory):
@@ -81,16 +81,24 @@ process.source = cms.Source(
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/D0AE1369-0D7B-554C-BBB9-7B324AACCABD.root'), #data file to compare with riccs MA code
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/36CD4F31-A249-DF49-A3FF-32DCA7223D09.root'), #10
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #7
-    fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530000/521F0FA1-D91E-ED4D-8920-5BB1E7CDDE38.root'), #7
-    #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530000/521F0FA1-D91E-ED4D-8920-5BB1E7CDDE38.root'), #7
+    fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
     #fileNames = cms.untracked.vstring(inputfiles),
     #fileNames = cms.untracked.vstring('file:root://eoscms.cern.ch//eos/cms/store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530009/33EBB973-79DA-114A-9C72-1CC48E0ED7C6.root'), #fails with crab
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root'), #lxy is nan here
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/50303941-50B8-C84A-9D02-D5000919ED8A.root'), #lxy is nan here
+    #fileNames = cms.untracked.vstring(''), #lxy is nan here
+    #fileNames = cms.untracked.vstring(['file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/18444F62-3117-C244-8DCB-A065FB62C65D.root']),
+    #fileNames = cms.untracked.vstring(['file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDs_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/50303941-50B8-C84A-9D02-D5000919ED8A.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/18444F62-3117-C244-8DCB-A065FB62C65D.root']),
+
+
     secondaryFileNames = cms.untracked.vstring(),
     #eventsToProcess = cms.untracked.VEventRange('325117:316225000', '325117:317459950', '325117:316794666', '325117:316199657'),
     #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:317317084','325117:316229017','325117:317682842','325117:316762974','325117:317803805','325117:316457342','325117:317726844'), #constrained vs ma
     #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:316762974','325117:316164638','325117:317419163'), #unconstrained vs ma
     #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:316762974','325117:316164638','325117:317309145', '325117:317587931','325117:317002588'), #unconstrained vs new ma (same events :))
-    #eventsToProcess = cms.untracked.VEventRange('325117:317002588'),
+    #eventsToProcess = cms.untracked.VEventRange('1:3316932894'),
+    #eventsToProcess = cms.untracked.VEventRange('1:3314083441'),
 
     #eventsToProcess  = cms.untracked.VEventRange('325117:316065411','325117:316065411', '325117:316066604', '325117:316067368', '325117:316070783', '325117:339068458', '325117:339074399', '325117:339076186', '325117:339078422', '325117:339078591'),
     skipEvents=cms.untracked.uint32(0) # skip first n events   

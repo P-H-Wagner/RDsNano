@@ -91,6 +91,7 @@
 // - add all impact parameters correctly and use refitted tracks - DONE
 // - add mu isolation, e* miss and pt miss, photon energy - DONE 
 // - add and save Vcb Variables
+// - Oscillate back also all b hadrons, pick first beauty ancestor
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -223,6 +224,12 @@ private:
   const edm::InputTag photonTag; 
   const edm::EDGetTokenT<reco::PhotonCoreCollection> photon_;
 
+  const edm::InputTag unpackedTracksTag;
+  const edm::EDGetTokenT<reco::TrackCollection> unpackedTracks_;
+
+  //const edm::InputTag refitVtxTag;
+  //const edm::EDGetTokenT<reco::VertexCollection> refitVtx_;
+
 
 };
 
@@ -283,7 +290,15 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)),
  
     photonTag(iConfig.getParameter<edm::InputTag>("photonCand")),
-    photon_(consumes<reco::PhotonCoreCollection>(photonTag)){
+    photon_(consumes<reco::PhotonCoreCollection>(photonTag)),
+
+    unpackedTracksTag(iConfig.getParameter<edm::InputTag>("unpackedTracksCand")),
+    unpackedTracks_(consumes<reco::TrackCollection>(unpackedTracksTag))
+ 
+    //refitVtxTag(iConfig.getParameter<edm::InputTag>("refitVtxCand")),
+    //refitVtx_(consumes<reco::VertexCollection>(refitVtxTag))
+ 
+   {
        // output collection
        produces<pat::CompositeCandidateCollection>("bs");
        //produces<pat::CompositeCandidateCollection>("gen");
@@ -323,6 +338,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   edm::Handle<reco::PhotonCoreCollection> photon;
   iEvent.getByToken(photon_,photon);
 
+  edm::Handle<reco::TrackCollection> unpackedTracks;
+  iEvent.getByToken(unpackedTracks_, unpackedTracks);
+
+  //edm::Handle<reco::VertexCollection> refitVtx;
+  //iEvent.getByToken(refitVtx_, refitVtx);
 
 
   edm::ESHandle<TransientTrackBuilder> ttBuilder;
@@ -781,6 +801,104 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of global fitter /////////////////////////////////////
+
+
+        ///////////////////////////////////////////////////
+        // Match final state track with AOD tracks       //
+        ///////////////////////////////////////////////////
+  
+        
+        int foundTrackMu    = 0;
+        int foundTrackK1    = 0;
+        int foundTrackK2    = 0;
+        int foundTrackPi    = 0;
+  
+        int trkIdxMu        = -1;
+        int trkIdxK1        = -1;
+        int trkIdxK2        = -1;
+        int trkIdxPi        = -1;
+
+        float minDeltaDrMu  = 0;
+        float minDeltaDrK1  = 0;
+        float minDeltaDrK2  = 0;
+        float minDeltaDrPi  = 0;
+       
+        for(size_t trkIdx = 0; trkIdx < unpackedTracks->size(); ++trkIdx) {
+
+          //edm::Ptr<reco::Track> trkPtr;
+          //trkPtr = edm::Ptr<reco::Track>(unpackedTracks, trkIdx); // aod tracks 
+
+          edm::Ref<reco::TrackCollection> trkRef(unpackedTracks, trkIdx);
+          const reco::Track& track = *trkRef; // Access the track object
+
+          /* 
+          double drMu = reco::deltaR(*trkPtr, *muPtr); 
+          double drK1 = reco::deltaR(*trkPtr, *k1Ptr); 
+          double drK2 = reco::deltaR(*trkPtr, *k2Ptr); 
+          double drPi = reco::deltaR(*trkPtr, *piPtr); 
+
+          if (((drMu < minDeltaDrMu) || (foundTrackMu == 0)) && ( muPtr->charge() * trkPtr->charge() > 0)){
+            
+            foundTrackMu = 1;
+            minDeltaDrMu = drMu;
+            trkIdxMu     = trkIdx;
+
+          }
+          if (((drK1 < minDeltaDrK1) || (foundTrackK1 == 0)) && ( k1Ptr->charge() * trkPtr->charge() > 0)){
+            
+            foundTrackK1 = 1;
+            minDeltaDrK1 = drK1;
+            trkIdxK1     = trkIdx;
+
+          }
+          if (((drK2 < minDeltaDrK2) || (foundTrackK2 == 0)) && ( k2Ptr->charge() * trkPtr->charge() > 0)){
+            
+            foundTrackK2 = 1;
+            minDeltaDrK2 = drK2;
+            trkIdxK2     = trkIdx;
+
+          }
+          if (((drPi < minDeltaDrPi) || (foundTrackPi == 0)) && ( piPtr->charge() * trkPtr->charge() > 0)){
+            
+            foundTrackPi = 1;
+            minDeltaDrPi = drPi;
+            trkIdxPi     = trkIdx;
+
+          }
+
+          */
+        }
+
+        //std::set<int> signalTrkIdx = {trkIdxMu, trkIdxK1, trkIdxK2, trkIdxPi};
+
+        //edm::Ptr<reco::Track> aodTrkMu;
+        //edm::Ptr<reco::Track> aodTrkK1;
+        //edm::Ptr<reco::Track> aodTrkK2;
+        //edm::Ptr<reco::Track> aodTrkPi;
+
+        //aodTrkMu = edm::Ptr<reco::Track>(unpackedTracks, trkIdxMu); 
+        //aodTrkK1 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK1); 
+        //aodTrkK2 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK2); 
+        //aodTrkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
+
+
+        // now fill a vector of aod tracks, except for the signal tracks
+        // want to remove signal tracks from vtx fit
+
+        //std::vector<reco::Track> toFit;
+
+        //for(size_t trkIdx = 0; trkIdx < unpackedTracks->size(); ++trkIdx) {
+
+        //  //skip the signal tracks 
+        //  if (std::find(signalTrkIdx.begin(), signalTrkIdx.end(), trkIdx) != signalTrkIdx.end()) continue; 
+  
+        //  //only add other tracks for the fit
+        //  edm::Ptr<reco::Track> trkPtr;
+        //  trkPtr = edm::Ptr<reco::Track>(unpackedTracks, trkIdx); // aod tracks 
+        //  toFit.push_back(*trkPtr);
+
+        //}
+
 
         //////////////////////////////////////////////////
         // Look for possible photons (g for gamma)      //
@@ -1449,289 +1567,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("b_boost_reco_2_eta",recoBsTlv2.BoostVector().Eta());
         bs.addUserFloat("b_boost_reco_2_phi",recoBsTlv2.BoostVector().Phi());
 
-        ////////////////////////////////////////////////
-        // Redo all the methods if we have a photon!  //
-        ////////////////////////////////////////////////
-        double dsPerpPhoton                 = -9999;
-        double dsMuPerpPhoton               = -9999;
-        double bsMassCorrPhoton             = -9999;
-
-        double m2_miss_coll_photon          = -9999;
-        double pt_miss_coll_photon          = -9999;
-        double q2_coll_photon               = -9999;
-        float  e_star_coll_photon           = -9999;
-
-        double bs_px_coll_photon            = -9999;
-        double bs_py_coll_photon            = -9999;
-        double bs_pz_coll_photon            = -9999;
-        double bs_pt_coll_photon            = -9999;
-        double bs_eta_coll_photon           = -9999;
-        double bs_phi_coll_photon           = -9999;
-
-        double b_boost_coll_photon         = -9999;
-        double b_boost_coll_pt_photon      = -9999;
-        double b_boost_coll_eta_photon     = -9999;
-        double b_boost_coll_phi_photon     = -9999;
-
-        double m2_miss_lhcb_alt_photon      = -9999;
-        double pt_miss_lhcb_alt_photon      = -9999; 
-        double q2_lhcb_alt_photon           = -9999; 
-        double e_star_lhcb_alt_photon       = -9999;  
-
-        double bs_px_lhcb_alt_photon        = -9999;
-        double bs_py_lhcb_alt_photon        = -9999;
-        double bs_pz_lhcb_alt_photon        = -9999;
-        double bs_pt_lhcb_alt_photon        = -9999;
-        double bs_eta_lhcb_alt_photon       = -9999;
-        double bs_phi_lhcb_alt_photon       = -9999;
-
-        double b_boost_lhcb_alt_photon     = -9999;
-        double b_boost_lhcb_alt_pt_photon  = -9999;
-        double b_boost_lhcb_alt_eta_photon = -9999;
-        double b_boost_lhcb_alt_phi_photon = -9999;
-
-        double m2_miss_reco_1_photon        = -9999;
-        double pt_miss_reco_1_photon        = -9999; 
-        double q2_reco_1_photon             = -9999; 
-        double e_star_reco_1_photon         = -9999;  
-
-        double bs_px_reco_1_photon          = -9999;
-        double bs_py_reco_1_photon          = -9999;
-        double bs_pz_reco_1_photon          = -9999;
-        double bs_pt_reco_1_photon          = -9999;
-        double bs_eta_reco_1_photon         = -9999;
-        double bs_phi_reco_1_photon         = -9999;
-
-        double b_boost_reco_1_photon       = -9999;
-        double b_boost_reco_1_pt_photon    = -9999;
-        double b_boost_reco_1_eta_photon   = -9999;
-        double b_boost_reco_1_phi_photon   = -9999;
-
-        double m2_miss_reco_2_photon        = -9999;
-        double pt_miss_reco_2_photon        = -9999; 
-        double q2_reco_2_photon             = -9999; 
-        double e_star_reco_2_photon         = -9999;  
-
-        double bs_px_reco_2_photon          = -9999;
-        double bs_py_reco_2_photon          = -9999;
-        double bs_pz_reco_2_photon          = -9999;
-        double bs_pt_reco_2_photon          = -9999;
-        double bs_eta_reco_2_photon         = -9999;
-        double bs_phi_reco_2_photon         = -9999;
-
-        double b_boost_reco_2_photon       = -9999;
-        double b_boost_reco_2_pt_photon    = -9999;
-        double b_boost_reco_2_eta_photon   = -9999;
-        double b_boost_reco_2_phi_photon   = -9999;
-
-        double discNegativityPhoton         = -9999;
-        double discIsNegativePhoton         = -9999;
-
-
-        if (foundPhoton){
-
-          TLorentzVector refittedDsMuPhoton = refittedDsMu + photonTlv;
-          TLorentzVector refittedDsPhoton   = refittedDs   + photonTlv;
-
-          /////////////////////////////
-          // Ds + mu perp variable   //
-          /////////////////////////////
-         
-          double dsPerpPhoton   = refittedDsPhoton.  Vect().Perp(bFlightDir);
-          double dsMuPerpPhoton = refittedDsMuPhoton.Vect().Perp(bFlightDir);
-  
-          bsMassCorrPhoton = std::sqrt(std::pow(refittedDsMuPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
-  
-          bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
-          bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
-          bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
-
-          /////////////////////////////
-          // Collinear approximation //
-          /////////////////////////////
-
-  
-          TLorentzVector collBsTlvPhoton = collMethod(refittedDsMuPhoton, bsMass_);
-  
-          TLorentzVector collMissTlvPhoton; // for m2 miss
-          TLorentzVector collQTlvPhoton;    // for q2 miss
-  
-          collMissTlvPhoton = collBsTlvPhoton - refittedDsMuPhoton; // bs - ds+mu
-          collQTlvPhoton    = collBsTlvPhoton - refittedDsPhoton;   // bs - ds
-  
-          m2_miss_coll_photon         = collMissTlvPhoton.M2();
-          pt_miss_coll_photon         = collMissTlvPhoton.Pt();
-          q2_coll_photon              = collQTlvPhoton.M2();
-          e_star_coll_photon          = getEStar(collBsTlvPhoton,refittedMu); 
-
-          bs_px_coll_photon           = collBsTlvPhoton.Px(); 
-          bs_py_coll_photon           = collBsTlvPhoton.Py(); 
-          bs_pz_coll_photon           = collBsTlvPhoton.Pz(); 
-          bs_pt_coll_photon           = collBsTlvPhoton.Pt(); 
-          bs_eta_coll_photon          = collBsTlvPhoton.Eta(); 
-          bs_phi_coll_photon          = collBsTlvPhoton.Phi(); 
-
-          b_boost_coll_photon        = collBsTlvPhoton.BoostVector().Mag(); 
-          b_boost_coll_pt_photon     = collBsTlvPhoton.BoostVector().Pt(); 
-          b_boost_coll_eta_photon    = collBsTlvPhoton.BoostVector().Eta(); 
-          b_boost_coll_phi_photon    = collBsTlvPhoton.BoostVector().Phi(); 
- 
-          /////////////////////////////
-          // Lhcb method             //
-          /////////////////////////////
-
-          TLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
-  
-          TLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - refittedDsMuPhoton; // bs - ds+mu
-          TLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - refittedDsPhoton;   // bs - ds 
-  
-          m2_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.M2();
-          pt_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.Pt();
-          q2_lhcb_alt_photon           = lhcbAltQTlvPhoton.M2();
-          e_star_lhcb_alt_photon       = getEStar(lhcbAltBsTlvPhoton,refittedMu); 
-
-          bs_px_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Px(); 
-          bs_py_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Py(); 
-          bs_pz_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pz(); 
-          bs_pt_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pt(); 
-          bs_eta_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Eta(); 
-          bs_phi_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Phi(); 
-
-          b_boost_lhcb_alt_photon     = lhcbAltBsTlvPhoton.BoostVector().Mag(); 
-          b_boost_lhcb_alt_pt_photon  = lhcbAltBsTlvPhoton.BoostVector().Pt(); 
-          b_boost_lhcb_alt_eta_photon = lhcbAltBsTlvPhoton.BoostVector().Eta(); 
-          b_boost_lhcb_alt_phi_photon = lhcbAltBsTlvPhoton.BoostVector().Phi(); 
-
-          /////////////////////////////
-          // Reco method             //
-          /////////////////////////////
-
-          std::tuple<std::vector<TLorentzVector>,float> recoResultPhoton = recoMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
-  
-          std::vector<TLorentzVector> recosBsPhoton = std::get<0>(recoResultPhoton);
-          discNegativityPhoton                      = std::get<1>(recoResultPhoton);
-  
-          discIsNegativePhoton = 0;
-          if (discNegativityPhoton > 0) discIsNegativePhoton = 1;
-  
-          TLorentzVector recoBsTlv1Photon = recosBsPhoton.at(0);
-          TLorentzVector recoBsTlv2Photon = recosBsPhoton.at(1);
-  
-          TLorentzVector miss_1Photon     = recoBsTlv1Photon - refittedDsMuPhoton;  
-          TLorentzVector miss_2Photon     = recoBsTlv2Photon - refittedDsMuPhoton;  
-          TLorentzVector Q_1Photon        = recoBsTlv1Photon - refittedDsPhoton;  
-          TLorentzVector Q_2Photon        = recoBsTlv2Photon - refittedDsPhoton;  
-  
-          m2_miss_reco_1_photon           = miss_1Photon.M2();
-          pt_miss_reco_1_photon           = miss_1Photon.Pt();
-          q2_reco_1_photon                = Q_1Photon.M2();
-          e_star_reco_1_photon            = getEStar(recoBsTlv1Photon,refittedMu); 
- 
-          bs_px_reco_1_photon             = recoBsTlv1Photon.Px(); 
-          bs_py_reco_1_photon             = recoBsTlv1Photon.Py(); 
-          bs_pz_reco_1_photon             = recoBsTlv1Photon.Pz(); 
-          bs_pt_reco_1_photon             = recoBsTlv1Photon.Pt(); 
-          bs_eta_reco_1_photon            = recoBsTlv1Photon.Eta(); 
-          bs_phi_reco_1_photon            = recoBsTlv1Photon.Phi(); 
-
-          b_boost_reco_1_photon          = recoBsTlv1Photon.BoostVector().Mag(); 
-          b_boost_reco_1_pt_photon       = recoBsTlv1Photon.BoostVector().Pt(); 
-          b_boost_reco_1_eta_photon      = recoBsTlv1Photon.BoostVector().Eta(); 
-          b_boost_reco_1_phi_photon      = recoBsTlv1Photon.BoostVector().Phi(); 
-
-          m2_miss_reco_2_photon           = miss_2Photon.M2();
-          pt_miss_reco_2_photon           = miss_2Photon.Pt();
-          q2_reco_2_photon                = Q_2Photon.M2();
-          e_star_reco_2_photon            = getEStar(recoBsTlv2Photon,refittedMu); 
-
-          bs_px_reco_2_photon             = recoBsTlv2Photon.Px(); 
-          bs_py_reco_2_photon             = recoBsTlv2Photon.Py(); 
-          bs_pz_reco_2_photon             = recoBsTlv2Photon.Pz(); 
-          bs_pt_reco_2_photon             = recoBsTlv2Photon.Pt(); 
-          bs_eta_reco_2_photon            = recoBsTlv2Photon.Eta(); 
-          bs_phi_reco_2_photon            = recoBsTlv2Photon.Phi(); 
-
-          b_boost_reco_2_photon          = recoBsTlv2Photon.BoostVector().Mag(); 
-          b_boost_reco_2_pt_photon       = recoBsTlv2Photon.BoostVector().Pt(); 
-          b_boost_reco_2_eta_photon      = recoBsTlv2Photon.BoostVector().Eta(); 
-          b_boost_reco_2_phi_photon      = recoBsTlv2Photon.BoostVector().Phi(); 
-
-        }
-
-        bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
-        bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
-        bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
-
-        bs.addUserFloat("bs_px_coll_photon",        bs_px_coll_photon);
-        bs.addUserFloat("bs_py_coll_photon",        bs_py_coll_photon);
-        bs.addUserFloat("bs_pz_coll_photon",        bs_pz_coll_photon);
-        bs.addUserFloat("bs_pt_coll_photon",        bs_pt_coll_photon);
-        bs.addUserFloat("bs_eta_coll_photon",       bs_eta_coll_photon);
-        bs.addUserFloat("bs_phi_coll_photon",       bs_phi_coll_photon);
-
-        bs.addUserFloat("m2_miss_coll_photon",      m2_miss_coll_photon);
-        bs.addUserFloat("pt_miss_coll_photon",      pt_miss_coll_photon);
-        bs.addUserFloat("q2_coll_photon",           q2_coll_photon);
-        bs.addUserFloat("e_star_coll_photon",       e_star_coll_photon);
-
-        bs.addUserFloat("b_boost_coll_photon",      b_boost_coll_photon);
-        bs.addUserFloat("b_boost_coll_pt_photon",   b_boost_coll_pt_photon);
-        bs.addUserFloat("b_boost_coll_eta_photon",  b_boost_coll_eta_photon);
-        bs.addUserFloat("b_boost_coll_phi_photon",  b_boost_coll_phi_photon);
-
-        bs.addUserFloat("bs_px_lhcb_alt_photon",        bs_px_lhcb_alt_photon);
-        bs.addUserFloat("bs_py_lhcb_alt_photon",        bs_py_lhcb_alt_photon);
-        bs.addUserFloat("bs_pz_lhcb_alt_photon",        bs_pz_lhcb_alt_photon);
-        bs.addUserFloat("bs_pt_lhcb_alt_photon",        bs_pt_lhcb_alt_photon);
-        bs.addUserFloat("bs_eta_lhcb_alt_photon",       bs_eta_lhcb_alt_photon);
-        bs.addUserFloat("bs_phi_lhcb_alt_photon",       bs_phi_lhcb_alt_photon);
-
-        bs.addUserFloat("m2_miss_lhcb_alt_photon",      m2_miss_lhcb_alt_photon);
-        bs.addUserFloat("pt_miss_lhcb_alt_photon",      pt_miss_lhcb_alt_photon);
-        bs.addUserFloat("q2_lhcb_alt_photon",           q2_lhcb_alt_photon);
-        bs.addUserFloat("e_star_lhcb_alt_photon",       e_star_lhcb_alt_photon);
-
-        bs.addUserFloat("b_boost_lhcb_alt_photon",      b_boost_lhcb_alt_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_pt_photon",   b_boost_lhcb_alt_pt_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_eta_photon",  b_boost_lhcb_alt_eta_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_phi_photon",  b_boost_lhcb_alt_phi_photon);
-
-        bs.addUserFloat("bs_px_reco_1_photon",      bs_px_reco_1_photon);
-        bs.addUserFloat("bs_py_reco_1_photon",      bs_py_reco_1_photon);
-        bs.addUserFloat("bs_pz_reco_1_photon",      bs_pz_reco_1_photon);
-        bs.addUserFloat("bs_pt_reco_1_photon",      bs_pt_reco_1_photon);
-        bs.addUserFloat("bs_eta_reco_1_photon",     bs_eta_reco_1_photon);
-        bs.addUserFloat("bs_phi_reco_1_photon",     bs_phi_reco_1_photon);
-
-        bs.addUserFloat("m2_miss_reco_1_photon",    m2_miss_reco_1_photon);
-        bs.addUserFloat("pt_miss_reco_1_photon",    pt_miss_reco_1_photon);
-        bs.addUserFloat("q2_reco_1_photon",         q2_reco_1_photon);
-        bs.addUserFloat("e_star_reco_1_photon",     e_star_reco_1_photon);
-
-        bs.addUserFloat("b_boost_reco_1_photon",     b_boost_reco_1_photon);
-        bs.addUserFloat("b_boost_reco_1_pt_photon",  b_boost_reco_1_pt_photon);
-        bs.addUserFloat("b_boost_reco_1_eta_photon", b_boost_reco_1_eta_photon);
-        bs.addUserFloat("b_boost_reco_1_phi_photon", b_boost_reco_1_phi_photon);
-
-        bs.addUserFloat("bs_px_reco_2_photon",      bs_px_reco_2_photon);
-        bs.addUserFloat("bs_py_reco_2_photon",      bs_py_reco_2_photon);
-        bs.addUserFloat("bs_pz_reco_2_photon",      bs_pz_reco_2_photon);
-        bs.addUserFloat("bs_pt_reco_2_photon",      bs_pt_reco_2_photon);
-        bs.addUserFloat("bs_eta_reco_2_photon",     bs_eta_reco_2_photon);
-        bs.addUserFloat("bs_phi_reco_2_photon",     bs_phi_reco_2_photon);
-
-        bs.addUserFloat("m2_miss_reco_2_photon",    m2_miss_reco_2_photon);
-        bs.addUserFloat("pt_miss_reco_2_photon",    pt_miss_reco_2_photon);
-        bs.addUserFloat("q2_reco_2_photon",         q2_reco_2_photon);
-        bs.addUserFloat("e_star_reco_2_photon",     e_star_reco_2_photon);
-
-        bs.addUserFloat("b_boost_reco_2_photon",     b_boost_reco_2_photon);
-        bs.addUserFloat("b_boost_reco_2_pt_photon",  b_boost_reco_2_pt_photon);
-        bs.addUserFloat("b_boost_reco_2_eta_photon", b_boost_reco_2_eta_photon);
-        bs.addUserFloat("b_boost_reco_2_phi_photon", b_boost_reco_2_phi_photon);
-
-        bs.addUserInt("disc_is_negative_photon",discIsNegativePhoton);
-        bs.addUserFloat("disc_negativity_photon",discNegativityPhoton);
 
         ////////////////// Save momenta (and masses for consistency, even if constrained /////////////////////////
 
@@ -1954,6 +1789,406 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // add kappa
         float kappa = getKappa(refittedDs, muTlv);
         bs.addUserFloat("kappa", kappa);
+
+
+
+        ////////////////////////////////////////////////
+        // Redo all the methods if we have a photon!  //
+        ////////////////////////////////////////////////
+        double dsPerpPhoton                 = -9999;
+        double dsMuPerpPhoton               = -9999;
+        double bsMassCorrPhoton             = -9999;
+
+        double m2_miss_coll_photon          = -9999;
+        double pt_miss_coll_photon          = -9999;
+        double q2_coll_photon               = -9999;
+        float  e_star_coll_photon           = -9999;
+
+        double bs_px_coll_photon            = -9999;
+        double bs_py_coll_photon            = -9999;
+        double bs_pz_coll_photon            = -9999;
+        double bs_pt_coll_photon            = -9999;
+        double bs_eta_coll_photon           = -9999;
+        double bs_phi_coll_photon           = -9999;
+
+        double b_boost_coll_photon         = -9999;
+        double b_boost_coll_pt_photon      = -9999;
+        double b_boost_coll_eta_photon     = -9999;
+        double b_boost_coll_phi_photon     = -9999;
+
+        double m2_miss_lhcb_alt_photon      = -9999;
+        double pt_miss_lhcb_alt_photon      = -9999; 
+        double q2_lhcb_alt_photon           = -9999; 
+        double e_star_lhcb_alt_photon       = -9999;  
+
+        double bs_px_lhcb_alt_photon        = -9999;
+        double bs_py_lhcb_alt_photon        = -9999;
+        double bs_pz_lhcb_alt_photon        = -9999;
+        double bs_pt_lhcb_alt_photon        = -9999;
+        double bs_eta_lhcb_alt_photon       = -9999;
+        double bs_phi_lhcb_alt_photon       = -9999;
+
+        double b_boost_lhcb_alt_photon     = -9999;
+        double b_boost_lhcb_alt_pt_photon  = -9999;
+        double b_boost_lhcb_alt_eta_photon = -9999;
+        double b_boost_lhcb_alt_phi_photon = -9999;
+
+        double m2_miss_reco_1_photon        = -9999;
+        double pt_miss_reco_1_photon        = -9999; 
+        double q2_reco_1_photon             = -9999; 
+        double e_star_reco_1_photon         = -9999;  
+
+        double bs_px_reco_1_photon          = -9999;
+        double bs_py_reco_1_photon          = -9999;
+        double bs_pz_reco_1_photon          = -9999;
+        double bs_pt_reco_1_photon          = -9999;
+        double bs_eta_reco_1_photon         = -9999;
+        double bs_phi_reco_1_photon         = -9999;
+
+        double b_boost_reco_1_photon       = -9999;
+        double b_boost_reco_1_pt_photon    = -9999;
+        double b_boost_reco_1_eta_photon   = -9999;
+        double b_boost_reco_1_phi_photon   = -9999;
+
+        double m2_miss_reco_2_photon        = -9999;
+        double pt_miss_reco_2_photon        = -9999; 
+        double q2_reco_2_photon             = -9999; 
+        double e_star_reco_2_photon         = -9999;  
+
+        double bs_px_reco_2_photon          = -9999;
+        double bs_py_reco_2_photon          = -9999;
+        double bs_pz_reco_2_photon          = -9999;
+        double bs_pt_reco_2_photon          = -9999;
+        double bs_eta_reco_2_photon         = -9999;
+        double bs_phi_reco_2_photon         = -9999;
+
+        double b_boost_reco_2_photon       = -9999;
+        double b_boost_reco_2_pt_photon    = -9999;
+        double b_boost_reco_2_eta_photon   = -9999;
+        double b_boost_reco_2_phi_photon   = -9999;
+
+        double discNegativityPhoton         = -9999;
+        double discIsNegativePhoton         = -9999;
+
+        //angle between Mu and W
+        float cosMuWCollPhoton             = -9999;
+        float cosMuWLhcbAltPhoton          = -9999;
+        float cosMuWReco1Photon            = -9999;
+        float cosMuWReco2Photon            = -9999;
+
+        float cosPhiDsCollPhoton           = -9999; 
+        float cosPhiDsLhcbAltPhoton        = -9999; 
+        float cosPhiDsReco1Photon          = -9999; 
+        float cosPhiDsReco2Photon          = -9999; 
+
+        float cosPiDsCollPhoton            = -9999; 
+        float cosPiDsLhcbAltPhoton         = -9999; 
+        float cosPiDsReco1Photon           = -9999; 
+        float cosPiDsReco2Photon           = -9999; 
+
+        // helicity plane angle
+        float cosPlaneBsCollPhoton         = -9999;
+        float cosPlaneBsLhcbAltPhoton      = -9999;
+        float cosPlaneBsReco1Photon        = -9999;
+        float cosPlaneBsReco2Photon        = -9999;
+
+        float cosPlaneDsCollPhoton         = -9999;
+        float cosPlaneDsLhcbAltPhoton      = -9999;
+        float cosPlaneDsReco1Photon        = -9999;
+        float cosPlaneDsReco2Photon        = -9999;
+
+
+
+        if (foundPhoton){
+
+          TLorentzVector refittedDsMuPhoton = refittedDsMu + photonTlv;
+          TLorentzVector refittedDsPhoton   = refittedDs   + photonTlv;
+
+          /////////////////////////////
+          // Ds + mu perp variable   //
+          /////////////////////////////
+         
+          double dsPerpPhoton   = refittedDsPhoton.  Vect().Perp(bFlightDir);
+          double dsMuPerpPhoton = refittedDsMuPhoton.Vect().Perp(bFlightDir);
+  
+          bsMassCorrPhoton = std::sqrt(std::pow(refittedDsMuPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
+  
+          bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
+          bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
+          bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
+
+          /////////////////////////////
+          // Collinear approximation //
+          /////////////////////////////
+
+  
+          TLorentzVector collBsTlvPhoton = collMethod(refittedDsMuPhoton, bsMass_);
+  
+          TLorentzVector collMissTlvPhoton; // for m2 miss
+          TLorentzVector collQTlvPhoton;    // for q2 miss
+  
+          collMissTlvPhoton = collBsTlvPhoton - refittedDsMuPhoton; // bs - ds+mu
+          collQTlvPhoton    = collBsTlvPhoton - refittedDsPhoton;   // bs - ds
+  
+          m2_miss_coll_photon         = collMissTlvPhoton.M2();
+          pt_miss_coll_photon         = collMissTlvPhoton.Pt();
+          q2_coll_photon              = collQTlvPhoton.M2();
+          e_star_coll_photon          = getEStar(collBsTlvPhoton,refittedMu); 
+
+          bs_px_coll_photon           = collBsTlvPhoton.Px(); 
+          bs_py_coll_photon           = collBsTlvPhoton.Py(); 
+          bs_pz_coll_photon           = collBsTlvPhoton.Pz(); 
+          bs_pt_coll_photon           = collBsTlvPhoton.Pt(); 
+          bs_eta_coll_photon          = collBsTlvPhoton.Eta(); 
+          bs_phi_coll_photon          = collBsTlvPhoton.Phi(); 
+
+          b_boost_coll_photon        = collBsTlvPhoton.BoostVector().Mag(); 
+          b_boost_coll_pt_photon     = collBsTlvPhoton.BoostVector().Pt(); 
+          b_boost_coll_eta_photon    = collBsTlvPhoton.BoostVector().Eta(); 
+          b_boost_coll_phi_photon    = collBsTlvPhoton.BoostVector().Phi(); 
+ 
+          /////////////////////////////
+          // Lhcb method             //
+          /////////////////////////////
+
+          TLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
+  
+          TLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - refittedDsMuPhoton; // bs - ds+mu
+          TLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - refittedDsPhoton;   // bs - ds 
+  
+          m2_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.M2();
+          pt_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.Pt();
+          q2_lhcb_alt_photon           = lhcbAltQTlvPhoton.M2();
+          e_star_lhcb_alt_photon       = getEStar(lhcbAltBsTlvPhoton,refittedMu); 
+
+          bs_px_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Px(); 
+          bs_py_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Py(); 
+          bs_pz_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pz(); 
+          bs_pt_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Pt(); 
+          bs_eta_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Eta(); 
+          bs_phi_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Phi(); 
+
+          b_boost_lhcb_alt_photon     = lhcbAltBsTlvPhoton.BoostVector().Mag(); 
+          b_boost_lhcb_alt_pt_photon  = lhcbAltBsTlvPhoton.BoostVector().Pt(); 
+          b_boost_lhcb_alt_eta_photon = lhcbAltBsTlvPhoton.BoostVector().Eta(); 
+          b_boost_lhcb_alt_phi_photon = lhcbAltBsTlvPhoton.BoostVector().Phi(); 
+
+          /////////////////////////////
+          // Reco method             //
+          /////////////////////////////
+
+          std::tuple<std::vector<TLorentzVector>,float> recoResultPhoton = recoMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
+  
+          std::vector<TLorentzVector> recosBsPhoton = std::get<0>(recoResultPhoton);
+          discNegativityPhoton                      = std::get<1>(recoResultPhoton);
+  
+          discIsNegativePhoton = 0;
+          if (discNegativityPhoton > 0) discIsNegativePhoton = 1;
+  
+          TLorentzVector recoBsTlv1Photon = recosBsPhoton.at(0);
+          TLorentzVector recoBsTlv2Photon = recosBsPhoton.at(1);
+  
+          TLorentzVector miss_1Photon     = recoBsTlv1Photon - refittedDsMuPhoton;  
+          TLorentzVector miss_2Photon     = recoBsTlv2Photon - refittedDsMuPhoton;  
+          TLorentzVector Q_1Photon        = recoBsTlv1Photon - refittedDsPhoton;  
+          TLorentzVector Q_2Photon        = recoBsTlv2Photon - refittedDsPhoton;  
+  
+          m2_miss_reco_1_photon           = miss_1Photon.M2();
+          pt_miss_reco_1_photon           = miss_1Photon.Pt();
+          q2_reco_1_photon                = Q_1Photon.M2();
+          e_star_reco_1_photon            = getEStar(recoBsTlv1Photon,refittedMu); 
+ 
+          bs_px_reco_1_photon             = recoBsTlv1Photon.Px(); 
+          bs_py_reco_1_photon             = recoBsTlv1Photon.Py(); 
+          bs_pz_reco_1_photon             = recoBsTlv1Photon.Pz(); 
+          bs_pt_reco_1_photon             = recoBsTlv1Photon.Pt(); 
+          bs_eta_reco_1_photon            = recoBsTlv1Photon.Eta(); 
+          bs_phi_reco_1_photon            = recoBsTlv1Photon.Phi(); 
+
+          b_boost_reco_1_photon          = recoBsTlv1Photon.BoostVector().Mag(); 
+          b_boost_reco_1_pt_photon       = recoBsTlv1Photon.BoostVector().Pt(); 
+          b_boost_reco_1_eta_photon      = recoBsTlv1Photon.BoostVector().Eta(); 
+          b_boost_reco_1_phi_photon      = recoBsTlv1Photon.BoostVector().Phi(); 
+
+          m2_miss_reco_2_photon           = miss_2Photon.M2();
+          pt_miss_reco_2_photon           = miss_2Photon.Pt();
+          q2_reco_2_photon                = Q_2Photon.M2();
+          e_star_reco_2_photon            = getEStar(recoBsTlv2Photon,refittedMu); 
+
+          bs_px_reco_2_photon             = recoBsTlv2Photon.Px(); 
+          bs_py_reco_2_photon             = recoBsTlv2Photon.Py(); 
+          bs_pz_reco_2_photon             = recoBsTlv2Photon.Pz(); 
+          bs_pt_reco_2_photon             = recoBsTlv2Photon.Pt(); 
+          bs_eta_reco_2_photon            = recoBsTlv2Photon.Eta(); 
+          bs_phi_reco_2_photon            = recoBsTlv2Photon.Phi(); 
+
+          b_boost_reco_2_photon          = recoBsTlv2Photon.BoostVector().Mag(); 
+          b_boost_reco_2_pt_photon       = recoBsTlv2Photon.BoostVector().Pt(); 
+          b_boost_reco_2_eta_photon      = recoBsTlv2Photon.BoostVector().Eta(); 
+          b_boost_reco_2_phi_photon      = recoBsTlv2Photon.BoostVector().Phi(); 
+
+          /////////////////////////////
+          // Hel angles              // 
+          /////////////////////////////
+
+          double angMuWCollPhoton         = angMuW(refittedDsPhoton, collBsTlvPhoton,   refittedMu);
+          double angMuWLhcbAltPhoton      = angMuW(refittedDsPhoton, lhcbAltBsTlvPhoton,refittedMu);
+          double angMuWReco1Photon        = angMuW(refittedDsPhoton, recoBsTlv1Photon,  refittedMu);
+          double angMuWReco2Photon        = angMuW(refittedDsPhoton, recoBsTlv2Photon,  refittedMu);
+
+          // equivalently, angle between phi(pi) and bs in ds rest frame
+          double angPhiDsCollPhoton       = angDsPi(refittedDsPhoton, refittedPhi,  collBsTlvPhoton);
+          double angPhiDsLhcbAltPhoton    = angDsPi(refittedDsPhoton, refittedPhi,  lhcbAltBsTlvPhoton);
+          double angPhiDsReco1Photon      = angDsPi(refittedDsPhoton, refittedPhi,  recoBsTlv1Photon);
+          double angPhiDsReco2Photon      = angDsPi(refittedDsPhoton, refittedPhi,  recoBsTlv2Photon);
+  
+          double angPiDsCollPhoton        = angDsPi(refittedDsPhoton, refittedPi,  collBsTlvPhoton);
+          double angPiDsLhcbAltPhoton     = angDsPi(refittedDsPhoton, refittedPi,  lhcbAltBsTlvPhoton);
+          double angPiDsReco1Photon       = angDsPi(refittedDsPhoton, refittedPi,  recoBsTlv1Photon);
+          double angPiDsReco2Photon       = angDsPi(refittedDsPhoton, refittedPi,  recoBsTlv2Photon);
+
+
+          cosMuWCollPhoton         =  cos(angMuWCollPhoton        ); 
+          cosMuWLhcbAltPhoton      =  cos(angMuWLhcbAltPhoton     ); 
+          cosMuWReco1Photon        =  cos(angMuWReco1Photon       ); 
+          cosMuWReco2Photon        =  cos(angMuWReco2Photon       ); 
+
+          cosPhiDsCollPhoton       =  cos(angPhiDsCollPhoton      ); 
+          cosPhiDsLhcbAltPhoton    =  cos(angPhiDsLhcbAltPhoton   ); 
+          cosPhiDsReco1Photon      =  cos(angPhiDsReco1Photon     ); 
+          cosPhiDsReco2Photon      =  cos(angPhiDsReco2Photon     ); 
+
+          cosPiDsCollPhoton        =  cos(angPiDsCollPhoton       ); 
+          cosPiDsLhcbAltPhoton     =  cos(angPiDsLhcbAltPhoton    ); 
+          cosPiDsReco1Photon       =  cos(angPiDsReco1Photon      ); 
+          cosPiDsReco2Photon       =  cos(angPiDsReco2Photon      ); 
+          
+          // helicity plane angle
+          float angPlaneBsCollPhoton    = angPlane(refittedDsPhoton, collBsTlvPhoton,    refittedMu, refittedPi);
+          float angPlaneBsLhcbAltPhoton = angPlane(refittedDsPhoton, lhcbAltBsTlvPhoton, refittedMu, refittedPi);
+          float angPlaneBsReco1Photon   = angPlane(refittedDsPhoton, recoBsTlv1Photon,   refittedMu, refittedPi);
+          float angPlaneBsReco2Photon   = angPlane(refittedDsPhoton, recoBsTlv2Photon,   refittedMu, refittedPi);
+  
+          float angPlaneDsCollPhoton    = angPlane2(refittedDsPhoton, collBsTlvPhoton,    refittedK1, refittedPi);
+          float angPlaneDsLhcbAltPhoton = angPlane2(refittedDsPhoton, lhcbAltBsTlvPhoton, refittedK1, refittedPi);
+          float angPlaneDsReco1Photon   = angPlane2(refittedDsPhoton, recoBsTlv1Photon,   refittedK1, refittedPi);
+          float angPlaneDsReco2Photon   = angPlane2(refittedDsPhoton, recoBsTlv2Photon,   refittedK1, refittedPi);
+ 
+          cosPlaneBsCollPhoton    =      cos( angPlaneBsCollPhoton   );  
+          cosPlaneBsLhcbAltPhoton =      cos( angPlaneBsLhcbAltPhoton);
+          cosPlaneBsReco1Photon   =      cos( angPlaneBsReco1Photon  );
+          cosPlaneBsReco2Photon   =      cos( angPlaneBsReco2Photon  );
+
+          cosPlaneDsCollPhoton    =      cos( angPlaneDsCollPhoton   );
+          cosPlaneDsLhcbAltPhoton =      cos( angPlaneDsLhcbAltPhoton);
+          cosPlaneDsReco1Photon   =      cos( angPlaneDsReco1Photon  );
+          cosPlaneDsReco2Photon   =      cos( angPlaneDsReco2Photon  );
+          
+           
+
+        }
+
+        bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
+        bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
+        bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
+
+        bs.addUserFloat("bs_px_coll_photon",        bs_px_coll_photon);
+        bs.addUserFloat("bs_py_coll_photon",        bs_py_coll_photon);
+        bs.addUserFloat("bs_pz_coll_photon",        bs_pz_coll_photon);
+        bs.addUserFloat("bs_pt_coll_photon",        bs_pt_coll_photon);
+        bs.addUserFloat("bs_eta_coll_photon",       bs_eta_coll_photon);
+        bs.addUserFloat("bs_phi_coll_photon",       bs_phi_coll_photon);
+
+        bs.addUserFloat("m2_miss_coll_photon",      m2_miss_coll_photon);
+        bs.addUserFloat("pt_miss_coll_photon",      pt_miss_coll_photon);
+        bs.addUserFloat("q2_coll_photon",           q2_coll_photon);
+        bs.addUserFloat("e_star_coll_photon",       e_star_coll_photon);
+
+        bs.addUserFloat("b_boost_coll_photon",      b_boost_coll_photon);
+        bs.addUserFloat("b_boost_coll_pt_photon",   b_boost_coll_pt_photon);
+        bs.addUserFloat("b_boost_coll_eta_photon",  b_boost_coll_eta_photon);
+        bs.addUserFloat("b_boost_coll_phi_photon",  b_boost_coll_phi_photon);
+
+        bs.addUserFloat("bs_px_lhcb_alt_photon",        bs_px_lhcb_alt_photon);
+        bs.addUserFloat("bs_py_lhcb_alt_photon",        bs_py_lhcb_alt_photon);
+        bs.addUserFloat("bs_pz_lhcb_alt_photon",        bs_pz_lhcb_alt_photon);
+        bs.addUserFloat("bs_pt_lhcb_alt_photon",        bs_pt_lhcb_alt_photon);
+        bs.addUserFloat("bs_eta_lhcb_alt_photon",       bs_eta_lhcb_alt_photon);
+        bs.addUserFloat("bs_phi_lhcb_alt_photon",       bs_phi_lhcb_alt_photon);
+
+        bs.addUserFloat("m2_miss_lhcb_alt_photon",      m2_miss_lhcb_alt_photon);
+        bs.addUserFloat("pt_miss_lhcb_alt_photon",      pt_miss_lhcb_alt_photon);
+        bs.addUserFloat("q2_lhcb_alt_photon",           q2_lhcb_alt_photon);
+        bs.addUserFloat("e_star_lhcb_alt_photon",       e_star_lhcb_alt_photon);
+
+        bs.addUserFloat("b_boost_lhcb_alt_photon",      b_boost_lhcb_alt_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_pt_photon",   b_boost_lhcb_alt_pt_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_eta_photon",  b_boost_lhcb_alt_eta_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_phi_photon",  b_boost_lhcb_alt_phi_photon);
+
+        bs.addUserFloat("bs_px_reco_1_photon",      bs_px_reco_1_photon);
+        bs.addUserFloat("bs_py_reco_1_photon",      bs_py_reco_1_photon);
+        bs.addUserFloat("bs_pz_reco_1_photon",      bs_pz_reco_1_photon);
+        bs.addUserFloat("bs_pt_reco_1_photon",      bs_pt_reco_1_photon);
+        bs.addUserFloat("bs_eta_reco_1_photon",     bs_eta_reco_1_photon);
+        bs.addUserFloat("bs_phi_reco_1_photon",     bs_phi_reco_1_photon);
+
+        bs.addUserFloat("m2_miss_reco_1_photon",    m2_miss_reco_1_photon);
+        bs.addUserFloat("pt_miss_reco_1_photon",    pt_miss_reco_1_photon);
+        bs.addUserFloat("q2_reco_1_photon",         q2_reco_1_photon);
+        bs.addUserFloat("e_star_reco_1_photon",     e_star_reco_1_photon);
+
+        bs.addUserFloat("b_boost_reco_1_photon",     b_boost_reco_1_photon);
+        bs.addUserFloat("b_boost_reco_1_pt_photon",  b_boost_reco_1_pt_photon);
+        bs.addUserFloat("b_boost_reco_1_eta_photon", b_boost_reco_1_eta_photon);
+        bs.addUserFloat("b_boost_reco_1_phi_photon", b_boost_reco_1_phi_photon);
+
+        bs.addUserFloat("bs_px_reco_2_photon",      bs_px_reco_2_photon);
+        bs.addUserFloat("bs_py_reco_2_photon",      bs_py_reco_2_photon);
+        bs.addUserFloat("bs_pz_reco_2_photon",      bs_pz_reco_2_photon);
+        bs.addUserFloat("bs_pt_reco_2_photon",      bs_pt_reco_2_photon);
+        bs.addUserFloat("bs_eta_reco_2_photon",     bs_eta_reco_2_photon);
+        bs.addUserFloat("bs_phi_reco_2_photon",     bs_phi_reco_2_photon);
+
+        bs.addUserFloat("m2_miss_reco_2_photon",    m2_miss_reco_2_photon);
+        bs.addUserFloat("pt_miss_reco_2_photon",    pt_miss_reco_2_photon);
+        bs.addUserFloat("q2_reco_2_photon",         q2_reco_2_photon);
+        bs.addUserFloat("e_star_reco_2_photon",     e_star_reco_2_photon);
+
+        bs.addUserFloat("b_boost_reco_2_photon",     b_boost_reco_2_photon);
+        bs.addUserFloat("b_boost_reco_2_pt_photon",  b_boost_reco_2_pt_photon);
+        bs.addUserFloat("b_boost_reco_2_eta_photon", b_boost_reco_2_eta_photon);
+        bs.addUserFloat("b_boost_reco_2_phi_photon", b_boost_reco_2_phi_photon);
+
+        bs.addUserInt("disc_is_negative_photon",discIsNegativePhoton);
+        bs.addUserFloat("disc_negativity_photon",discNegativityPhoton);
+
+        bs.addUserFloat("cosMuWColl_photon",      cosMuWCollPhoton); 
+        bs.addUserFloat("cosMuWLhcbAlt_photon",   cosMuWLhcbAltPhoton); 
+        bs.addUserFloat("cosMuWReco1_photon",     cosMuWReco1Photon); 
+        bs.addUserFloat("cosMuWReco2_photon",     cosMuWReco2Photon); 
+
+        bs.addUserFloat("cosPhiDsColl_photon",    cosPhiDsCollPhoton); 
+        bs.addUserFloat("cosPhiDsLhcbAlt_photon", cosPhiDsLhcbAltPhoton); 
+        bs.addUserFloat("cosPhiDsReco1_photon",   cosPhiDsReco1Photon);
+        bs.addUserFloat("cosPhiDsReco2_photon",   cosPhiDsReco2Photon); 
+
+        bs.addUserFloat("cosPiDsColl_photon",     cosPiDsCollPhoton); 
+        bs.addUserFloat("cosPiDsLhcbAlt_photon",  cosPiDsLhcbAltPhoton); 
+        bs.addUserFloat("cosPiDsReco1_photon",    cosPiDsReco1Photon); 
+        bs.addUserFloat("cosPiDsReco2_photon",    cosPiDsReco2Photon); 
+
+        bs.addUserFloat("cosPlaneBsColl_photon",    cosPlaneBsCollPhoton);
+        bs.addUserFloat("cosPlaneBsLhcbAlt_photon", cosPlaneBsLhcbAltPhoton);
+        bs.addUserFloat("cosPlaneBsReco1_photon",   cosPlaneBsReco1Photon);
+        bs.addUserFloat("cosPlaneBsReco2_photon",   cosPlaneBsReco2Photon);
+
+        bs.addUserFloat("cosPlaneDsColl_photon",    cosPlaneDsCollPhoton);
+        bs.addUserFloat("cosPlaneDsLhcbAlt_photon", cosPlaneDsLhcbAltPhoton);
+        bs.addUserFloat("cosPlaneDsReco1_photon",   cosPlaneDsReco1Photon);
+        bs.addUserFloat("cosPlaneDsReco2_photon",   cosPlaneDsReco2Photon);
+
+
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
         //std::cout << "mu pt is" << muPtr->pt() << std::endl;

@@ -1,3 +1,13 @@
+// Standards
+#include <vector>
+#include <memory>
+#include <map>
+#include <string>
+#include <iostream>
+#include <limits>
+#include <algorithm>
+#include <cmath>
+
 #include "FWCore/Framework/interface/global/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -5,16 +15,12 @@
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 
-#include <vector>
-#include <memory>
-#include <map>
-#include <string>
-#include <iostream>
 #include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 #include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "CommonTools/Statistics/interface/ChiSquaredProbability.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+
 // for vertex fitting (both global and sequential)
 #include "TrackingTools/Records/interface/TransientTrackRecord.h" 
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h" 
@@ -30,78 +36,81 @@
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h" 
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h" 
-// photon and taus
+#include "KinVtxFitter.h"   //--> not needed now 
+
+// photons 
 #include "DataFormats/EgammaCandidates/interface/PhotonCore.h"
 
+// Muon, tracks and vertices
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h" // for the tracks!
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h" 
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include <limits>
-#include <algorithm>
-#include <cmath>
-#include "KinVtxFitter.h" //--> not needed now 
-#include "helper.h" // helper functions
-// include "PxPyPzMVector.h" // to new :(
-#include "TLorentzVector.h" // use this instead 
-#include "TVector3.h" // for boost vector
+#include "DataFormats/RecoCandidate/interface/RecoCandidate.h" 
+
+// Helper functions and ROOT 
+#include "helper.h"         // helper functions
+#include "PVRefitter.h"     // refit the primary vertex 
+#include "TLorentzVector.h" 
+#include "TVector3.h" 
+#include "TMatrixDSym.h"
+#include "TVectorD.h"
+
 // for gen matching
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h" 
 // B field
 #include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
 // for 3DPoint
 #include "DataFormats/Math/interface/Point3D.h"
-// for the cov matrix correction
-#include "TMatrixDSym.h"
-#include "TVectorD.h"
-#include "DataFormats/RecoCandidate/interface/RecoCandidate.h" 
 
-// vtx probability
+// vtx probability and lxy
 #include "CommonTools/Statistics/interface/ChiSquaredProbability.h"
 #include "Math/GenVector/DisplacementVector3D.h"
 #include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
-
-// for lxy
 #include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 
-////////////////////////////////////////////////////////////////////////////////////////////
-// TODOS:
-//
-// - move gen matching in separate module?             - DO THIS AT SOME POINT
-// - remove hardcoded numbers                          - DONE
-// - helicity plane angles                             - DONE 
-// - redefine all variables after the fit? save both ? - YES 
-// - beautify the bs.addUserFloat (...)                - DONE
-// - pos. def. cov matrix                              - DONE
-// - add counters before every selection               - DONE 
-// - pruned vs packed -> discuss                       - DONE
-// - output tree has now empty entries when there is no trigger/signal -> DONE (ed filter)
-// - adapt for Hb background sample                    - DONE
-// - how to save kk same sign pair?                    - DONE
-// - generally: save only gen matched signals?         - NO
-// - what if an event has two signals?                 - SAVE BOTH!
-// - divide into submitter chunks                      - DONE
-// - save gen information!!                            - DONE 
-// - do gen tests, check f.e. refitted p's with gen p's and unfitted p's - DONE
-// - put hel angle calc. etc into functions!           - DONE
-// - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED
-// - add Ds boost as dicrimanting variable             - DONE
-// - add all impact parameters correctly and use refitted tracks - DONE
-// - add mu isolation, e* miss and pt miss, photon energy - DONE 
-// - add and save Vcb Variables
-// - Oscillate back also all b hadrons, pick first beauty ancestor
-///////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+// TODOS:                                                                                    // 
+//                                                                                           //
+// - move gen matching in separate module?             - DONE                                //
+// - remove hardcoded numbers                          - DONE                                //
+// - helicity plane angles                             - DONE                                //
+// - redefine all variables after the fit? save both ? - YES                                 //
+// - beautify the bs.addUserFloat (...)                - DONE                                //
+// - pos. def. cov matrix                              - DONE                                //
+// - add counters before every selection               - DONE                                //
+// - pruned vs packed -> discuss                       - DONE                                //
+// - output tree has now empty entries when there is no trigger/signal -> DONE (ed filter)   //
+// - adapt for Hb background sample                    - DONE                                //
+// - how to save kk same sign pair?                    - DONE                                //
+// - generally: save only gen matched signals?         - NO                                  //
+// - what if an event has two signals?                 - SAVE BOTH!                          //
+// - divide into submitter chunks                      - DONE                                //
+// - save gen information!!                            - DONE                                // 
+// - do gen tests, check f.e. refitted p's with gen p's and unfitted p's - DONE              //
+// - put hel angle calc. etc into functions!           - DONE                                //
+// - isAncestor and getAncestor are save, they dont modify the Ptr - CHECKED                 //
+// - add Ds boost as dicrimanting variable             - DONE                                //
+// - add all impact parameters correctly and use refitted tracks - DONE                      //
+// - add mu isolation, e* miss and pt miss, photon energy - DONE                             //
+// - add and save Vcb Variables                        - DONE                                //
+// - Oscillate back also all b hadrons, pick first beauty ancestor - DONE                    //
+// - muon isolation, ds isolation (also wrt SV)        
+// - muon impact parameter
+// - move photon tagging to separate module
+///////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////////
-// counters for filters to know when we lose how many particles
+///////////////////////////////////////////////////////////////////////////////////////////////
+// counters for filters to know when we lose how many particles                              //
+///////////////////////////////////////////////////////////////////////////////////////////////
 
-int nMuons  = 0;        // counts the nr of muons
-int nTracks = 0;        // counts the nr of tracks in total
-int nPv     = 0;        // counts the nr of tracks in total
+int nMuons  = 0;        
+int nTracks = 0;        
+int nPv     = 0;        
 
-int muSelCounter  = 0;   // how many muons pass (i.e. when we find a pv)
+int muSelCounter  = 0;   
 
 int k1Sel1Counter = 0;   
 int k1Sel2Counter = 0;
@@ -123,6 +132,10 @@ int nPhiFit       = 0;
 int nDsFit        = 0;
 int nBsFit        = 0;
 
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Start of class definition                                                                 //
+///////////////////////////////////////////////////////////////////////////////////////////////
+
 class BsToDsPhiKKPiMuBuilder : public edm::global::EDProducer<> {
 
 public:
@@ -142,14 +155,12 @@ public:
 
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions) {}
 
-
   //must be constant as it takes constant arguments!! otherwise compiler rises an error
-  //because it thinks it may modify the input!!
   reco::TransientTrack getTransientTrack(const reco::Track track) const {    
       reco::TransientTrack transientTrack(track, paramField);
 
       return transientTrack;
-    }
+  }
 
 
 private:
@@ -157,11 +168,14 @@ private:
   //Bfield
   OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
-  //cuts 
-  const StringCutObjectSelector<pat::PackedCandidate> hadSelection_; // cut on hadrons
-  const StringCutObjectSelector<pat::PackedCandidate> gSelection_; // cut on hadrons
-  const StringCutObjectSelector<reco::GenParticle> hadSelectionGen_; // cut on gen hadrons for test with pruned only!
+  //defintion of these constants can be found in python/BsToDsPhiKKPiMu_cff.py
 
+  //cuts 
+  const StringCutObjectSelector<pat::PackedCandidate> hadSelection_;     // cut on hadrons
+  const StringCutObjectSelector<pat::PackedCandidate> gSelection_;       // cut on photons (gamma)
+  const StringCutObjectSelector<reco::GenParticle>    hadSelectionGen_;  // cut on gen hadrons for test with pruned only!
+
+  //variables
   const double maxdRHadMuon_;
   const double mindRHadMuon_;
   const double maxdRPhotonDs_;
@@ -187,30 +201,30 @@ private:
   const double muMassSigma_;
   const double bsMass_;
   const double isoCone_;
-  //tokens to access data later
-  //edm::Input tag can not be directly initialized inside the construcor! Why did it work fro Trigger.cc??
-  //anyway ... 
 
+  //tokens to access data later
+
+  //beamspot
   const edm::InputTag beamSpotTag;
   const edm::EDGetTokenT<reco::BeamSpot> beamSpot_;
 
+  //packed candidates
   const edm::InputTag srcTag;
   const edm::EDGetTokenT<pat::PackedCandidateCollection> src_;
 
   //for the muons
-
   const edm::InputTag trgMuonTag;
   const edm::EDGetTokenT<pat::MuonCollection> trgMuons_;
 
-  // vertices
+  //primary vertices
   const edm::InputTag primaryVtxTag;
   const edm::EDGetTokenT<reco::VertexCollection> primaryVtx_;
 
-  // tracks for isolation
+  //tracks for isolation
   const edm::InputTag isoTracksTag;
   const edm::EDGetTokenT<pat::PackedCandidateCollection> isoTracks_;
 
-  // lost tracks for isolation
+  //lost tracks for isolation
   const edm::InputTag tracksLostTag;
   const edm::EDGetTokenT<pat::PackedCandidateCollection> tracksLost_;
  
@@ -220,95 +234,98 @@ private:
 
   const edm::InputTag packedGenTag; //packed contains much more info->most likely not needed!
   const edm::EDGetTokenT<pat::PackedGenParticleCollection> packedGen_;
-
+ 
+  //photons
   const edm::InputTag photonTag; 
   const edm::EDGetTokenT<reco::PhotonCoreCollection> photon_;
 
+  //unpacked tracks for pv refit
   const edm::InputTag unpackedTracksTag;
   const edm::EDGetTokenT<reco::TrackCollection> unpackedTracks_;
 
-  //const edm::InputTag refitVtxTag;
-  //const edm::EDGetTokenT<reco::VertexCollection> refitVtx_;
+  //pv with  bs info
+  const edm::InputTag vtxWithBsTag;
+  const edm::EDGetTokenT<reco::VertexCollection> vtxWithBs_;
 
 
 };
 
 //define the constructor
 BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig):
-    // f.e. hadSelection_ = cfg.getPatameter...
-    hadSelection_(iConfig.getParameter<std::string>("hadSelection")),
-    gSelection_(iConfig.getParameter<std::string>("gSelection")),
-    hadSelectionGen_(iConfig.getParameter<std::string>("hadSelectionGen")),
-    maxdRHadMuon_(iConfig.getParameter<double>("maxdRHadMuon")),
-    mindRHadMuon_(iConfig.getParameter<double>("mindRHadMuon")),
-    maxdRPhotonDs_(iConfig.getParameter<double>("maxdRPhotonDs")),
-    maxdzDiffHadMuon_(iConfig.getParameter<double>("maxdzDiffHadMuon")),
-    maxdxyHadPv_(iConfig.getParameter<double>("maxdxyHadPv")),
-    phiMassAllowance_(iConfig.getParameter<double>("phiMassAllowance")),
-    dsMassAllowance_(iConfig.getParameter<double>("dsMassAllowance")),
-    dsStarMassAllowance_(iConfig.getParameter<double>("dsStarMassAllowance")),
-    drMatchGen_(iConfig.getParameter<double>("drMatchGen")),
-    maxBsMass_(iConfig.getParameter<double>("maxBsMass")),
 
-    piMass_(iConfig.getParameter<double>("piMass")),
-    piMassSigma_(iConfig.getParameter<double>("piMassSigma")),
-    kMass_(iConfig.getParameter<double>("kMass")),
-    kMassSigma_(iConfig.getParameter<double>("kMassSigma")),
-    phiMass_(iConfig.getParameter<double>("phiMass")),
-    constrainPhiMass_(iConfig.getParameter<bool>("constrainPhiMass")),
-    minPhiVtxProb_(iConfig.getParameter<double>("minPhiVtxProb")),
-    dsMass_(iConfig.getParameter<double>("dsMass")),
-    constrainDsMass_(iConfig.getParameter<bool>("constrainDsMass")),
-    minDsVtxProb_(iConfig.getParameter<double>("minDsVtxProb")),
-    dsStarMass_(iConfig.getParameter<double>("dsStarMass")),
-    muMass_(iConfig.getParameter<double>("muMass")),
-    muMassSigma_(iConfig.getParameter<double>("muMassSigma")),
-    bsMass_(iConfig.getParameter<double>("bsMass")),
-    isoCone_(iConfig.getParameter<double>("isoCone")),
+    hadSelection_       (iConfig.getParameter<std::string>("hadSelection"       )),
+    gSelection_         (iConfig.getParameter<std::string>("gSelection"         )),
+    hadSelectionGen_    (iConfig.getParameter<std::string>("hadSelectionGen"    )),
+    maxdRHadMuon_       (iConfig.getParameter<double>     ("maxdRHadMuon"       )),
+    mindRHadMuon_       (iConfig.getParameter<double>     ("mindRHadMuon"       )),
+    maxdRPhotonDs_      (iConfig.getParameter<double>     ("maxdRPhotonDs"      )),
+    maxdzDiffHadMuon_   (iConfig.getParameter<double>     ("maxdzDiffHadMuon"   )),
+    maxdxyHadPv_        (iConfig.getParameter<double>     ("maxdxyHadPv"        )),
+    phiMassAllowance_   (iConfig.getParameter<double>     ("phiMassAllowance"   )),
+    dsMassAllowance_    (iConfig.getParameter<double>     ("dsMassAllowance"    )),
+    dsStarMassAllowance_(iConfig.getParameter<double>     ("dsStarMassAllowance")),
+    drMatchGen_         (iConfig.getParameter<double>     ("drMatchGen"         )),
+    maxBsMass_          (iConfig.getParameter<double>     ("maxBsMass"          )),
 
-    beamSpotTag(iConfig.getParameter<edm::InputTag>("offBeamSpot")),
-    beamSpot_(consumes<reco::BeamSpot>(beamSpotTag)),
+    piMass_             (iConfig.getParameter<double>     ("piMass"             )),
+    piMassSigma_        (iConfig.getParameter<double>     ("piMassSigma"        )),
+    kMass_              (iConfig.getParameter<double>     ("kMass"              )),
+    kMassSigma_         (iConfig.getParameter<double>     ("kMassSigma"         )),
+    phiMass_            (iConfig.getParameter<double>     ("phiMass"            )),
+    constrainPhiMass_   (iConfig.getParameter<bool>       ("constrainPhiMass"   )),
+    minPhiVtxProb_      (iConfig.getParameter<double>     ("minPhiVtxProb"      )),
+    dsMass_             (iConfig.getParameter<double>     ("dsMass"             )),
+    constrainDsMass_    (iConfig.getParameter<bool>       ("constrainDsMass"    )),
+    minDsVtxProb_       (iConfig.getParameter<double>     ("minDsVtxProb"       )),
+    dsStarMass_         (iConfig.getParameter<double>     ("dsStarMass"         )),
+    muMass_             (iConfig.getParameter<double>     ("muMass"             )),
+    muMassSigma_        (iConfig.getParameter<double>     ("muMassSigma"        )),
+    bsMass_             (iConfig.getParameter<double>     ("bsMass"             )),
+    isoCone_            (iConfig.getParameter<double>     ("isoCone"            )),
 
-    srcTag(iConfig.getParameter<edm::InputTag>("pfCand")),
-    src_(consumes<pat::PackedCandidateCollection>(srcTag)), 
+    beamSpotTag(iConfig.getParameter<edm::InputTag>       ("offBeamSpot"        )),
+    beamSpot_(consumes<reco::BeamSpot>                    (beamSpotTag          )),
 
-    trgMuonTag(iConfig.getParameter<edm::InputTag>("muCand")),
-    trgMuons_(consumes<pat::MuonCollection>(trgMuonTag)), 
+    srcTag(iConfig.getParameter<edm::InputTag>            ("pfCand"             )),
+    src_(consumes<pat::PackedCandidateCollection>         (srcTag               )), 
 
-    primaryVtxTag(iConfig.getParameter<edm::InputTag>("pvCand")),
-    primaryVtx_(consumes<reco::VertexCollection>(primaryVtxTag)),
+    trgMuonTag(iConfig.getParameter<edm::InputTag>        ("muCand"             )),
+    trgMuons_(consumes<pat::MuonCollection>               (trgMuonTag           )), 
 
-    isoTracksTag(iConfig.getParameter<edm::InputTag>("tracks")),
-    isoTracks_(consumes<pat::PackedCandidateCollection>(isoTracksTag)),
+    primaryVtxTag(iConfig.getParameter<edm::InputTag>     ("pvCand"             )),
+    primaryVtx_(consumes<reco::VertexCollection>          (primaryVtxTag        )),
 
-    tracksLostTag(iConfig.getParameter<edm::InputTag>("lostTracks")),
-    tracksLost_(consumes<pat::PackedCandidateCollection>(tracksLostTag)),
+    isoTracksTag(iConfig.getParameter<edm::InputTag>      ("tracks"             )),
+    isoTracks_(consumes<pat::PackedCandidateCollection>   (isoTracksTag         )),
 
-    prunedGenTag(iConfig.getParameter<edm::InputTag>("prunedCand")),
-    prunedGen_(consumes<reco::GenParticleCollection>(prunedGenTag)),
-    packedGenTag(iConfig.getParameter<edm::InputTag>("packedCand")),
-    packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)),
+    tracksLostTag(iConfig.getParameter<edm::InputTag>     ("lostTracks"         )),
+    tracksLost_(consumes<pat::PackedCandidateCollection>  (tracksLostTag        )),
+
+    prunedGenTag(iConfig.getParameter<edm::InputTag>      ("prunedCand"         )),
+    prunedGen_(consumes<reco::GenParticleCollection>      (prunedGenTag         )),
+    packedGenTag(iConfig.getParameter<edm::InputTag>      ("packedCand"         )),
+    packedGen_(consumes<pat::PackedGenParticleCollection> (packedGenTag         )),
  
-    photonTag(iConfig.getParameter<edm::InputTag>("photonCand")),
-    photon_(consumes<reco::PhotonCoreCollection>(photonTag)),
+    photonTag(iConfig.getParameter<edm::InputTag>         ("photonCand"         )),
+    photon_(consumes<reco::PhotonCoreCollection>          (photonTag            )),
 
-    unpackedTracksTag(iConfig.getParameter<edm::InputTag>("unpackedTracksCand")),
-    unpackedTracks_(consumes<reco::TrackCollection>(unpackedTracksTag))
+    unpackedTracksTag(iConfig.getParameter<edm::InputTag> ("unpackedTracksCand" )),
+    unpackedTracks_(consumes<reco::TrackCollection>       (unpackedTracksTag    )),
  
-    //refitVtxTag(iConfig.getParameter<edm::InputTag>("refitVtxCand")),
-    //refitVtx_(consumes<reco::VertexCollection>(refitVtxTag))
- 
+    vtxWithBsTag(iConfig.getParameter<edm::InputTag>      ("vtxWithBsCand"      )),
+    vtxWithBs_(consumes<reco::VertexCollection>           (vtxWithBsTag         ))
    {
        // output collection
-       produces<pat::CompositeCandidateCollection>("bs");
-       //produces<pat::CompositeCandidateCollection>("gen");
-       //produces<TransientTrackCollection>("kkTransientTracks");
-    }
+       produces<pat::CompositeCandidateCollection>        ("bs"                  );
+   }
 
-//check const keywords 
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Start of Event loop                                                                       //
+///////////////////////////////////////////////////////////////////////////////////////////////
 
-// this starts the event loop
 void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSetup &iSetup) const {
+
+  //std::cout << "---------------- NEW EVENT ---------------" << std::endl;
 
   //input
   edm::Handle<pat::PackedCandidateCollection> pcand;
@@ -341,30 +358,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   edm::Handle<reco::TrackCollection> unpackedTracks;
   iEvent.getByToken(unpackedTracks_, unpackedTracks);
 
-  //edm::Handle<reco::VertexCollection> refitVtx;
-  //iEvent.getByToken(refitVtx_, refitVtx);
-
+  edm::Handle<reco::VertexCollection> vtxWithBs;
+  iEvent.getByToken(vtxWithBs_, vtxWithBs);
 
   edm::ESHandle<TransientTrackBuilder> ttBuilder;
   iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", ttBuilder);
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> bsCandidates(new pat::CompositeCandidateCollection());
-  //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
-  //std::unique_ptr<TransientTrackCollection> kkpi_ttrack(new TransientTrackCollection);
 
-  //std::cout << "---------------- NEW EVENT ---------------" << std::endl;
-
-  pat::PackedCandidateCollection mergedTracks;
   //append lost tracks to packed tracks
+  pat::PackedCandidateCollection mergedTracks;
   for (auto& normCand : *pcand) {
     mergedTracks.push_back(normCand);
   }
   for (auto& lostCand : *tracksLost) {
     mergedTracks.push_back(lostCand);
   }
-
-
 
   //////////////////////////////////////////////////////
   // Match the trigger muon with a muon from the      //
@@ -376,42 +386,34 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   for(size_t trgMuIdx = 0; trgMuIdx < trgMuons->size(); ++trgMuIdx){
 
     nMuons++;
-    //std::cout << "muon loop" << std::endl; 
-    //if there is no trg muon, this loop is empty:)
+
     edm::Ptr<pat::Muon> muPtr(trgMuons, trgMuIdx);
 
     std::vector<float> dzMuPV;
 
-    // For the first candidate selection, we pick the PV 
-    // to be the one closest to the trg Muon in dz.
+    // For the first candidate selection, we pick the PV to be the one closest to the trg Muon in dz.
     // The final PV is calculated later.
-    // More accurate for mu than for tau signals
 
-    float dummy = 1.0;
-    int pvIdx_dz= -1;
+    float minDz  = 0.0;
+    int pvIdx_dz = -1;
     reco::Vertex pv_dz;
 
     for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
       nPv++;
       edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
-      float minDz = fabs(muPtr->bestTrack()->dz(vtxPtr->position())); 
-      if(minDz < dummy){
-        dummy = minDz;
+      float dz  = fabs(muPtr->bestTrack()->dz (vtxPtr->position())); 
+      if((dz < minDz) || (pvIdx_dz < 0)){
+        minDz    = dz;
         pvIdx_dz = vtxIdx;
       }
-
     }
 
     if (pvIdx_dz <0) continue;
+    else pv_dz = primaryVtx->at(pvIdx_dz);
     muSelCounter++;
-    if (pvIdx_dz >= 0){
-    pv_dz = primaryVtx->at(pvIdx_dz);
-    }
 
-   
+    //std::cout << "found mu: " << muPtr->pt() << std::endl;
 
-
-    //if (true ) std::cout << "found mu: " << muPtr->pt() << std::endl;
     //////////////////////////////////////////////////
     // Loop over k1 and select the good tracks      //
     //////////////////////////////////////////////////
@@ -425,27 +427,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       if (k1Idx < pcand->size()) k1Ptr = edm::Ptr<pat::PackedCandidate>(pcand, k1Idx); //normal tracks
       else k1Ptr = edm::Ptr<pat::PackedCandidate>(tracksLost, k1Idx - pcand->size());  //lost tracks
 
-
-      //if (k1Ptr->pt() > 2.05273 & k1Ptr->pt() < 2.05274) //std::cout << "possible k1: " << k1Ptr->pt() << std::endl;
+      //apply track selection (see cfg)
 
       if (!hadSelection_(*k1Ptr)) continue; 
       k1Sel1Counter++;
 
-      //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
-      //the PF algorithm assigns a pdgId hypothesis, generall it distinguishes between:
-      // photons, electron/muon, charged hadron, neutral hadrons
-      // and we trust the algorithm that when it says its an electron (11) or muon (13), that it is not a kaon or pion
-
       float muonK1dR = reco::deltaR(*k1Ptr,*muPtr);
 
-      bool k1Sel = (( muonK1dR < maxdRHadMuon_ ) && 
-      (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_) && 
+      bool k1Sel = (( muonK1dR < maxdRHadMuon_ )                                                                      && 
+      (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_)                                                                  && 
       (abs(k1Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
       (abs(k1Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
       if (!k1Sel) continue;
-      //if (true) std::cout << " found k1: " << k1Ptr->pt() << std::endl;
+
+      //std::cout << " found k1: " << k1Ptr->pt() << std::endl;
       k1Sel2Counter++;
+
       //////////////////////////////////////////////////
       // Loop over k2 and select the good tracks      //
       //////////////////////////////////////////////////
@@ -458,27 +456,25 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       edm::Ptr<pat::PackedCandidate> k2Ptr;
       if (k2Idx < pcand->size()) k2Ptr = edm::Ptr<pat::PackedCandidate>(pcand, k2Idx); //normal tracks
       else k2Ptr = edm::Ptr<pat::PackedCandidate>(tracksLost, k2Idx - pcand->size());  //lost tracks
-    
-      // if this kaon does not pass the selection, jump to the next!
+ 
+      //apply track selection (see cfg)
+   
       if(!hadSelection_(*k2Ptr)) continue;
       k2Sel1Counter++;
 
       float muonK2dR = reco::deltaR(*k2Ptr,*muPtr);
 
-      bool k2Sel = (( muonK2dR < maxdRHadMuon_ ) && 
-      (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_) && 
+      bool k2Sel = (( muonK2dR < maxdRHadMuon_ )                                                                      && 
+      (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_)                                                                  && 
       (abs(k2Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
       (abs(k2Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
-      //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
-      //k1 and k2 must have oppoiste charge -> only for signal tests, later we keep everything
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
       //if (kkCharge > 0) continue; //To be commented out 
 
-
       if (!k2Sel) continue;
-      //if (true) std::cout << " --- found k2: " << k2Ptr->pt() << std::endl;
+      //std::cout << " --- found k2: " << k2Ptr->pt() << std::endl;
       k2Sel2Counter++;
 
       //////////////////////////////////////////////////
@@ -490,32 +486,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //make sure the pion is none of the kaons:
         if((piIdx == k1Idx) || (piIdx == k2Idx)) continue;
 
+
         edm::Ptr<pat::PackedCandidate> piPtr;
         if (piIdx < pcand->size()) piPtr = edm::Ptr<pat::PackedCandidate>(pcand, piIdx); //normal tracks
         else piPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, piIdx - pcand->size());  //lost tracks
 
-        // if this pion does not pass the selection, jump to the next!
+        //apply track selection (see cfg)
+
         if(!hadSelection_(*piPtr)) continue;
         piSel1Counter++;
 
         float muonPidR = reco::deltaR(*piPtr,*muPtr);
 
-        bool piSel = ((muonPidR < maxdRHadMuon_) && 
-        (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_) &&
+        bool piSel = ((muonPidR < maxdRHadMuon_)                                                                        && 
+        (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_)                                                                  &&
         (abs(piPtr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
         (abs(piPtr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
 
-        //std::cout << "passed had selection" << k1Ptr->pt() << std::endl;
-        //pi and mu must have opposite charge -> only for signal tests, later we keep everything
         int piMuCharge = piPtr->charge() * muPtr->charge();
         
-        //if (piMuCharge > 0) continue; //To be commented out
-        //std::cout << piPtr->pt() <<"and" <<piPtr->pdgId() << std::endl;
         if (!piSel) continue;
-        piSel2Counter++;
-	
 
         //std::cout << " ----- found pi: " << piPtr->pt() << std::endl;
+        piSel2Counter++;
+
         //////////////////////////////////////////////////
         // Build Phi resonance                          //
         //////////////////////////////////////////////////
@@ -531,18 +525,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         math::PtEtaPhiMLorentzVector piP4(piPtr->pt(), piPtr->eta(), piPtr->phi(), PI_MASS); //just to be sure lets also force the pi mass
  
         kk.setP4(k1P4 + k2P4);
-      
-        //std::cout << "found kkpi candidate with pt: mu k1 k2 pi and mass (KK) "  << std::endl; 
-        //std::cout << muPtr->pt() << std::endl;
-        //std::cout << k1Ptr->pt() << std::endl;
-        //std::cout << k2Ptr->pt() << std::endl;
-        //std::cout << piPtr->pt() << std::endl;
-        //std::cout << kk.mass() << std::endl;
- 
 
-        //only continue when they build a phi resonance, allow 15MeV:
+        //only continue when they build a phi resonance (see cfg for mass window):
         if (fabs(kk.mass() - phiMass_) > phiMassAllowance_) continue;     
-        //std::cout << "we passed the phi resonance" << std::endl; 
+
         kk.setCharge(k1Ptr->charge() + k2Ptr->charge());
         nPhiMassCut++;
 
@@ -553,15 +539,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         pat::CompositeCandidate phiPi;
         phiPi.setP4(kk.p4() + piP4); 
 
-        //only continue when they build a ds resonance, allow 50MeV:
+        //only continue when they build a ds resonance, (see cfg for mass window):
         if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
 
-        //std::cout << "we passed the ds resonance" << std::endl; 
         phiPi.setCharge(kk.charge() + piPtr->charge());
-        //std::cout << "found ds resonance" << std::endl;
         nDsMassCut++;
-
-
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
@@ -574,17 +556,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if(dsMu.mass() > maxBsMass_) continue;
         nBsMassCut++;
 
-        //std::cout << "we passed the bs cut" << std::endl; 
-        //std::cout << "and have ds mass"<< dsMu.mass() << std::endl; 
         //build bs with collinear approximation
         pat::CompositeCandidate bs;
 
-        bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 536688 (peak in the histo)
+        bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 5.36688 GeV (peak in the histo)
         bs.setCharge(dsMu.charge());
 
-        ////////////////////////////////////////////////
-        // Now we do a proper fit                     //
-        ////////////////////////////////////////////////
+        ///////////////////////////////////////////////////
+        // Check if we have a valid beamspot             //
+        ///////////////////////////////////////////////////
+
+        if (!beamSpotHandle.isValid()) continue;
+        const reco::BeamSpot& beamSpot = *beamSpotHandle;
+
+        ///////////////////////////////////////////////////
+        // Now we do a proper fit                        //
+        ///////////////////////////////////////////////////
 
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
@@ -624,12 +611,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         reco::TransientTrack ttK1 = ttBuilder->build(k1TrackCorr);
         reco::TransientTrack ttK2 = ttBuilder->build(k2TrackCorr);
 
-        phiToFit.push_back( pFactory.particle(ttK1, kMass,  chi, ndf, kMassSigma ));
-        phiToFit.push_back( pFactory.particle(ttK2, kMass,  chi, ndf, kMassSigma ));
-        dsToFit.push_back(  pFactory.particle(getTransientTrack(piTrackCorr), piMass, chi, ndf, piMassSigma));
-        bsToFit.push_back(  pFactory.particle(getTransientTrack(muTrackCorr), muMass, chi, ndf, muMassSigma));
+        phiToFit.push_back(  pFactory.particle(ttK1,                           kMass,  chi, ndf, kMassSigma ));
+        phiToFit.push_back(  pFactory.particle(ttK2,                           kMass,  chi, ndf, kMassSigma ));
+        dsToFit.push_back (  pFactory.particle(getTransientTrack(piTrackCorr), piMass, chi, ndf, piMassSigma));
+        bsToFit.push_back (  pFactory.particle(getTransientTrack(muTrackCorr), muMass, chi, ndf, muMassSigma));
 
-        //std::cout << "4" << std::endl;
 
         /////////////////////////////// global fitter /////////////////////////////////////////////////////////
         // some remarks: With movePointerToTheFirstChild(), movePointerToTheNextChild() one can
@@ -649,28 +635,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // To go back to the pi one would have to move the pointer to the top again :)
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-        // PHI VERTEX FIT
-
-        // baby phi fit
-        //KinVtxFitter easyFitter(
-        //{ttK1, ttK2, getTransientTrack(piTrackCorr)},
-        //{kMass, kMass, piMass},
-        //{kMassSigma,kMassSigma,piMassSigma}
-        //);
-        //if(!easyFitter.success()) continue;
-        //std::cout << "ds easy fit chi2: " << easyFitter.chi2() << std::endl;
-        //std::cout << "ds easy fit ndof: " << easyFitter.dof() << std::endl;
-        //std::cout << "ds easy fit prob: " << easyFitter.prob() << std::endl;
-        //std::cout << "ds easy fit vx " << easyFitter.fitted_vtx().x() << std::endl;
-        
-
-
+        ///////////////////////////////////////////////////
+        // PHI VTX FIT                                   //
+        ///////////////////////////////////////////////////
+         
         RefCountedKinematicTree phiTree  = vertexFit(phiToFit, phiMass, constrainPhiMass_);
 
         if (!phiTree->isValid() || phiTree->isEmpty() || !phiTree->isConsistent()) continue; //check if fit result is valid
 
-        //access the fitted resonance and vertex 
+        //access the fitted resonance  
         phiTree->movePointerToTheTop();
         RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
 
@@ -680,17 +653,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!phiVtx->vertexIsValid() || !phiParticle->currentState().isValid() ) continue; //check if fit result is valid
 
         float phiVtxChi2    = phiVtx->chiSquared();
-        //std::cout << "phi chi2:" << phiVtxChi2 << std::endl;
-        if (phiVtxChi2 < 0) continue;
+        if (phiVtxChi2 < 0)    continue;
 
         float phiVtxNDof    = phiVtx->degreesOfFreedom();
         float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
         float phiVtxProb    = ChiSquaredProbability(phiVtxChi2, phiVtxNDof); 
-        //std::cout << "phi ndof:" << phiVtxNDof << std::endl;
-        //std::cout << "phi prob:" << phiVtxProb << std::endl;
         if (phiVtxProb < 0.01) continue;
+
         //std::cout << "we passed the phi vtx fit prob" << std::endl; 
-        //std::cout << "phi prob:" << ChiSquaredProbability(phiVtxChi2,phiVtxNDof) << std::endl;
         
         nPhiFit++;
 
@@ -705,16 +675,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         AlgebraicVector7 phiDau1Params = phiDau1->currentState().kinematicParameters().vector();     
         AlgebraicVector7 phiDau2Params = phiDau2->currentState().kinematicParameters().vector();
      
-        //std::cout << "phi fit vx " << phiParams(0) << std::endl;
         // add the phi to the list of particles (pi) to fit the ds 
         dsToFit.push_back(phiParticle);
 
-        // DS VERTEX FIT
+        ///////////////////////////////////////////////////
+        // DS VTX FIT                                    //
+        ///////////////////////////////////////////////////
 
         RefCountedKinematicTree dsTree = vertexFit(dsToFit, dsMass, constrainDsMass_);
         if (!dsTree->isValid() || dsTree->isEmpty() ) continue; //check if fit result is valid
 
-        // access the fitted resonance and the refitted children
+        // access the fitted resonance 
         dsTree->movePointerToTheTop();
         RefCountedKinematicParticle dsParticle = dsTree->currentParticle();
 
@@ -723,28 +694,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         if (!dsVtx->vertexIsValid()) continue; //check if fit result is valid
 
         float dsVtxChi2    = dsVtx->chiSquared();
-        //std::cout << "chi2 of ds fit is:" << dsVtxChi2 << std::endl;
-
-        //std::cout << muPtr->pt() << std::endl;
-        //std::cout << k1Ptr->pt() << std::endl;
-        //std::cout << k2Ptr->pt() << std::endl;
-        //std::cout << piPtr->pt() << std::endl;
-
         if (dsVtxChi2 < 0) continue;
+
         float dsVtxNDof    = dsVtx->degreesOfFreedom();
         float dsVtxRedChi2 = dsVtxChi2 / dsVtxNDof; 
         float dsVtxProb    = ChiSquaredProbability(dsVtxChi2, dsVtxNDof); 
-        //std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
-        //std::cout << "ds ndof:" << dsVtxNDof << std::endl;
-        //std::cout << "ds prob:" << dsVtxProb << std::endl;
-
         if (dsVtxProb < 0.01) continue;
-        //std::cout << "ds chi2:" << dsVtxChi2 << std::endl;
-        //std::cout << "ds prob:" << ChiSquaredProbability(dsVtxChi2,dsVtxNDof) << std::endl;
+
+        //std::cout << "we passed the ds vtx fit prob" << std::endl; 
 
         nDsFit++;
 
-        //std::cout << "we passed the ds vtx fit prob" << std::endl; 
+        // access refitted children
         dsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle dsDau1 = dsTree->currentParticle();
         dsTree->movePointerToTheNextChild();
@@ -758,13 +719,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // add the ds to the list of particles to fit the bs
         bsToFit.push_back(dsParticle);
         
-        // BS VERTEX FIT
+        ///////////////////////////////////////////////////
+        // BS VTX FIT                                    //
+        ///////////////////////////////////////////////////
+
         KinematicConstrainedVertexFitter bsFitter;
 
         RefCountedKinematicTree bsTree = bsFitter.fit(bsToFit); // no constraint for bs because missing momentum
         if (!bsTree->isValid() || bsTree->isEmpty() ) continue; //check if fit result is valid 
-        //std::cout << "we passed the bs tree" << std::endl;
-        // access the fitted resonance and the refitted children
+
+        // access the fitted resonance 
         bsTree->movePointerToTheTop();
         RefCountedKinematicParticle bsParticle = bsTree->currentParticle();
 
@@ -772,22 +736,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         RefCountedKinematicVertex bsVtx = bsTree->currentDecayVertex();
         if (!bsVtx->vertexIsValid()) continue; //check if fit result is valid
 
-        //std::cout << "bs vtx valid " << std::endl;
         float bsVtxChi2    = bsVtx->chiSquared();
-        //std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
         if (bsVtxChi2 < 0) continue;
+
         float bsVtxNDof    = bsVtx->degreesOfFreedom();
         float bsVtxRedChi2 = bsVtxChi2 / bsVtxNDof; 
         float bsVtxProb    = ChiSquaredProbability(bsVtxChi2, bsVtxNDof); 
  
         nBsFit++;
 
-        //std::cout << "bs chi2 > 0 " << std::endl;
-        //std::cout << "bs chi2:" << bsVtxChi2 << std::endl;
-        //std::cout << "bs ndof:" << bsVtxNDof << std::endl;
-        //std::cout << "bs prob:" << bsVtxProb << std::endl;
-        //std::cout << "bs prob:" << ChiSquaredProbability(bsVtxChi2,bsVtxNDof) << std::endl;
-
+        // access refitted children
         bsTree->movePointerToTheFirstChild();
         RefCountedKinematicParticle bsDau1 = bsTree->currentParticle();
         bsTree->movePointerToTheNextChild();
@@ -800,19 +758,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //std::cout << "we passed all the vtx fit" << std::endl;
 
-        //////////////////////////////////// end of global fitter /////////////////////////////////////
-
+        //////////////////////////////////// end of fitter /////////////////////////////////////
 
         ///////////////////////////////////////////////////
         // Match final state track with AOD tracks       //
+        // We do this to perform a PV refit. The latter  //
+        // requires more general tracks than in miniAOD  //
         ///////////////////////////////////////////////////
   
         
-        int foundTrackMu    = 0;
-        int foundTrackK1    = 0;
-        int foundTrackK2    = 0;
-        int foundTrackPi    = 0;
-  
         int trkIdxMu        = -1;
         int trkIdxK1        = -1;
         int trkIdxK2        = -1;
@@ -822,83 +776,115 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float minDeltaDrK1  = 0;
         float minDeltaDrK2  = 0;
         float minDeltaDrPi  = 0;
-       
+      
+        // match them by delta R + charge. Matching by pointer is not possible, since the collections
+        // are truly different! 
         for(size_t trkIdx = 0; trkIdx < unpackedTracks->size(); ++trkIdx) {
 
-          //edm::Ptr<reco::Track> trkPtr;
-          //trkPtr = edm::Ptr<reco::Track>(unpackedTracks, trkIdx); // aod tracks 
+          edm::Ptr<reco::Track> trkPtr;
+          trkPtr = edm::Ptr<reco::Track>(unpackedTracks, trkIdx); // aod tracks 
 
-          edm::Ref<reco::TrackCollection> trkRef(unpackedTracks, trkIdx);
-          const reco::Track& track = *trkRef; // Access the track object
-
-          /* 
           double drMu = reco::deltaR(*trkPtr, *muPtr); 
           double drK1 = reco::deltaR(*trkPtr, *k1Ptr); 
           double drK2 = reco::deltaR(*trkPtr, *k2Ptr); 
           double drPi = reco::deltaR(*trkPtr, *piPtr); 
 
-          if (((drMu < minDeltaDrMu) || (foundTrackMu == 0)) && ( muPtr->charge() * trkPtr->charge() > 0)){
-            
-            foundTrackMu = 1;
+          if (((drMu < minDeltaDrMu) || (trkIdxMu < 0)) && ( muPtr->charge() * trkPtr->charge() > 0)){
             minDeltaDrMu = drMu;
             trkIdxMu     = trkIdx;
-
           }
-          if (((drK1 < minDeltaDrK1) || (foundTrackK1 == 0)) && ( k1Ptr->charge() * trkPtr->charge() > 0)){
-            
-            foundTrackK1 = 1;
+          if (((drK1 < minDeltaDrK1) || (trkIdxK1 < 0)) && ( k1Ptr->charge() * trkPtr->charge() > 0)){
             minDeltaDrK1 = drK1;
             trkIdxK1     = trkIdx;
-
           }
-          if (((drK2 < minDeltaDrK2) || (foundTrackK2 == 0)) && ( k2Ptr->charge() * trkPtr->charge() > 0)){
-            
-            foundTrackK2 = 1;
+          if (((drK2 < minDeltaDrK2) || (trkIdxK2 < 0)) && ( k2Ptr->charge() * trkPtr->charge() > 0)){
             minDeltaDrK2 = drK2;
             trkIdxK2     = trkIdx;
-
           }
-          if (((drPi < minDeltaDrPi) || (foundTrackPi == 0)) && ( piPtr->charge() * trkPtr->charge() > 0)){
-            
-            foundTrackPi = 1;
+          if (((drPi < minDeltaDrPi) || (trkIdxPi < 0)) && ( piPtr->charge() * trkPtr->charge() > 0)){
             minDeltaDrPi = drPi;
             trkIdxPi     = trkIdx;
-
           }
-
-          */
         }
 
-        //std::set<int> signalTrkIdx = {trkIdxMu, trkIdxK1, trkIdxK2, trkIdxPi};
+        std::set<int> signalTrkIdx = {trkIdxMu, trkIdxK1, trkIdxK2, trkIdxPi};
 
-        //edm::Ptr<reco::Track> aodTrkMu;
-        //edm::Ptr<reco::Track> aodTrkK1;
-        //edm::Ptr<reco::Track> aodTrkK2;
-        //edm::Ptr<reco::Track> aodTrkPi;
+        edm::Ptr<reco::Track> aodTrkMu;
+        edm::Ptr<reco::Track> aodTrkK1;
+        edm::Ptr<reco::Track> aodTrkK2;
+        edm::Ptr<reco::Track> aodTrkPi;
 
-        //aodTrkMu = edm::Ptr<reco::Track>(unpackedTracks, trkIdxMu); 
-        //aodTrkK1 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK1); 
-        //aodTrkK2 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK2); 
-        //aodTrkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
+        aodTrkMu = edm::Ptr<reco::Track>(unpackedTracks, trkIdxMu); 
+        aodTrkK1 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK1); 
+        aodTrkK2 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK2); 
+        aodTrkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
 
+                
+        //std::cout << "mu x,y,z momentum is: " << (*aodTrkMu).pt() << ", " << std::endl;
+        //<< (*aodTrkMu).momentum().y() << ", "
+        //<< (*aodTrkMu).momentum().z() << ", "  
+        //<< std::endl;
+
+        //std::cout << "k1 x,y,z momentum is: " << (*aodTrkK1).pt() << ", " << std::endl;
+        //<< (*aodTrkK1).momentum().y() << ", "
+        //<< (*aodTrkK1).momentum().z() << ", "  
+        //<< std::endl;
+
+        //std::cout << "k2 x,y,z momentum is: " << (*aodTrkK2).pt() << ", " << std::endl;
+        //<< (*aodTrkK2).momentum().y() << ", "
+        //<< (*aodTrkK2).momentum().z() << ", "  
+        //<< std::endl;
+
+        //std::cout << "pi x,y,z momentum is: " << (*aodTrkPi).pt() << ", " << std::endl;
+        //<< (*aodTrkPi).momentum().y() << ", "
+        //<< (*aodTrkPi).momentum().z() << ", "  
+        //<< std::endl;
 
         // now fill a vector of aod tracks, except for the signal tracks
         // want to remove signal tracks from vtx fit
 
-        //std::vector<reco::Track> toFit;
+        std::vector<reco::Vertex> refitVtx;
+ 
+        bool matchedMu = false;
+        bool matchedK1 = false;
+        bool matchedK2 = false;
+        bool matchedPi = false;
 
-        //for(size_t trkIdx = 0; trkIdx < unpackedTracks->size(); ++trkIdx) {
+        for(size_t vtxIdx = 0; vtxIdx < vtxWithBs->size(); ++vtxIdx){
 
-        //  //skip the signal tracks 
-        //  if (std::find(signalTrkIdx.begin(), signalTrkIdx.end(), trkIdx) != signalTrkIdx.end()) continue; 
-  
-        //  //only add other tracks for the fit
-        //  edm::Ptr<reco::Track> trkPtr;
-        //  trkPtr = edm::Ptr<reco::Track>(unpackedTracks, trkIdx); // aod tracks 
-        //  toFit.push_back(*trkPtr);
+          edm::Ptr<reco::Vertex> vtxPtr;
+          vtxPtr = edm::Ptr<reco::Vertex>(vtxWithBs, vtxIdx);
 
-        //}
+          std::vector<reco::Track> toFit;
+          //std::cout << "prefit position is: " << vtxPtr->position().z() << std::endl;
 
+          //std::cout << "------ New vertex -------" << std::endl; 
+          for (size_t trkIdx2 = 0; trkIdx2 < vtxPtr->tracksSize(); ++trkIdx2){
+            edm::RefToBase<reco::Track> test = vtxPtr->trackRefAt(trkIdx2);
+            edm::Ptr<reco::Track> refitTrack = test.castTo<edm::Ptr<reco::Track>>();           
+
+            //std::cout << "associated x,y,z momentum is: " << (*refitTrack).pt() << ", " << std::endl;
+            //<< (*refitTrack).momentum().y() << ", "
+            //<< (*refitTrack).momentum().z() << ", "  
+            //<< std::endl;
+ 
+            if(refitTrack == aodTrkMu) { matchedMu = true; continue;} //std::cout <<"found mu"<< std::endl; continue; }
+            if(refitTrack == aodTrkK1) { matchedK1 = true; continue;} //std::cout <<"found k1"<< std::endl; continue; }
+            if(refitTrack == aodTrkK2) { matchedK2 = true; continue;} //std::cout <<"found K2"<< std::endl; continue; }
+            if(refitTrack == aodTrkPi) { matchedPi = true; continue;} //std::cout <<"found Pi"<< std::endl; continue; }
+          
+            toFit.push_back(*refitTrack);
+          }
+          //std::cout << "fitting " << toFit.size() << " vertices" << std::endl;
+          PVRefitter fitter;
+          auto newVtx = fitter.fit(toFit, beamSpot);
+          //std::cout << "new position is: " << newVtx.position().z() << std::endl;
+
+          refitVtx.push_back(fitter.fit(toFit, beamSpot));
+
+        }
+
+       
 
         //////////////////////////////////////////////////
         // Look for possible photons (g for gamma)      //
@@ -1016,42 +1002,67 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float fv_z = phiParams(2);
 
         ///////////////////////////////////////////////////////////////
-        // Redefinition of PV, this is more excact! (Around 5%)      //
+        // Redefinition of PV, this with ip3d is more excact!        //
+        // (Around 5%). Use refitted Vtx without signal tracks       //
         // Use this definition for all the variables depending on PV //
         ///////////////////////////////////////////////////////////////
 
-        float dummy2   = 1.0;
-        int pvIdx      = -1;
-        reco::Vertex pv;
- 
+        float minIp3d_general    = 0.0;
+        int pvIdx_general        = -1;
+        reco::Vertex pv_general;
+
         for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
           edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
 
           float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, refittedDs, refittedMu);
 
-          if(ip3d < dummy2){
-            dummy2 = ip3d;
-            pvIdx  = vtxIdx;
+          if((ip3d < minIp3d_general) || (pvIdx_general == -1)){
+            minIp3d_general = ip3d;
+            pvIdx_general  = vtxIdx;
            }
 
          }
 
-        if (pvIdx <  0) continue;
-        if (pvIdx >= 0){
-          pv = primaryVtx->at(pvIdx);
+        if (pvIdx_general <  0) continue;
+        if (pvIdx_general >= 0){
+          pv_general = primaryVtx->at(pvIdx_general);
         }
 
 
         // get the x,y position of the pv by evaluating the beamspot density
         // at pv_z
 
-        if (!beamSpotHandle.isValid()) continue;
-        const reco::BeamSpot& beamSpot = *beamSpotHandle;
+        float pv_general_z = pv_general.z();
+        float pv_general_x = beamSpot.x(pv_general_z);
+        float pv_general_y = beamSpot.y(pv_general_z);
+
+        //now use refitted vertices!
+
+        float minIp3d= 0.0;
+        int pvIdx= -1;
+        reco::Vertex pv;
+ 
+        for(size_t vtxIdx = 0; vtxIdx < refitVtx.size(); ++vtxIdx){
+          reco::Vertex* vtx = &refitVtx.at(vtxIdx);
+
+          float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, refittedDs, refittedMu);
+
+          if((ip3d < minIp3d) || (pvIdx== -1)){
+            minIp3d= ip3d;
+            pvIdx= vtxIdx;
+           }
+
+         }
+
+        if (pvIdx<  0) continue;
+        if (pvIdx>= 0){
+          pv= refitVtx.at(pvIdx);
+        }
+
 
         float pv_z = pv.z();
-        float pv_x = beamSpot.x(pv_z);
-        float pv_y = beamSpot.y(pv_z);
-       
+        float pv_x = pv.x(); 
+        float pv_y = pv.y(); 
 
         //////////////////////////////////////////////
 
@@ -1142,6 +1153,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pi_mu_charge",piMuCharge); 
         bs.addUserFloat("k_k_charge"  ,kkCharge); 
 
+        bs.addUserInt("matchedMu",matchedMu); 
+        bs.addUserInt("matchedK1",matchedK1); 
+        bs.addUserInt("matchedK2",matchedK2); 
+        bs.addUserInt("matchedPi",matchedPi); 
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         // store  ID's                                                                           //
@@ -1216,6 +1231,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_z0",         beamSpot.z0());
 
         // primary vertex ( = Bs production vertex)
+        bs.addUserFloat("pv_general_x",       pv_general_x); 
+        bs.addUserFloat("pv_general_y",       pv_general_y); 
+        bs.addUserFloat("pv_general_z",       pv_general_z); 
 
         bs.addUserFloat("pv_x",       pv_x); 
         bs.addUserFloat("pv_y",       pv_y); 
@@ -1227,8 +1245,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt  ("pv_idx",     pvIdx);
 
         // save also the x,y components without beamspot calculation 
-        bs.addUserFloat("pv_x_wout_bs",  pv.x()); 
-        bs.addUserFloat("pv_y_wout_bs",  pv.y()); 
+        bs.addUserFloat("pv_x_wout_bs",  pv_general.x()); 
+        bs.addUserFloat("pv_y_wout_bs",  pv_general.y()); 
 
         // The first definition using minimal dz between pv and muon
         bs.addUserFloat("pv_dz_x",  pv_dz.x()); 
@@ -1317,6 +1335,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float dxyMuErr = muPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
         float dxyMuSig = dxyMu/dxyMuErr;
 
+
         float dzMu     = muPtr->bestTrack()->dz(pv.position());  
         float dzMuErr  = muPtr->bestTrack()->dzError();  
         float dzMuSig  = dzMu/dzMuErr ; 
@@ -1348,6 +1367,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dxy_mu", dxyMu);
         bs.addUserFloat("dz_mu", dzMu);
         bs.addUserFloat("dxy_mu_err", dxyMuErr);
+
+        bs.addUserFloat("dxy_sv_mu", dxyMu_sv);
+        bs.addUserFloat("dz_sv_mu", dzMu_sv);
+        bs.addUserFloat("dxy_sv_mu_err", dxyMuErr_sv);
+
+
         bs.addUserFloat("dz_mu_err", dzMuErr);
         bs.addUserFloat("dxy_mu_sig", dxyMuSig);
         bs.addUserFloat("dz_mu_sig", dzMuSig);
@@ -2207,20 +2232,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   } //closing trg muon loop
   
   iEvent.put(std::move(bsCandidates), "bs");
-  /*
-  if(arrived >0){
-  //std::cout << "arrived: " << arrived << std::endl;
-  iEvent.put(std::move(bsCandidates), "bs");
-  }
-  else{
 
-  //std::cout << "arrived: " << arrived << std::endl;
-  pat::CompositeCandidate bs;
-  bs.addUserInt("arrived",arrived);
-  bsCandidates->emplace_back(bs);
-  iEvent.put(std::move(bsCandidates), "bs"); 
-  }
-  */
 }//closing event loop
 
 void BsToDsPhiKKPiMuBuilder::endJob(){

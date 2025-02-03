@@ -152,6 +152,11 @@ prefitBasicVariables = cms.PSet(
         pi_mu_charge  = Var("userFloat('pi_mu_charge')",float),
         k_k_charge    = Var("userFloat('k_k_charge')",float),
 
+        matchedMu     = Var("userInt('matchedMu')",int),
+        matchedK1     = Var("userInt('matchedK1')",int),
+        matchedK2     = Var("userInt('matchedK2')",int),
+        matchedPi     = Var("userInt('matchedPi')",int),
+
 )
 
 ##################################################
@@ -328,6 +333,10 @@ vertexVariables = cms.PSet(
         bs_y0        = Var("userFloat('bs_y0')",float),        
         bs_z0        = Var("userFloat('bs_z0')",float),        
 
+        pv_general_x = Var("userFloat('pv_general_x')",float),        
+        pv_general_y = Var("userFloat('pv_general_y')",float),        
+        pv_general_z = Var("userFloat('pv_general_z')",float),        
+
         pv_x         = Var("userFloat('pv_x')",float),        
         pv_y         = Var("userFloat('pv_y')",float),        
         pv_z         = Var("userFloat('pv_z')",float),        
@@ -337,7 +346,6 @@ vertexVariables = cms.PSet(
         pv_dz_x      = Var("userFloat('pv_dz_x')",float),        
         pv_dz_y      = Var("userFloat('pv_dz_y')",float),        
         pv_dz_z      = Var("userFloat('pv_dz_z')",float),        
-
 
         pv_chi2      = Var("userFloat('pv_chi2')",float),        
         pv_ndof      = Var("userFloat('pv_ndof')",float),        
@@ -369,9 +377,6 @@ vertexVariables = cms.PSet(
         fv_redchi2   = Var("userFloat('fv_redchi2')",float),        
         fv_prob      = Var("userFloat('fv_prob')",float),        
 
-        ##easy_bs_vtx_x = Var("userFloat('easy_bs_vtx_x')",float),
-        ##easy_bs_vtx_y = Var("userFloat('easy_bs_vtx_y')",float),
-        ##easy_bs_vtx_z = Var("userFloat('easy_bs_vtx_z')",float),
 
         lxy_bs         = Var("userFloat('lxy_bs')",float),        
         lxy_bs_err     = Var("userFloat('lxy_bs_err')",float),        
@@ -397,33 +402,37 @@ vertexVariables = cms.PSet(
         lxyz_phi_err   = Var("userFloat('lxyz_phi_err')",float),        
         lxyz_phi_sig   = Var("userFloat('lxyz_phi_sig')",float),        
 
-        dxy_mu     = Var("userFloat('dxy_mu')",float),
-        dz_mu      = Var("userFloat('dz_mu')",float),
-        dxy_mu_err = Var("userFloat('dxy_mu_err')",float),
-        dz_mu_err  = Var("userFloat('dz_mu_err')",float),
-        dxy_mu_sig = Var("userFloat('dxy_mu_sig')",float),
-        dz_mu_sig  = Var("userFloat('dz_mu_sig')",float),
+        dxy_mu_pv      = Var("userFloat('dxy_mu_pv')",float),
+        dxy_mu_err_pv  = Var("userFloat('dxy_mu_err_pv')",float),
+        dxy_mu_sig_pv  = Var("userFloat('dxy_mu_sig_pv')",float),
 
-        dxy_pi     = Var("userFloat('dxy_pi')",float),
-        dz_pi      = Var("userFloat('dz_pi')",float),
-        dxy_pi_err = Var("userFloat('dxy_pi_err')",float),
-        dz_pi_err  = Var("userFloat('dz_pi_err')",float),
-        dxy_pi_sig = Var("userFloat('dxy_pi_sig')",float),
-        dz_pi_sig  = Var("userFloat('dz_pi_sig')",float),
+        dxy_mu_sv      = Var("userFloat('dxy_mu_sv')",float),
+        dxy_mu_err_sv  = Var("userFloat('dxy_mu_err_sv')",float),
+        dxy_mu_sig_sv  = Var("userFloat('dxy_mu_sig_sv')",float),
 
-        dxy_k1     = Var("userFloat('dxy_k1')",float),
-        dz_k1      = Var("userFloat('dz_k1')",float),
-        dxy_k1_err = Var("userFloat('dxy_k1_err')",float),
-        dz_k1_err  = Var("userFloat('dz_k1_err')",float),
-        dxy_k1_sig = Var("userFloat('dxy_k1_sig')",float),
-        dz_k1_sig  = Var("userFloat('dz_k1_sig')",float),
+        dz_mu_pv       = Var("userFloat('dz_mu_pv')",float),
+        dz_mu_sig_pv   = Var("userFloat('dz_mu_sig_pv')",float),
+        dz_mu_err_pv   = Var("userFloat('dz_mu_err_pv')",float),
 
-        dxy_k2     = Var("userFloat('dxy_k2')",float),
-        dz_k2      = Var("userFloat('dz_k2')",float),
-        dxy_k2_err = Var("userFloat('dxy_k2_err')",float),
-        dz_k2_err  = Var("userFloat('dz_k2_err')",float),
-        dxy_k2_sig = Var("userFloat('dxy_k2_sig')",float),
-        dz_k2_sig  = Var("userFloat('dz_k2_sig')",float),
+        dz_mu_sv       = Var("userFloat('dz_mu_sv')",float),
+        dz_mu_sig_sv   = Var("userFloat('dz_mu_sig_sv')",float),
+        dz_mu_err_sv   = Var("userFloat('dz_mu_err_sv')",float),
+
+        dxy_pi_pv      = Var("userFloat('dxy_pi_pv')",float),
+        dxy_pi_err_pv  = Var("userFloat('dxy_pi_err_pv')",float),
+        dxy_pi_sig_pv  = Var("userFloat('dxy_pi_sig_pv')",float),
+
+        dz_pi_pv       = Var("userFloat('dz_pi_pv')",float),
+        dz_pi_err_pv   = Var("userFloat('dz_pi_err_pv')",float),
+        dz_pi_sig_pv   = Var("userFloat('dz_pi_sig_pv')",float),
+
+        dxy_pi_sv      = Var("userFloat('dxy_pi_sv')",float),
+        dxy_pi_err_sv  = Var("userFloat('dxy_pi_err_sv')",float),
+        dxy_pi_sig_sv  = Var("userFloat('dxy_pi_sig_sv')",float),
+
+        dz_pi_sv       = Var("userFloat('dz_pi_sv')",float),
+        dz_pi_err_sv   = Var("userFloat('dz_pi_err_sv')",float),
+        dz_pi_sig_sv   = Var("userFloat('dz_pi_sig_sv')",float),
 
         ds_vtx_cosine = Var("userFloat('ds_vtx_cosine')",float),
 
@@ -751,6 +760,30 @@ photonVariables = cms.PSet(
         e_star_reco_1_photon         = Var("userFloat('e_star_reco_1_photon')",float),
         e_star_reco_2_photon         = Var("userFloat('e_star_reco_2_photon')",float),
 
+        cosPhiDs_coll_photon         = Var("userFloat('cosPhiDsColl_photon')",float),
+        cosPhiDs_lhcb_alt_photon     = Var("userFloat('cosPhiDsLhcbAlt_photon')",float),
+        cosPhiDs_reco_1_photon       = Var("userFloat('cosPhiDsReco1_photon')",float),
+        cosPhiDs_reco_2_photon       = Var("userFloat('cosPhiDsReco2_photon')",float),
+
+        cosPiDs_coll_photon          = Var("userFloat('cosPiDsColl_photon')",float),
+        cosPiDs_lhcb_alt_photon      = Var("userFloat('cosPiDsLhcbAlt_photon')",float),
+        cosPiDs_reco_1_photon        = Var("userFloat('cosPiDsReco1_photon')",float),
+        cosPiDs_reco_2_photon        = Var("userFloat('cosPiDsReco2_photon')",float),
+
+        cosMuW_coll_photon           = Var("userFloat('cosMuWColl_photon')",float),
+        cosMuW_lhcb_alt_photon       = Var("userFloat('cosMuWLhcbAlt_photon')",float),
+        cosMuW_reco_1_photon         = Var("userFloat('cosMuWReco1_photon')",float),
+        cosMuW_reco_2_photon         = Var("userFloat('cosMuWReco2_photon')",float),
+
+        cosPlaneBs_coll_photon       = Var("userFloat('cosPlaneBsColl_photon')",float),
+        cosPlaneBs_lhcb_alt_photon   = Var("userFloat('cosPlaneBsLhcbAlt_photon')",float),
+        cosPlaneBs_reco_1_photon     = Var("userFloat('cosPlaneBsReco1_photon')",float),
+        cosPlaneBs_reco_2_photon     = Var("userFloat('cosPlaneBsReco2_photon')",float),
+
+        cosPlaneDs_coll_photon       = Var("userFloat('cosPlaneDsColl_photon')",float),
+        cosPlaneDs_lhcb_alt_photon   = Var("userFloat('cosPlaneDsLhcbAlt_photon')",float),
+        cosPlaneDs_reco_1_photon     = Var("userFloat('cosPlaneDsReco1_photon')",float),
+        cosPlaneDs_reco_2_photon     = Var("userFloat('cosPlaneDsReco2_photon')",float),
 
 
 )

@@ -99,9 +99,10 @@
 // - add mu isolation, e* miss and pt miss, photon energy - DONE                             //
 // - add and save Vcb Variables                        - DONE                                //
 // - Oscillate back also all b hadrons, pick first beauty ancestor - DONE                    //
-// - muon isolation, ds isolation (also wrt SV)        
-// - muon impact parameter
-// - move photon tagging to separate module
+// - muon isolation, ds isolation (also wrt SV)        - DONE                                //       
+// - muon impact parameter                             - DONE                                //
+// - move photon tagging to separate module                                                  //
+// - Question: Muon is from pat::Muons --> how to remove it from pv cands? To check!         //
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -430,12 +431,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       //define a pointer to the pf cand at position pfIdx
       edm::Ptr<pat::PackedCandidate> pfPtr;
       if (pfIdx < pcand->size()) pfPtr = edm::Ptr<pat::PackedCandidate>(pcand, pfIdx); //normal tracks
-      else pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size());  //lost tracks
+      else {pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size()); std::cout << "lost!!" << pfPtr->pt() << std::endl;}  //lost tracks
      
       float deltaRMuTrk = reco::deltaR(*pfPtr, *muPtr);
+      float deltaRMuTrkFlip = reco::deltaR(*muPtr, *pfPtr);
       if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPfIdx.push_back(pfIdx); 
-      else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) chargedPfIdx.push_back(pfIdx); 
-        
+      else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) {chargedPfIdx.push_back(pfIdx); 
+      
+      std::cout << "collecting: " << pfPtr->pt() << std::endl; 
+      }    
     }
 
     //////////////////////////////////////////////////
@@ -1415,6 +1419,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float dzPiErr_sv         = piPtr->bestTrack()->dzError();  
         float dzPiSig_sv         = dzPi_sv/dzPiErr_sv ; 
 
+        bs.addUserFloat("ip3d_mu_ds_sv",     ip3DMu_ds_sv    );
+        bs.addUserFloat("ip3d_mu_ds_err_sv", ip3DMu_ds_err_sv);
+        bs.addUserFloat("ip3d_mu_ds_sig_sv", ip3DMu_ds_sig_sv);
+
+        bs.addUserFloat("ip3d_mu_bs_sv",     ip3DMu_bs_sv    );
+        bs.addUserFloat("ip3d_mu_bs_err_sv", ip3DMu_bs_err_sv);
+        bs.addUserFloat("ip3d_mu_bs_sig_sv", ip3DMu_bs_sig_sv);
+
         bs.addUserFloat("dxy_mu_sv",     dxyMu_sv);
         bs.addUserFloat("dxy_mu_err_sv", dxyMuErr_sv);
         bs.addUserFloat("dxy_mu_sig_sv", dxyMuSig_sv);
@@ -1822,15 +1834,67 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03KKPi = 0.0;
         float iso04KKPi = 0.0;
 
-        // subtract kkpi candidate pt if in cone   
+        int idxMinVtxDz_pi = -1;
+        int idxMinVtxDz_k1 = -1;
+        int idxMinVtxDz_k2 = -1;
 
-        if( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && ( abs(muPtr->bestTrack()->dz(pv.position()) - k1Ptr->dz(pv.position()) ) < 0.2 ) ) iso03KKPi += k1Ptr->pt();
-        if( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && ( abs(muPtr->bestTrack()->dz(pv.position()) - k2Ptr->dz(pv.position()) ) < 0.2 ) ) iso03KKPi += k2Ptr->pt();
-        if( (reco::deltaR(*piPtr,*muPtr) < 0.3) && ( abs(muPtr->bestTrack()->dz(pv.position()) - piPtr->dz(pv.position()) ) < 0.2 ) ) iso03KKPi += piPtr->pt();
+        float minVtxDz_pi = 0;
+        float minVtxDz_k1 = 0;
+        float minVtxDz_k2 = 0;
 
-        if( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && ( abs(muPtr->bestTrack()->dz(pv.position()) - k1Ptr->dz(pv.position()) ) < 0.2 ) ) iso04KKPi += k1Ptr->pt();
-        if( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && ( abs(muPtr->bestTrack()->dz(pv.position()) - k2Ptr->dz(pv.position()) ) < 0.2 ) ) iso04KKPi += k2Ptr->pt();
-        if( (reco::deltaR(*piPtr,*muPtr) < 0.4) && ( abs(muPtr->bestTrack()->dz(pv.position()) - piPtr->dz(pv.position()) ) < 0.2 ) ) iso04KKPi += piPtr->pt();
+        // for standard isolation, check if vertex associated to pf candidates is
+        // the first in the offlineSlimmedPrimaryVertexCollection
+        for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
+
+          edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
+
+
+          // and minimize the dz           
+          float vtxDz_pi = abs( piPtr->vz() - vtxPtr->z() );  
+          float vtxDz_k1 = abs( k1Ptr->vz() - vtxPtr->z() );  
+          float vtxDz_k2 = abs( k2Ptr->vz() - vtxPtr->z() );  
+
+          if ( ( vtxDz_pi < minVtxDz_pi) || (idxMinVtxDz_pi < 0) ) {
+
+            minVtxDz_pi    = vtxDz_pi;
+            idxMinVtxDz_pi = vtxIdx;         
+
+          } 
+          if ( ( vtxDz_k1 < minVtxDz_k1) || (idxMinVtxDz_k1 < 0) ) {
+
+            minVtxDz_k1    = vtxDz_k1;
+            idxMinVtxDz_k1 = vtxIdx;         
+
+          } 
+          if ( ( vtxDz_k2 < minVtxDz_k2) || (idxMinVtxDz_k2 < 0) ) {
+
+            minVtxDz_k2    = vtxDz_k2;
+            idxMinVtxDz_k2 = vtxIdx;         
+
+          } 
+
+        }
+
+        float pu03KKPi = 0; 
+        float pu04KKPi = 0;
+
+        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 == 0 ))  iso03KKPi += k1Ptr->pt();
+        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 != 0 ))  pu03KKPi  += k1Ptr->pt();
+
+        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 == 0 ))  iso03KKPi += k2Ptr->pt();
+        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 != 0 ))  pu03KKPi  += k2Ptr->pt();
+
+        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi == 0 ))  iso03KKPi += piPtr->pt();
+        else if( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi != 0 ))  pu03KKPi  += piPtr->pt();
+
+        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 == 0 ))  iso04KKPi += k1Ptr->pt();
+        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 != 0 ))  pu04KKPi  += k1Ptr->pt();
+
+        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 == 0 ))  iso04KKPi += k2Ptr->pt();
+        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 != 0 ))  pu04KKPi  += k2Ptr->pt();
+
+        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi == 0 ))  iso04KKPi += piPtr->pt();
+        else if( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi != 0 ))  pu04KKPi  += piPtr->pt();
 
 
         // factor 0.5 from https://cms.cern.ch/iCMS/analysisadmin/cadilines?line=MUO-16-001&tp=an&id=1779&ancode=MUO-16-001
@@ -1839,66 +1903,101 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03charged    = std::max(0.0f, muIso03.sumChargedHadronPt - iso03KKPi);  
         float iso04charged    = std::max(0.0f, muIso04.sumChargedHadronPt - iso04KKPi);  
 
+        float iso03pileup     = muIso03.sumPUPt - pu03KKPi;
+        float iso04pileup     = muIso04.sumPUPt - pu04KKPi;
+
         float iso03neutral    = std::max(0.0, muIso03.sumNeutralHadronEt + muIso03.sumPhotonEt - 0.5 * muIso03.sumPUPt);  
         float iso04neutral    = std::max(0.0, muIso04.sumNeutralHadronEt + muIso04.sumPhotonEt - 0.5 * muIso04.sumPUPt);  
 
         float iso03 = iso03charged + iso03neutral;
         float iso04 = iso04charged + iso04neutral;
 
+        //std::cout << "iso04 charged: "     << muIso04.sumChargedHadronPt << std::endl;
+        //std::cout << "iso04 charged and cleaned: "     << iso04charged << std::endl;
+        //std::cout << "iso04 neutral ph: "  << muIso04.sumPhotonEt << std::endl;
+        //std::cout << "iso04 neutral had: " << muIso04.sumNeutralHadronEt << std::endl;
+        //std::cout << "iso04 sum pup pt: "  << muIso04.sumPUPt<< std::endl;
+        //std::cout << "iso04 sum cleaned pup pt: "  << iso04pileup << std::endl;
+        std::cout << "iso04 cleaned classic: "  << iso04 << std::endl;
+        
+
         float relIso03 = iso03 / muPtr->pt();
         float relIso04 = iso04 / muPtr->pt();
         float refittedRelIso03 = iso03 / refittedMu.Pt();
         float refittedRelIso04 = iso04 / refittedMu.Pt();
 
-        bs.addUserFloat("mu_iso_03", iso03);
-        bs.addUserFloat("mu_iso_04", iso04);
-        bs.addUserFloat("mu_rel_iso_03", relIso03);
-        bs.addUserFloat("mu_rel_iso_04", relIso04);
-        bs.addUserFloat("mu_rel_iso_03_refitted", refittedRelIso03);
-        bs.addUserFloat("mu_rel_iso_04_refitted", refittedRelIso04);
+        bs.addUserFloat("iso_03", iso03);
+        bs.addUserFloat("iso_04", iso04);
+        bs.addUserFloat("rel_iso_03", relIso03);
+        bs.addUserFloat("rel_iso_04", relIso04);
+        bs.addUserFloat("rel_iso_03_refitted", refittedRelIso03);
+        bs.addUserFloat("rel_iso_04_refitted", refittedRelIso04);
 
-        // ADVANCED: Calculate using tracks corresponding to our custom PV, not the 1st vtx in offlineSlimmedPrimaryVertices.
-        // The latter corresponds to highet sumPT, not the use-case for B-Physics :)
-         
+        // ADVANCED: Calculate isolation using tracks corresponding to our custom vertices, not  the default
+        // ( default is the 1st vtx in offlineSlimmedPrimaryVertices, the latter corresponds to highest 
+        // sumPT, not the use-case for B-Physics :)
+        
+        // Implemented for our custom PV, SV and TV
+
         // holds charged tracks 
         float iso03_ch_pv = 0.; 
         float iso04_ch_pv = 0.; 
         float iso03_ch_sv = 0.; 
         float iso04_ch_sv = 0.; 
+        float iso03_ch_tv = 0.; 
+        float iso04_ch_tv = 0.; 
 
         // holds neutral photon tracks
         float iso03_np_pv = 0.; 
         float iso04_np_pv = 0.; 
         float iso03_np_sv = 0.; 
         float iso04_np_sv = 0.; 
+        float iso03_np_tv = 0.; 
+        float iso04_np_tv = 0.; 
 
         // holds neutral hadron tracks
         float iso03_nh_pv = 0.; 
         float iso04_nh_pv = 0.; 
         float iso03_nh_sv = 0.; 
         float iso04_nh_sv = 0.; 
+        float iso03_nh_tv = 0.; 
+        float iso04_nh_tv = 0.; 
 
         // holds pile up tracks
         float iso03_pu_pv = 0.; 
         float iso04_pu_pv = 0.; 
         float iso03_pu_sv = 0.; 
         float iso04_pu_sv = 0.; 
+        float iso03_pu_tv = 0.; 
+        float iso04_pu_tv = 0.; 
 
+        std::cout << "-------" << std::endl; 
         // Fill charged isolations
         for (size_t idx: chargedPfIdx){
+          // Why sorting out pf muons from the isolation? -> bc it is defined like this in cmssw
+
+          // skip kkpi signal candidate 
+          if ((idx == piIdx) || (idx == k1Idx) || (idx == k2Idx)) continue;
 
           edm::Ptr<pat::PackedCandidate> chPtr;
-          if (idx < pcand->size()) chPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx); //normal tracks
+          if (idx < pcand->size()) chPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx);   //normal tracks
           else chPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
+
+          if ((abs(chPtr->pdgId()) == 11) || (abs(chPtr->pdgId()) == 13)) continue;
+
+          // skip if no track
+          if (!chPtr->hasTrackDetails())  continue;
 
           // for each charged particle, check if the assigned vertex is the one we pick up
           float minVtxDz    = 0.0;
           int   idxMinVtxDz = -1;
             
           for(size_t vtxIdx = 0; vtxIdx < refitVtx.size(); ++vtxIdx){
- 
+
+            // loop over all refit vertices 
             reco::Vertex vtx = refitVtx.at(vtxIdx);
-          
+
+            // and minimize the dz           
             float vtxDz = abs( chPtr->vz() - vtx.z() );  
             if ( ( vtxDz < minVtxDz) || (idxMinVtxDz < 0) ) {
  
@@ -1908,15 +2007,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             } 
 
           }
-
+         
           ///////////////////////////////////////
           // Fill for pv as reference vertex   //
           ///////////////////////////////////////
 
           float deltaR_mu_chTrk = reco::deltaR(*muPtr, *chPtr);
 
-          // same vertex, count this to the isolation
-          if  (idxMinVtxDz == pvIdx) {
+          // if closest refit vtx is our custom pv, count it to isolation!
+          // remove electrons and muons (11 and 13) as in cmssw isolation definition
+          if  ((idxMinVtxDz == pvIdx) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13)) {
+            std::cout << "adding pt " << chPtr->pt() << std::endl;
+
             iso04_ch_pv += chPtr->pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_pv += chPtr->pt();
           } 
@@ -1931,17 +2033,35 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           // Fill for sv as reference vertex   //
           ///////////////////////////////////////
 
-          reco::TransientTrack tt = ttBuilder->build(chPtr->bestTrack());
-          std::pair<bool, Measurement1D> ip3D = IPTools::signedDecayLength3D(tt, direction_ds, recoTv);
-          if ( ip3D.first && (ip3D.second.value() < 0.01) ){
+          reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
+          std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
+
+          if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
             iso04_ch_sv += chPtr->pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += chPtr->pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
-          else if (( ip3D.first && (ip3D.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
+          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
             iso04_pu_sv += chPtr->pt();
             if (deltaR_mu_chTrk < 0.3) iso03_pu_sv += chPtr->pt();
+          }
+
+          ///////////////////////////////////////
+          // Fill for tv as reference vertex   // TODO: Take cone around ds particle!
+          ///////////////////////////////////////
+
+          reco::TransientTrack ttTv = ttBuilder->build(chPtr->bestTrack());
+          std::pair<bool, Measurement1D> ip3DTv = IPTools::signedDecayLength3D(ttTv, direction_ds, recoTv);
+          if ( ip3DTv.first && (ip3DTv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+            iso04_ch_tv += chPtr->pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_ch_tv += chPtr->pt();
+          }
+
+          // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
+          else if (( ip3DTv.first && (ip3DTv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
+            iso04_pu_tv += chPtr->pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_pu_tv += chPtr->pt();
           }
 
 
@@ -1970,6 +2090,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         iso03_nh_sv = iso03_nh_pv;
         iso04_nh_sv = iso04_nh_pv;
 
+        iso03_np_tv = iso03_np_pv;
+        iso04_np_tv = iso04_np_pv;
+        iso03_nh_tv = iso03_nh_pv;
+        iso04_nh_tv = iso04_nh_pv;
+
+        std::cout << "custom iso04 charged: "     << iso04_ch_pv << std::endl;
+        std::cout << "custom iso04 neutral ph: "  << iso04_np_pv << std::endl;
+        std::cout << "custom iso04 neutral had: " << iso04_nh_pv << std::endl;
+        std::cout << "custom iso04 sum pup pt: "  << iso04_pu_pv << std::endl;
+
+
+
         // 0.5 is an empirical factor. 50 % of the charged pile up can be mapepd to neutral pile up
         // This factor also compensates to have flat efficiency when having higher pile up
         // It is subtracted from all the neutral traacks (which can not be associated with a vertex and thus
@@ -1979,6 +2111,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float iso03_sv = std::max(0.0, iso03_ch_sv + iso03_nh_sv + iso03_np_sv - 0.5*iso03_pu_sv);
         float iso04_sv = std::max(0.0, iso04_ch_sv + iso04_nh_sv + iso04_np_sv - 0.5*iso04_pu_sv);
+
+        float iso03_tv = std::max(0.0, iso03_ch_tv + iso03_nh_tv + iso03_np_tv - 0.5*iso03_pu_tv);
+        float iso04_tv = std::max(0.0, iso04_ch_tv + iso04_nh_tv + iso04_np_tv - 0.5*iso04_pu_tv);
+
+        bs.addUserFloat("iso_03_pv", iso03_pv);
+        bs.addUserFloat("iso_04_pv", iso04_pv);
+        bs.addUserFloat("iso_03_sv", iso03_sv);
+        bs.addUserFloat("iso_04_sv", iso04_sv);
+        bs.addUserFloat("iso_03_tv", iso03_tv);
+        bs.addUserFloat("iso_04_tv", iso04_tv);
+
+        bs.addUserFloat("rel_iso_03_pv", iso03_pv / muPtr->pt());
+        bs.addUserFloat("rel_iso_04_pv", iso04_pv / muPtr->pt());
+        bs.addUserFloat("rel_iso_03_sv", iso03_sv / muPtr->pt());
+        bs.addUserFloat("rel_iso_04_sv", iso04_sv / muPtr->pt());
+        bs.addUserFloat("rel_iso_03_tv", iso03_tv / muPtr->pt());
+        bs.addUserFloat("rel_iso_04_tv", iso04_tv / muPtr->pt());
+
+        bs.addUserFloat("rel_iso_03_pv_refitted", iso03_pv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_04_pv_refitted", iso04_pv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_03_sv_refitted", iso03_sv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_04_sv_refitted", iso04_sv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_03_tv_refitted", iso03_tv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_04_tv_refitted", iso04_tv / refittedMu.Pt());
 
 
         // e gamma

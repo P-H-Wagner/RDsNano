@@ -245,7 +245,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // count the nr of pat::muons which fired the trigger -> reset to 0 in every event
   int counter = 0;
 
-
+  //std::cout << "#muons in this event " << muons->size() << std::endl;
   // now loop over all pat::muons
   for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
     //if (iEvent.id().event() != 31516) continue;  

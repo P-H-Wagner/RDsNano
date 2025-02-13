@@ -17,12 +17,14 @@ from PhysicsTools.RDsNano.genMatching_cff import *
 
 #G: nanoSequenceOnlyFullSim = cms.Sequence(triggerObjectBParkTables + l1bits)  #purpose?
 
-# from PhysiscsTools.NanoAOD
-nanoSequence = cms.Sequence(nanoMetadata + globalTables)
 
+def nanoAOD_customizeStart(process):
+    # from PhysiscsTools.NanoAOD
+    process.nanoSequence = cms.Sequence(nanoMetadata + globalTables)
+    return process
 
 def nanoAOD_customizeMuonTriggerBPark(process):  #delete trigger inside
-    process.triggerSequence = cms.Sequence( process.nanoSequence + muonTrgSequence)
+    process.triggerSequence = cms.Sequence( muonTrgSequence)
     return process
 
 def nanoAOD_customizeBsToDsPhiKKPiMu(process):

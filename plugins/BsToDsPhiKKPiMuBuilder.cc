@@ -72,6 +72,7 @@
 #include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 #include "RecoVertex/VertexTools/interface/VertexDistance.h"
 #include "TrackingTools/IPTools/interface/IPTools.h"
+#include "RecoBTag/BTagTools/interface/SignedImpactParameter3D.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 // TODOS:                                                                                    // 
@@ -1172,8 +1173,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dr_photon_ds", dr_photon_ds);
         bs.addUserFloat("dsPhoton_m", dsPhoton_m);
         bs.addUserFloat("dsPhotonMu_m", dsPhotonMu_m);
-        bs.addUserInt("foundPhoton", foundPhoton);
-        bs.addUserInt("photonMultiplicity", photonMultiplicity);
+        bs.addUserInt("found_photon", foundPhoton);
+        bs.addUserInt("photon_multiplicity", photonMultiplicity);
 
         //add prefit resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
@@ -1384,15 +1385,42 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         auto direction_ds        =  GlobalVector(phiPi.px(),  phiPi.py(),  phiPi.pz()  ).unit();
         auto direction_bs        =  GlobalVector(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z ).unit();
 
-        std::pair<bool, Measurement1D> ip3DMu_ds_sv_pair  = IPTools::signedDecayLength3D(ttMu, direction_ds, recoSv);
-        float ip3DMu_ds_sv       = ip3DMu_ds_sv_pair.second.value();
-        float ip3DMu_ds_err_sv   = ip3DMu_ds_sv_pair.second.error();
-        float ip3DMu_ds_sig_sv   = ip3DMu_ds_sv_pair.second.significance();
+        // First use signedDecayLength3D
+        std::pair<bool, Measurement1D> signed_decay_ip3DMu_ds_sv_pair  = IPTools::signedDecayLength3D(ttMu, direction_ds, recoSv);
+        float signed_decay_ip3DMu_ds_sv       = signed_decay_ip3DMu_ds_sv_pair.second.value();
+        float signed_decay_ip3DMu_ds_err_sv   = signed_decay_ip3DMu_ds_sv_pair.second.error();
+        float signed_decay_ip3DMu_ds_sig_sv   = signed_decay_ip3DMu_ds_sv_pair.second.significance();
 
-        std::pair<bool, Measurement1D> ip3DMu_bs_sv_pair  = IPTools::signedDecayLength3D(ttMu, direction_bs, recoSv);
-        float ip3DMu_bs_sv       = ip3DMu_bs_sv_pair.second.value();
-        float ip3DMu_bs_err_sv   = ip3DMu_bs_sv_pair.second.error();
-        float ip3DMu_bs_sig_sv   = ip3DMu_bs_sv_pair.second.significance();
+        std::pair<bool, Measurement1D> signed_decay_ip3DMu_bs_sv_pair  = IPTools::signedDecayLength3D(ttMu, direction_bs, recoSv);
+        float signed_decay_ip3DMu_bs_sv       = signed_decay_ip3DMu_bs_sv_pair.second.value();
+        float signed_decay_ip3DMu_bs_err_sv   = signed_decay_ip3DMu_bs_sv_pair.second.error();
+        float signed_decay_ip3DMu_bs_sig_sv   = signed_decay_ip3DMu_bs_sv_pair.second.significance();
+
+        // Then use signedImpactParameter3D
+        std::pair<bool, Measurement1D> signed_impact_ip3DMu_ds_sv_pair  = IPTools::signedImpactParameter3D(ttMu, direction_ds, recoSv);
+        float signed_impact_ip3DMu_ds_sv       = signed_impact_ip3DMu_ds_sv_pair.second.value();
+        float signed_impact_ip3DMu_ds_err_sv   = signed_impact_ip3DMu_ds_sv_pair.second.error();
+        float signed_impact_ip3DMu_ds_sig_sv   = signed_impact_ip3DMu_ds_sv_pair.second.significance();
+
+        std::pair<bool, Measurement1D> signed_impact_ip3DMu_bs_sv_pair  = IPTools::signedImpactParameter3D(ttMu, direction_bs, recoSv);
+        float signed_impact_ip3DMu_bs_sv       = signed_impact_ip3DMu_bs_sv_pair.second.value();
+        float signed_impact_ip3DMu_bs_err_sv   = signed_impact_ip3DMu_bs_sv_pair.second.error();
+        float signed_impact_ip3DMu_bs_sig_sv   = signed_impact_ip3DMu_bs_sv_pair.second.significance();
+
+        // use btv 
+        SignedImpactParameter3D signedObject;
+
+        std::pair<bool, Measurement1D> btv_ip3DMu_ds_sv_pair = signedObject.apply(ttMu, direction_ds, recoSv);
+        float btv_ip3DMu_ds_sv       = btv_ip3DMu_ds_sv_pair.second.value();
+        float btv_ip3DMu_ds_err_sv   = btv_ip3DMu_ds_sv_pair.second.error();
+        float btv_ip3DMu_ds_sig_sv   = btv_ip3DMu_ds_sv_pair.second.significance();
+
+        std::pair<bool, Measurement1D> btv_ip3DMu_bs_sv_pair = signedObject.apply(ttMu, direction_bs, recoSv);
+        float btv_ip3DMu_bs_sv       = btv_ip3DMu_bs_sv_pair.second.value();
+        float btv_ip3DMu_bs_err_sv   = btv_ip3DMu_bs_sv_pair.second.error();
+        float btv_ip3DMu_bs_sig_sv   = btv_ip3DMu_bs_sv_pair.second.significance();
+
+
  
         float dxyMu_pv           = muPtr->bestTrack()->dxy(pv.position());  
         float dxyMuErr_pv        = muPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
@@ -1426,13 +1454,31 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float dzPiErr_sv         = piPtr->bestTrack()->dzError();  
         float dzPiSig_sv         = dzPi_sv/dzPiErr_sv ; 
 
-        bs.addUserFloat("ip3d_mu_ds_sv",     ip3DMu_ds_sv    );
-        bs.addUserFloat("ip3d_mu_ds_err_sv", ip3DMu_ds_err_sv);
-        bs.addUserFloat("ip3d_mu_ds_sig_sv", ip3DMu_ds_sig_sv);
+        bs.addUserFloat("signed_decay_ip3d_mu_ds_sv",     signed_decay_ip3DMu_ds_sv    );
+        bs.addUserFloat("signed_decay_ip3d_mu_ds_err_sv", signed_decay_ip3DMu_ds_err_sv);
+        bs.addUserFloat("signed_decay_ip3d_mu_ds_sig_sv", signed_decay_ip3DMu_ds_sig_sv);
 
-        bs.addUserFloat("ip3d_mu_bs_sv",     ip3DMu_bs_sv    );
-        bs.addUserFloat("ip3d_mu_bs_err_sv", ip3DMu_bs_err_sv);
-        bs.addUserFloat("ip3d_mu_bs_sig_sv", ip3DMu_bs_sig_sv);
+        bs.addUserFloat("signed_decay_ip3d_mu_bs_sv",     signed_decay_ip3DMu_bs_sv    );
+        bs.addUserFloat("signed_decay_ip3d_mu_bs_err_sv", signed_decay_ip3DMu_bs_err_sv);
+        bs.addUserFloat("signed_decay_ip3d_mu_bs_sig_sv", signed_decay_ip3DMu_bs_sig_sv);
+
+        bs.addUserFloat("signed_impact_ip3d_mu_ds_sv",     signed_impact_ip3DMu_ds_sv    );
+        bs.addUserFloat("signed_impact_ip3d_mu_ds_err_sv", signed_impact_ip3DMu_ds_err_sv);
+        bs.addUserFloat("signed_impact_ip3d_mu_ds_sig_sv", signed_impact_ip3DMu_ds_sig_sv);
+
+        bs.addUserFloat("signed_impact_ip3d_mu_bs_sv",     signed_impact_ip3DMu_bs_sv    );
+        bs.addUserFloat("signed_impact_ip3d_mu_bs_err_sv", signed_impact_ip3DMu_bs_err_sv);
+        bs.addUserFloat("signed_impact_ip3d_mu_bs_sig_sv", signed_impact_ip3DMu_bs_sig_sv);
+
+        bs.addUserFloat("btv_ip3d_mu_ds_sv",     btv_ip3DMu_ds_sv    );
+        bs.addUserFloat("btv_ip3d_mu_ds_err_sv", btv_ip3DMu_ds_err_sv);
+        bs.addUserFloat("btv_ip3d_mu_ds_sig_sv", btv_ip3DMu_ds_sig_sv);
+
+        bs.addUserFloat("btv_ip3d_mu_bs_sv",     btv_ip3DMu_bs_sv    );
+        bs.addUserFloat("btv_ip3d_mu_bs_err_sv", btv_ip3DMu_bs_err_sv);
+        bs.addUserFloat("btv_ip3d_mu_bs_sig_sv", btv_ip3DMu_bs_sig_sv);
+
+
 
         bs.addUserFloat("dxy_mu_sv",     dxyMu_sv);
         bs.addUserFloat("dxy_mu_err_sv", dxyMuErr_sv);
@@ -1913,8 +1959,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03pileup     = muIso03.sumPUPt - pu03KKPi;
         float iso04pileup     = muIso04.sumPUPt - pu04KKPi;
 
-        float iso03neutral    = std::max(0.0, muIso03.sumNeutralHadronEt + muIso03.sumPhotonEt - 0.5 * muIso03.sumPUPt);  
-        float iso04neutral    = std::max(0.0, muIso04.sumNeutralHadronEt + muIso04.sumPhotonEt - 0.5 * muIso04.sumPUPt);  
+        float iso03neutral    = std::max(0.0, muIso03.sumNeutralHadronEt + muIso03.sumPhotonEt - 0.5 * iso03pileup);  
+        float iso04neutral    = std::max(0.0, muIso04.sumNeutralHadronEt + muIso04.sumPhotonEt - 0.5 * iso04pileup);  
 
         float iso03 = iso03charged + iso03neutral;
         float iso04 = iso04charged + iso04neutral;
@@ -1925,8 +1971,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "iso04 neutral had: " << muIso04.sumNeutralHadronEt << std::endl;
         //std::cout << "iso04 sum pup pt: "  << muIso04.sumPUPt<< std::endl;
         //std::cout << "iso04 sum cleaned pup pt: "  << iso04pileup << std::endl;
-        std::cout << "iso04 cleaned classic: "  << iso04 << std::endl;
-        
 
         float relIso03 = iso03 / muPtr->pt();
         float relIso04 = iso04 / muPtr->pt();
@@ -1978,7 +2022,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03_pu_tv = 0.; 
         float iso04_pu_tv = 0.; 
 
-        std::cout << "-------" << std::endl; 
+        //std::cout << "-------" << std::endl; 
         // Fill charged isolations
         for (size_t idx: chargedPfIdx){
           // Why sorting out pf muons from the isolation? -> bc it is defined like this in cmssw
@@ -2043,6 +2087,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
+
           if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
             iso04_ch_sv += chPtr->pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += chPtr->pt();
@@ -2102,10 +2147,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         iso03_nh_tv = iso03_nh_pv;
         iso04_nh_tv = iso04_nh_pv;
 
-        std::cout << "custom iso04 charged: "     << iso04_ch_pv << std::endl;
-        std::cout << "custom iso04 neutral ph: "  << iso04_np_pv << std::endl;
-        std::cout << "custom iso04 neutral had: " << iso04_nh_pv << std::endl;
-        std::cout << "custom iso04 sum pup pt: "  << iso04_pu_pv << std::endl;
+        //std::cout << "custom iso04 charged: "     << iso04_ch_pv << std::endl;
+        //std::cout << "custom iso04 neutral ph: "  << iso04_np_pv << std::endl;
+        //std::cout << "custom iso04 neutral had: " << iso04_nh_pv << std::endl;
+        //std::cout << "custom iso04 sum pup pt: "  << iso04_pu_pv << std::endl;
 
 
 
@@ -2156,7 +2201,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         pat::CompositeCandidate ds;
-        math::PtEtaPhiMLorentzVector dsP4(fittedDs.Pt(), fittedDs.Eta(), fittedDs.Phi(), 1.968);
+        math::PtEtaPhiMLorentzVector dsP4(refittedDs.Pt(), refittedDs.Eta(), refittedDs.Phi(), DS_MASS);
         ds.setP4(dsP4);
         // select particles in cone 
       
@@ -2240,14 +2285,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
           if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
-            iso04_ch_sv += chPtr->pt();
-            if (deltaR_ds_chTrk < 0.3) iso03_ch_sv += chPtr->pt();
+            iso04_ds_ch_sv += chPtr->pt();
+            if (deltaR_ds_chTrk < 0.3) iso03_ds_ch_sv += chPtr->pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_ds_chTrk > 0.01 here ? )
           else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
-            iso04_pu_sv += chPtr->pt();
-            if (deltaR_ds_chTrk < 0.3) iso03_pu_sv += chPtr->pt();
+            iso04_ds_pu_sv += chPtr->pt();
+            if (deltaR_ds_chTrk < 0.3) iso03_ds_pu_sv += chPtr->pt();
           }
 
         } 
@@ -2271,29 +2316,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         } 
 
-        std::cout << "custom iso04 charged: "     << iso04_ds_ch_sv << std::endl;
-        std::cout << "custom iso04 neutral ph: "  << iso04_ds_np_sv << std::endl;
-        std::cout << "custom iso04 neutral had: " << iso04_ds_nh_sv << std::endl;
-        std::cout << "custom iso04 sum pup pt: "  << iso04_ds_pu_sv << std::endl;
-
-
-
-        // 0.5 is an empirical factor. 50 % of the charged pile up can be mapepd to neutral pile up
-        // This factor also compensates to have flat efficiency when having higher pile up
-        // It is subtracted from all the neutral traacks (which can not be associated with a vertex and thus
-        // we pick up also pile up neutrals when summing iso03(4)_nh_refit_pv, iso03(4)_np_refit_pv
-
         float iso03_ds_sv = std::max(0.0, iso03_ds_ch_sv + iso03_ds_nh_sv + iso03_ds_np_sv - 0.5*iso03_ds_pu_sv);
         float iso04_ds_sv = std::max(0.0, iso04_ds_ch_sv + iso04_ds_nh_sv + iso04_ds_np_sv - 0.5*iso04_ds_pu_sv);
 
-        bs.addUserFloat("iso_ds_03_sv", iso03_ds_sv);
-        bs.addUserFloat("iso_ds_04_sv", iso04_ds_sv);
+        bs.addUserFloat("iso_03_ds_sv", iso03_ds_sv);
+        bs.addUserFloat("iso_04_ds_sv", iso04_ds_sv);
 
-        bs.addUserFloat("rel_iso_ds_03_sv", iso03_ds_sv / phiPi.pt());
-        bs.addUserFloat("rel_iso_ds_04_sv", iso04_ds_sv / phiPi.pt());
+        bs.addUserFloat("rel_iso_03_ds_sv", iso03_ds_sv / phiPi.pt());
+        bs.addUserFloat("rel_iso_04_ds_sv", iso04_ds_sv / phiPi.pt());
 
-        bs.addUserFloat("rel_iso_03_sv_refitted", iso03_ds_sv / refittedDs.Pt());
-        bs.addUserFloat("rel_iso_04_sv_refitted", iso04_ds_sv / refittedDs.Pt());
+        bs.addUserFloat("rel_iso_03_ds_sv_refitted", iso03_ds_sv / refittedDs.Pt());
+        bs.addUserFloat("rel_iso_04_ds_sv_refitted", iso04_ds_sv / refittedDs.Pt());
 
         // e gamma
         float e_gamma = getEGamma(refittedDs, dsMass_,dsStarMass_);
@@ -2410,7 +2443,40 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float cosPlaneDsReco1Photon        = -9999;
         float cosPlaneDsReco2Photon        = -9999;
 
+        float iso03Photon                  = -9999;
+        float iso04Photon                  = -9999;
+        float relIso03Photon               = -9999;
+        float relIso04Photon               = -9999;
+        float relIso03PhotonRefitted       = -9999;
+        float relIso04PhotonRefitted       = -9999;
 
+        float iso03PhotonPv                = -9999;
+        float iso04PhotonPv                = -9999;
+        float relIso03PhotonPv             = -9999;
+        float relIso04PhotonPv             = -9999;
+        float relIso03PhotonRefittedPv     = -9999;
+        float relIso04PhotonRefittedPv     = -9999;
+
+        float iso03PhotonSv                = -9999;
+        float iso04PhotonSv                = -9999;
+        float relIso03PhotonSv             = -9999;
+        float relIso04PhotonSv             = -9999;
+        float relIso03PhotonRefittedSv     = -9999;
+        float relIso04PhotonRefittedSv     = -9999;
+
+        float iso03PhotonTv                = -9999;
+        float iso04PhotonTv                = -9999;
+        float relIso03PhotonTv             = -9999;
+        float relIso04PhotonTv             = -9999;
+        float relIso03PhotonRefittedTv     = -9999;
+        float relIso04PhotonRefittedTv     = -9999;
+
+        float iso03DsPhotonSv              = -9999;
+        float iso04DsPhotonSv              = -9999;
+        float relIso03DsPhotonSv           = -9999;
+        float relIso04DsPhotonSv           = -9999;
+        float relIso03DsPhotonRefittedSv   = -9999;
+        float relIso04DsPhotonRefittedSv   = -9999;
 
         if (foundPhoton){
 
@@ -2597,8 +2663,90 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           cosPlaneDsReco1Photon   =      cos( angPlaneDsReco1Photon  );
           cosPlaneDsReco2Photon   =      cos( angPlaneDsReco2Photon  );
           
-           
+          /////////////////////////////
+          // Isolations              //
+          /////////////////////////////
 
+          //first the classic isolation. Check if photon is in cone 0.3/0.4 around the mu
+          float deltaR_ph_mu = reco::deltaR(*phtPtr, *muPtr);
+          float deltaR_ph_ds = reco::deltaR(*phtPtr,  phiPi);
+
+          iso03Photon   = iso03   ; 
+          iso03PhotonPv = iso03_pv; 
+          iso03PhotonSv = iso03_sv; 
+          iso03PhotonTv = iso03_tv; 
+
+          iso04Photon   = iso04   ; 
+          iso04PhotonPv = iso04_pv; 
+          iso04PhotonSv = iso04_sv; 
+          iso04PhotonTv = iso04_tv; 
+
+          iso03DsPhotonSv = iso03_ds_sv;
+          iso04DsPhotonSv = iso04_ds_sv;
+
+
+          if (deltaR_ph_mu < 0.3) { 
+
+            iso03Photon   -= phtPtr->pt();
+            iso03PhotonPv -= phtPtr->pt();
+            iso03PhotonSv -= phtPtr->pt();
+            iso03PhotonTv -= phtPtr->pt();
+
+            iso04Photon   -= phtPtr->pt();
+            iso04PhotonPv -= phtPtr->pt();
+            iso04PhotonSv -= phtPtr->pt();
+            iso04PhotonTv -= phtPtr->pt();
+
+          }
+          else if (deltaR_ph_mu < 0.4) {
+
+            iso04Photon   -= phtPtr->pt();
+            iso04PhotonPv -= phtPtr->pt();
+            iso04PhotonSv -= phtPtr->pt();
+            iso04PhotonTv -= phtPtr->pt();
+
+          } 
+ 
+          if (deltaR_ph_mu < 0.3) { 
+
+            iso03DsPhotonSv -= phtPtr->pt();
+            iso04DsPhotonSv -= phtPtr->pt();
+
+          }
+
+          else if (deltaR_ph_mu < 0.4) {
+
+            iso04DsPhotonSv -= phtPtr->pt();
+
+          }
+
+          relIso03Photon     = iso03Photon      / muPtr->pt(); 
+          relIso03PhotonPv   = iso03PhotonPv    / muPtr->pt(); 
+          relIso03PhotonSv   = iso03PhotonSv    / muPtr->pt(); 
+          relIso03PhotonTv   = iso03PhotonTv    / muPtr->pt(); 
+
+          relIso04Photon     = iso04Photon      / muPtr->pt(); 
+          relIso04PhotonPv   = iso04PhotonPv    / muPtr->pt(); 
+          relIso04PhotonSv   = iso04PhotonSv    / muPtr->pt(); 
+          relIso04PhotonTv   = iso04PhotonTv    / muPtr->pt(); 
+
+          relIso03DsPhotonSv = iso03DsPhotonSv  / phiPi.pt(); 
+          relIso04DsPhotonSv = iso04DsPhotonSv  / phiPi.pt(); 
+ 
+          relIso03PhotonRefitted     = iso03Photon      / refittedMu.Pt(); 
+          relIso03PhotonRefittedPv   = iso03PhotonPv    / refittedMu.Pt(); 
+          relIso03PhotonRefittedSv   = iso03PhotonSv    / refittedMu.Pt(); 
+          relIso03PhotonRefittedTv   = iso03PhotonTv    / refittedMu.Pt(); 
+
+          relIso04PhotonRefitted     = iso04Photon      / refittedMu.Pt(); 
+          relIso04PhotonRefittedPv   = iso04PhotonPv    / refittedMu.Pt(); 
+          relIso04PhotonRefittedSv   = iso04PhotonSv    / refittedMu.Pt(); 
+          relIso04PhotonRefittedTv   = iso04PhotonTv    / refittedMu.Pt(); 
+
+          relIso03DsPhotonRefittedSv = iso03DsPhotonSv  / refittedDs.Pt(); 
+          relIso04DsPhotonRefittedSv = iso04DsPhotonSv  / refittedDs.Pt(); 
+         
+  
         }
 
         bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
@@ -2701,6 +2849,40 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPlaneDsReco1_photon",   cosPlaneDsReco1Photon);
         bs.addUserFloat("cosPlaneDsReco2_photon",   cosPlaneDsReco2Photon);
 
+        bs.addUserFloat("iso_03_photon"                ,  iso03Photon                 ) ;
+        bs.addUserFloat("iso_04_photon"                ,  iso04Photon                 ) ;
+        bs.addUserFloat("rel_iso_03_photon"            ,  relIso03Photon              ) ;
+        bs.addUserFloat("rel_iso_04_photon"            ,  relIso04Photon              ) ;
+        bs.addUserFloat("rel_iso_03_refitted_photon"   ,  relIso03PhotonRefitted      ) ;
+        bs.addUserFloat("rel_iso_04_refitted_photon"   ,  relIso04PhotonRefitted      ) ;
+
+        bs.addUserFloat("iso_03_pv_photon"             ,  iso03PhotonPv            ) ;
+        bs.addUserFloat("iso_04_pv_photon"             ,  iso04PhotonPv            ) ;
+        bs.addUserFloat("rel_iso_03_pv_photon"         ,  relIso03PhotonPv         ) ;
+        bs.addUserFloat("rel_iso_04_pv_photon"         ,  relIso04PhotonPv         ) ;
+        bs.addUserFloat("rel_iso_03_pv_refitted_photon",  relIso03PhotonRefittedPv ) ;
+        bs.addUserFloat("rel_iso_04_pv_refitted_photon",  relIso04PhotonRefittedPv ) ;
+
+        bs.addUserFloat("iso_03_sv_photon"             ,  iso03PhotonSv               ) ;
+        bs.addUserFloat("iso_04_sv_photon"             ,  iso04PhotonSv               ) ;
+        bs.addUserFloat("rel_iso_03_sv_photon"         ,  relIso03PhotonSv            ) ;
+        bs.addUserFloat("rel_iso_04_sv_photon"         ,  relIso04PhotonSv            ) ;
+        bs.addUserFloat("rel_iso_03_sv_refitted_photon",  relIso03PhotonRefittedSv    ) ;
+        bs.addUserFloat("rel_iso_04_sv_refitted_photon",  relIso04PhotonRefittedSv    ) ;
+
+        bs.addUserFloat("iso_03_tv_photon"             ,  iso03PhotonTv               ) ;
+        bs.addUserFloat("iso_04_tv_photon"             ,  iso04PhotonTv               ) ;
+        bs.addUserFloat("rel_iso_03_tv_photon"         ,  relIso03PhotonTv            ) ;
+        bs.addUserFloat("rel_iso_04_tv_photon"         ,  relIso04PhotonTv            ) ;
+        bs.addUserFloat("rel_iso_03_tv_refitted_photon",  relIso03PhotonRefittedTv    ) ;
+        bs.addUserFloat("rel_iso_04_tv_refitted_photon",  relIso04PhotonRefittedTv    ) ;
+
+        bs.addUserFloat("iso_03_ds_sv_photon"             ,  iso03DsPhotonSv             ) ;
+        bs.addUserFloat("iso_04_ds_sv_photon"             ,  iso04DsPhotonSv             ) ;
+        bs.addUserFloat("rel_iso_03_ds_sv_photon"         ,  relIso03DsPhotonSv          ) ;
+        bs.addUserFloat("rel_iso_04_ds_sv_photon"         ,  relIso04DsPhotonSv          ) ;
+        bs.addUserFloat("rel_iso_03_ds_sv_refitted_photon",  relIso03DsPhotonRefittedSv  ) ;
+        bs.addUserFloat("rel_iso_04_ds_sv_refitted_photon",  relIso04DsPhotonRefittedSv  ) ;
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////

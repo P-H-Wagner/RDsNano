@@ -23,6 +23,8 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     prunedCand = cms.InputTag("prunedGenParticles"),
     packedCand = cms.InputTag("packedGenParticles"),
     photonCand = cms.InputTag("reducedEgamma"),
+    unpackedTracksCand = cms.InputTag("unpackedTracksAndVertices"),
+    vtxWithBsCand = cms.InputTag("primaryVertexRefit","WithBS", "RDsNANO"),
     hadSelection = cms.string(' &&  '.join([
 'abs(pdgId) != 11',
 'abs(pdgId) != 13',
@@ -70,19 +72,6 @@ isoCone          = cms.double( 0.5)             # cut on dR for the mu isolation
 print( " ========> Parameters used:")
 print(BsToDsPhiKKPiMu.dumpPython)
 
-#BsToDsPhiKKPiMuTableVariables = TableDefaultVariables.clone()
-
-"""
-BsToDsPhiKKPiMuTable = TableDefault.clone()
-BsToDsPhiKKPiMuTable.src       = cms.InputTag("KKPair")
-BsToDsPhiKKPiMuTable.cut       = cms.string("")
-BsToDsPhiKKPiMuTable.name      = cms.string("KKPair")
-BsToDsPhiKKPiMuTable.doc       = cms.string("KKPair Variables")
-BsToDsPhiKKPiMuTable.singleton = cms.bool(False)
-BsToDsPhiKKPiMuTable.extension = cms.bool(False)
-BsToDsPhiKKPiMuTable.variables = BsToDsPhiKKPiMuTableVariables
-"""
-
 #BsToDsPhiKKPiMuVariables.extend(vertexVariables)
 combined_variables = cms.PSet(
   prefitBasicVariables,
@@ -107,34 +96,7 @@ BsToDsPhiKKPiMuTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer
 
 )
 
-#vertexTable = cms.EDProducer('SimpleCompositeCandidateFlatTableProducer',
-#
-#    src = cms.InputTag("BsToDsPhiKKPiMu:bs"),
-#    cut = cms.string(""),
-#    name = cms.string("table 2"),
-#    doc  = cms.string("BsToDsPhiKKPiMu"),
-#    singleton = cms.bool(False), # the number of entries is variable
-#    extension = cms.bool(True), # this is the main table for the muons
-#    variables = cms.PSet(vertexVariables)
 
-#)
 
-#BsToDsPhiKKPiMuTable = BsToDsPhiKKPiMuTable + vertexTable
-
-#?? why needed
-CountBsToDsPhiKKPiMu = cms.EDFilter(
-    "PATCandViewCountFilter",
-    minNumber = cms.uint32(0),
-    maxNumber = cms.uint32(999999),
-    src = cms.InputTag("BsToDsPhiKKPiMu"),
-)
-
-arrived = cms.EDFilter(
-    "notEmpty",
-    bs = cms.InputTag('BsToDsPhiKKPiMu', 'bs'),
-)
-
-#tables = cms.Sequence(BsToDsPhiKKPiMuTable) # * vertexTable)
-#BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + arrived + BsToDsPhiKKPiMuTable)
 BsToDsPhiKKPiMuSequence = cms.Sequence(BsToDsPhiKKPiMu + BsToDsPhiKKPiMuTable)
 

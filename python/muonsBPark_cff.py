@@ -51,4 +51,4 @@ muonTrgTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
 print( " ========> Parameters used:")
 print(muonTrgSelector.dumpPython)
 
-muonTrgSequence = cms.Sequence(muonTrgSelector + muonTrgTable)
+muonTrgSequence = cms.Sequence(muonTrgSelector)

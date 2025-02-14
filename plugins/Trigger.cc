@@ -83,7 +83,8 @@ private:
     const edm::EDGetTokenT<reco::VertexCollection> vertexSrc_;
 
     //the maximal dR you allow between pat muon and trigger muon candidate
-    const string trgFilterLabel_;
+    const string trgFilterLabelMu7_;
+    const string trgFilterLabelMu9_;
 
     const string hlt_7_4_p0_;
     const string hlt_7_4_p1_;
@@ -196,18 +197,18 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   unsigned int index_9_6_p4      = names.triggerIndex(hlt_9_6_p4_); 
 
 
-  std::cout << "Mu 7: " << std::endl;
-  std::cout <<"0 index is valid? "<< (index_7_4_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
-  std::cout <<"1 index is valid? "<< (index_7_4_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
-  std::cout <<"2 index is valid? "<< (index_7_4_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
-  std::cout <<"3 index is valid? "<< (index_7_4_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
-  std::cout <<"4 index is valid? "<< (index_7_4_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
-  std::cout << "Mu 9: " << std::endl;
-  std::cout <<"0 index is valid? "<< (index_9_6_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_9_6_p0)) << std::endl;
-  std::cout <<"1 index is valid? "<< (index_9_6_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p1)) << std::endl;
-  std::cout <<"2 index is valid? "<< (index_9_6_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_9_6_p2)) << std::endl;
-  std::cout <<"3 index is valid? "<< (index_9_6_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p3)) << std::endl;
-  std::cout <<"4 index is valid? "<< (index_9_6_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_9_6_p4)) << std::endl;
+  //std::cout << "Mu 7: " << std::endl;
+  //std::cout <<"0 index is valid? "<< (index_7_4_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
+  //std::cout <<"1 index is valid? "<< (index_7_4_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
+  //std::cout <<"2 index is valid? "<< (index_7_4_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
+  //std::cout <<"3 index is valid? "<< (index_7_4_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
+  //std::cout <<"4 index is valid? "<< (index_7_4_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
+  //std::cout << "Mu 9: " << std::endl;
+  //std::cout <<"0 index is valid? "<< (index_9_6_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_9_6_p0)) << std::endl;
+  //std::cout <<"1 index is valid? "<< (index_9_6_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p1)) << std::endl;
+  //std::cout <<"2 index is valid? "<< (index_9_6_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_9_6_p2)) << std::endl;
+  //std::cout <<"3 index is valid? "<< (index_9_6_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p3)) << std::endl;
+  //std::cout <<"4 index is valid? "<< (index_9_6_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_9_6_p4)) << std::endl;
 
   //default is false  
   bool pass_7_4_p0 = false, pass_7_4_p1 = false, pass_7_4_p2 = false, pass_7_4_p3 = false, pass_7_4_p4 = false;
@@ -298,11 +299,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         std::vector<std::string> filterLabels = trgObj.filterLabels();
     
         // check if the trigger object was actually firing our trigger
-        // it must carry all filter labels of the fired triggers!
 
-       
-        if(!trgObj.hasFilterLabel(trgFilterLabel_)) continue;
-   
+        if (!((pass_7_4 && trgObj.hasFilterLabel(trgFilterLabelMu7_) ) || (pass_9_6 && trgObj.hasFilterLabel(trgFilterLabelMu9_)) )) continue; 
+         
         passesHLTFilter++;   
         iMatch++;
 
@@ -319,7 +318,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   
       //save pat muon if we found a matching candidate 
       if(trgObjIdx != -1){
-      
+     
         trgCand++;
    
         //the following line does a copy of muon with the name trgMatchedMuon (same properties different adress)
@@ -330,7 +329,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         if (!ttrackTrgMuon.isValid()) continue;
   
         //store
-  	trgMatchedMuon.addUserInt("muonIdx",              muIdx    );
+  	trgMatchedMuon.addUserInt("muIdx",                muIdx    );
    	trgMatchedMuon.addUserInt("trgObjIdx",            trgObjIdx);
 
         trgMatchedMuon.addUserInt("mu7_ip4",              pass_7_4);
@@ -346,6 +345,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         trgMatchedMuon.addUserInt("prescale_mu7_ip4_p2",  prescale_7_4_p2);
         trgMatchedMuon.addUserInt("prescale_mu7_ip4_p3",  prescale_7_4_p3);
         trgMatchedMuon.addUserInt("prescale_mu7_ip4_p4",  prescale_7_4_p4);
+        trgMatchedMuon.addUserInt("prescale_mu7_ip4",     prescale_7_4);
 
         trgMatchedMuon.addUserInt("mu9_ip6",              pass_9_6);
  
@@ -353,13 +353,16 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         trgMatchedMuon.addUserInt("mu9_ip6_p1",           pass_9_6_p1);
         trgMatchedMuon.addUserInt("mu9_ip6_p2",           pass_9_6_p2);
         trgMatchedMuon.addUserInt("mu9_ip6_p3",           pass_9_6_p3);
-        trgMatchedMuon.addUserInt("mu9_ip6_p6",           pass_9_6_p4);
+        trgMatchedMuon.addUserInt("mu9_ip6_p4",           pass_9_6_p4);
 
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p0",  prescale_9_6_p0);
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p1",  prescale_9_6_p1);
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p2",  prescale_9_6_p2);
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p3",  prescale_9_6_p3);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p6",  prescale_9_6_p4);
+        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p4",  prescale_9_6_p4);
+        trgMatchedMuon.addUserInt("prescale_mu9_ip6"   ,  prescale_9_6);
+
+        //std::cout << "found trg obj!" << std::endl; 
 
         counter++;
         trgMuons->emplace_back(trgMatchedMuon); 

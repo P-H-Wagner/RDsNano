@@ -442,7 +442,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       else pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size()); //lost tracks
      
       float deltaRMuTrk = reco::deltaR(*pfPtr, *muPtr);
-      float deltaRMuTrkFlip = reco::deltaR(*muPtr, *pfPtr);
       if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPfIdx.push_back(pfIdx); 
       else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) {chargedPfIdx.push_back(pfIdx); 
       
@@ -795,7 +794,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
         AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
-        //std::cout << "we passed all the vtx fit" << std::endl;
+        std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of fitter /////////////////////////////////////
 
@@ -1067,7 +1066,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, refittedDs, refittedMu);
 
-          if((ip3d < minIp3d_general) || (pvIdx_general == -1)){
+          if((ip3d < minIp3d_general) || (pvIdx_general < 0)){
             minIp3d_general = ip3d;
             pvIdx_general  = vtxIdx;
            }
@@ -1098,7 +1097,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, refittedDs, refittedMu);
 
-          if((ip3d < minIp3d) || (pvIdx== -1)){
+          if((ip3d < minIp3d) || (pvIdx < 0)){
             minIp3d= ip3d;
             pvIdx= vtxIdx;
            }
@@ -1120,16 +1119,22 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //2d cosine
 
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> kkPi_xy;
+        ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> kkPi_xyz;
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xy;
+        ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xyz;
         kkPi_xy.SetXYZ(phiPi.px(), phiPi.py(),0.0);
-        ds_xy.SetXYZ(tv_x - beamSpot.x(pv_z), tv_y - beamSpot.y(pv_z) ,0.0);
+        kkPi_xyz.SetXYZ(phiPi.px(), phiPi.py(),phiPi.pz());
+        //ds_xy.SetXYZ(tv_x - beamSpot.x(pv_z), tv_y - beamSpot.y(pv_z) ,0.0);
+        ds_xy.SetXYZ(tv_x - sv_x, tv_y - sv_y ,0.0);
+        ds_xy.SetXYZ(tv_x - sv_x, tv_y - sv_y ,tv_z - sv_z);
 
-        if (!(ds_xy.R() > 0.0)) continue;
+        //if (!(ds_xy.R() > 0.0)) continue;
          
-        float ds_vtx_cosine = kkPi_xy.Dot(ds_xy) / (kkPi_xy.R() * ds_xy.R());
+        float ds_vtx_cosine_xy  = kkPi_xy .Dot(ds_xy)  / (kkPi_xy .R() * ds_xy .R());
+        float ds_vtx_cosine_xyz = kkPi_xyz.Dot(ds_xyz) / (kkPi_xyz.R() * ds_xyz.R());
         //std::cout << "ds vtc cosine" << ds_vtx_cosine << std::endl;
 
-        if (ds_vtx_cosine < 0.8) continue;
+        //if (ds_vtx_cosine < 0.8) continue;
 
         //std::cout << "survived cos 2d cut" << std::endl;
 
@@ -1335,7 +1340,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("fv_prob",    phiVtxProb);
 
         // opening angle between bs - ds vtx directioini and kkpi flight direction
-        bs.addUserFloat("ds_vtx_cosine", ds_vtx_cosine);
+        bs.addUserFloat("ds_vtx_cosine_xy" , ds_vtx_cosine_xy);
+        bs.addUserFloat("ds_vtx_cosine_xyz", ds_vtx_cosine_xyz);
 
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -2707,14 +2713,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           } 
  
-          if (deltaR_ph_mu < 0.3) { 
+          if (deltaR_ph_ds < 0.3) { 
 
             iso03DsPhotonSv -= phtPtr->pt();
             iso04DsPhotonSv -= phtPtr->pt();
 
           }
 
-          else if (deltaR_ph_mu < 0.4) {
+          else if (deltaR_ph_ds < 0.4) {
 
             iso04DsPhotonSv -= phtPtr->pt();
 
@@ -2884,10 +2890,42 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("rel_iso_03_ds_sv_refitted_photon",  relIso03DsPhotonRefittedSv  ) ;
         bs.addUserFloat("rel_iso_04_ds_sv_refitted_photon",  relIso04DsPhotonRefittedSv  ) ;
 
+  	bs.addUserInt("muIdx",                muPtr->userInt("muIdx"          ));
+   	bs.addUserInt("trgObjIdx",            muPtr->userInt("trgObjIdx"      ));
+
+        bs.addUserInt("mu7_ip4",              muPtr->userInt("mu7_ip4"       ));
+
+        bs.addUserInt("mu7_ip4_p0",           muPtr->userInt("mu7_ip4_p0"    ));
+        bs.addUserInt("mu7_ip4_p1",           muPtr->userInt("mu7_ip4_p1"    ));
+        bs.addUserInt("mu7_ip4_p2",           muPtr->userInt("mu7_ip4_p2"    ));
+        bs.addUserInt("mu7_ip4_p3",           muPtr->userInt("mu7_ip4_p3"    ));
+        bs.addUserInt("mu7_ip4_p4",           muPtr->userInt("mu7_ip4_p4"    ));
+
+        bs.addUserInt("prescale_mu7_ip4_p0",  muPtr->userInt("prescale_mu7_ip4_p0"));
+        bs.addUserInt("prescale_mu7_ip4_p1",  muPtr->userInt("prescale_mu7_ip4_p1"));
+        bs.addUserInt("prescale_mu7_ip4_p2",  muPtr->userInt("prescale_mu7_ip4_p2"));
+        bs.addUserInt("prescale_mu7_ip4_p3",  muPtr->userInt("prescale_mu7_ip4_p3"));
+        bs.addUserInt("prescale_mu7_ip4_p4",  muPtr->userInt("prescale_mu7_ip4_p4"));
+        bs.addUserInt("prescale_mu7_ip4",     muPtr->userInt("prescale_mu7_ip4"   ));
+
+        bs.addUserInt("mu9_ip6",              muPtr->userInt("mu9_ip6"       ));
+ 
+        bs.addUserInt("mu9_ip6_p0",           muPtr->userInt("mu9_ip6_p0"    ));
+        bs.addUserInt("mu9_ip6_p1",           muPtr->userInt("mu9_ip6_p1"    ));
+        bs.addUserInt("mu9_ip6_p2",           muPtr->userInt("mu9_ip6_p2"    ));
+        bs.addUserInt("mu9_ip6_p3",           muPtr->userInt("mu9_ip6_p3"    ));
+        bs.addUserInt("mu9_ip6_p4",           muPtr->userInt("mu9_ip6_p4"    ));
+
+        bs.addUserInt("prescale_mu9_ip6_p0",  muPtr->userInt("prescale_mu9_ip6_p0"));
+        bs.addUserInt("prescale_mu9_ip6_p1",  muPtr->userInt("prescale_mu9_ip6_p1"));
+        bs.addUserInt("prescale_mu9_ip6_p2",  muPtr->userInt("prescale_mu9_ip6_p2"));
+        bs.addUserInt("prescale_mu9_ip6_p3",  muPtr->userInt("prescale_mu9_ip6_p3"));
+        bs.addUserInt("prescale_mu9_ip6_p4",  muPtr->userInt("prescale_mu9_ip6_p4"));
+        bs.addUserInt("prescale_mu9_ip6"   ,  muPtr->userInt("prescale_mu9_ip6"   ));
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
         //std::cout << "mu pt is" << muPtr->pt() << std::endl;
-        //std::cout << "saving.."<< std::endl; 
+        std::cout << "saving.."<< std::endl; 
         //arrived = 1;
         //bs.addUserInt("arrived", arrived);
         //arrived = -1;

@@ -18,7 +18,7 @@ print("i am in the table!!")
 
 triggerVariables = cms.PSet(
 
-        muon_idx             = Var("userInt('muonIdx')", int),
+        muon_idx             = Var("userInt('muIdx')", int),
         trg_obj_idx          = Var("userInt('trgObjIdx')", int),
         
         mu7_ip4              = Var("userInt('mu7_ip4')", int),
@@ -41,13 +41,13 @@ triggerVariables = cms.PSet(
         mu9_ip6_p1           = Var("userInt('mu9_ip6_p1')", int),
         mu9_ip6_p2           = Var("userInt('mu9_ip6_p2')", int),
         mu9_ip6_p3           = Var("userInt('mu9_ip6_p3')", int),
-        mu9_ip6_p6           = Var("userInt('mu9_ip6_p6')", int),
+        mu9_ip6_p4           = Var("userInt('mu9_ip6_p4')", int),
 
         prescale_mu9_ip6_p0  = Var("userInt('prescale_mu9_ip6_p0')", int),
         prescale_mu9_ip6_p1  = Var("userInt('prescale_mu9_ip6_p1')", int),
         prescale_mu9_ip6_p2  = Var("userInt('prescale_mu9_ip6_p2')", int),
         prescale_mu9_ip6_p3  = Var("userInt('prescale_mu9_ip6_p3')", int),
-        prescale_mu9_ip6_p6  = Var("userInt('prescale_mu9_ip6_p6')", int),
+        prescale_mu9_ip6_p4  = Var("userInt('prescale_mu9_ip6_p4')", int),
 
 
 )
@@ -494,7 +494,8 @@ vertexVariables = cms.PSet(
         dz_pi_err_sv   = Var("userFloat('dz_pi_err_sv')",float),
         dz_pi_sig_sv   = Var("userFloat('dz_pi_sig_sv')",float),
 
-        ds_vtx_cosine = Var("userFloat('ds_vtx_cosine')",float),
+        ds_vtx_cosine_xy  = Var("userFloat('ds_vtx_cosine_xy')",float),
+        ds_vtx_cosine_xyz = Var("userFloat('ds_vtx_cosine_xyz')",float),
 
 )
 

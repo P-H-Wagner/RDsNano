@@ -26,7 +26,10 @@
 <use   name="TrackingTools/IPTools"/>
 <use   name="TrackingTools/GsfTracking"/>
 <use name="MagneticField/ParametrizedEngine"/>
-
+<use name="HLTrigger/HLTcore"/>
+<use name="L1Trigger/L1TGlobal"/>
+<use name="L1Trigger/GlobalTriggerAnalyzer"/>
+<use name="L1Trigger/GlobalTrigger"/>
 <!--flags CXXFLAGS="-g"/-->  
 <library   file="*.cc" name="PhysicsToolsRDsNanoPlugins">
   <flags   EDM_PLUGIN="1"/>

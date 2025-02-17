@@ -250,8 +250,8 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     int prescale_9_6_p3 = triggerPrescales->getPrescaleForIndex(index_9_6_p3);
     int prescale_9_6_p4 = triggerPrescales->getPrescaleForIndex(index_9_6_p4);
 
-    int prescale_7_4    = (prescale_7_4_p0 || prescale_7_4_p1 || prescale_7_4_p2 || prescale_7_4_p3 || prescale_7_4_p4 );
-    int prescale_9_6    = (prescale_9_6_p0 || prescale_9_6_p1 || prescale_9_6_p2 || prescale_9_6_p3 || prescale_9_6_p4 );
+    int prescale_7_4    = 5*(prescale_7_4_p0 || prescale_7_4_p1 || prescale_7_4_p2 || prescale_7_4_p3 || prescale_7_4_p4 );
+    int prescale_9_6    = 5*(prescale_9_6_p0 || prescale_9_6_p1 || prescale_9_6_p2 || prescale_9_6_p3 || prescale_9_6_p4 );
 
     passesHLT++;
 
@@ -281,11 +281,14 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       patTriggerCand++;
   
       // initialize start values
-      float drMuonTrgObj = 0.0;
-      int   trgObjIdx    = -1 ;
-      int   iTrg         = 0  ;
-      int   iMatch       = 0  ;
+      float drMuonTrgObj   = 0.0;
 
+      int   trgObjIdx      = -1;
+      int   iTrg           = 0 ;
+      int   iMatch         = 0 ;
+
+      int   filterLabelMu7 = -1;
+      int   filterLabelMu9 = -1;
 
       for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
   
@@ -312,6 +315,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
               //modify dR and the reco and triggering muon index
   	      drMuonTrgObj = dr;
   	      trgObjIdx    = objIdx;
+              filterLabelMu7 = trgObj.hasFilterLabel(trgFilterLabelMu7_);
+              filterLabelMu9 = trgObj.hasFilterLabel(trgFilterLabelMu9_);
+
         }
   
       } // closing loop over trg muons
@@ -361,6 +367,9 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p3",  prescale_9_6_p3);
         trgMatchedMuon.addUserInt("prescale_mu9_ip6_p4",  prescale_9_6_p4);
         trgMatchedMuon.addUserInt("prescale_mu9_ip6"   ,  prescale_9_6);
+
+        trgMatchedMuon.addUserInt("filter_mu7"         ,  filterLabelMu7);
+        trgMatchedMuon.addUserInt("filter_mu9"         ,  filterLabelMu9);
 
         //std::cout << "found trg obj!" << std::endl; 
 

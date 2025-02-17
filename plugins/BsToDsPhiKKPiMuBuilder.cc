@@ -794,7 +794,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
         AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
-        std::cout << "we passed all the vtx fit" << std::endl;
+        //std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of fitter /////////////////////////////////////
 
@@ -2890,42 +2890,46 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("rel_iso_03_ds_sv_refitted_photon",  relIso03DsPhotonRefittedSv  ) ;
         bs.addUserFloat("rel_iso_04_ds_sv_refitted_photon",  relIso04DsPhotonRefittedSv  ) ;
 
-  	bs.addUserInt("muIdx",                muPtr->userInt("muIdx"          ));
-   	bs.addUserInt("trgObjIdx",            muPtr->userInt("trgObjIdx"      ));
+  	bs.addUserInt("muIdx",                   muPtr->userInt("muIdx"          ));
+   	bs.addUserInt("trgObjIdx",               muPtr->userInt("trgObjIdx"      ));
 
-        bs.addUserInt("mu7_ip4",              muPtr->userInt("mu7_ip4"       ));
+        bs.addUserInt("mu7_ip4",                 muPtr->userInt("mu7_ip4"       ));
 
-        bs.addUserInt("mu7_ip4_p0",           muPtr->userInt("mu7_ip4_p0"    ));
-        bs.addUserInt("mu7_ip4_p1",           muPtr->userInt("mu7_ip4_p1"    ));
-        bs.addUserInt("mu7_ip4_p2",           muPtr->userInt("mu7_ip4_p2"    ));
-        bs.addUserInt("mu7_ip4_p3",           muPtr->userInt("mu7_ip4_p3"    ));
-        bs.addUserInt("mu7_ip4_p4",           muPtr->userInt("mu7_ip4_p4"    ));
+        bs.addUserInt("mu7_ip4_p0",              muPtr->userInt("mu7_ip4_p0"    ));
+        bs.addUserInt("mu7_ip4_p1",              muPtr->userInt("mu7_ip4_p1"    ));
+        bs.addUserInt("mu7_ip4_p2",              muPtr->userInt("mu7_ip4_p2"    ));
+        bs.addUserInt("mu7_ip4_p3",              muPtr->userInt("mu7_ip4_p3"    ));
+        bs.addUserInt("mu7_ip4_p4",              muPtr->userInt("mu7_ip4_p4"    ));
 
-        bs.addUserInt("prescale_mu7_ip4_p0",  muPtr->userInt("prescale_mu7_ip4_p0"));
-        bs.addUserInt("prescale_mu7_ip4_p1",  muPtr->userInt("prescale_mu7_ip4_p1"));
-        bs.addUserInt("prescale_mu7_ip4_p2",  muPtr->userInt("prescale_mu7_ip4_p2"));
-        bs.addUserInt("prescale_mu7_ip4_p3",  muPtr->userInt("prescale_mu7_ip4_p3"));
-        bs.addUserInt("prescale_mu7_ip4_p4",  muPtr->userInt("prescale_mu7_ip4_p4"));
-        bs.addUserInt("prescale_mu7_ip4",     muPtr->userInt("prescale_mu7_ip4"   ));
+        bs.addUserInt("prescale_mu7_ip4_p0",     muPtr->userInt("prescale_mu7_ip4_p0"));
+        bs.addUserInt("prescale_mu7_ip4_p1",     muPtr->userInt("prescale_mu7_ip4_p1"));
+        bs.addUserInt("prescale_mu7_ip4_p2",     muPtr->userInt("prescale_mu7_ip4_p2"));
+        bs.addUserInt("prescale_mu7_ip4_p3",     muPtr->userInt("prescale_mu7_ip4_p3"));
+        bs.addUserInt("prescale_mu7_ip4_p4",     muPtr->userInt("prescale_mu7_ip4_p4"));
+        bs.addUserInt("prescale_mu7_ip4",        muPtr->userInt("prescale_mu7_ip4"   ));
 
-        bs.addUserInt("mu9_ip6",              muPtr->userInt("mu9_ip6"       ));
+        bs.addUserInt("mu9_ip6",                 muPtr->userInt("mu9_ip6"       ));
  
-        bs.addUserInt("mu9_ip6_p0",           muPtr->userInt("mu9_ip6_p0"    ));
-        bs.addUserInt("mu9_ip6_p1",           muPtr->userInt("mu9_ip6_p1"    ));
-        bs.addUserInt("mu9_ip6_p2",           muPtr->userInt("mu9_ip6_p2"    ));
-        bs.addUserInt("mu9_ip6_p3",           muPtr->userInt("mu9_ip6_p3"    ));
-        bs.addUserInt("mu9_ip6_p4",           muPtr->userInt("mu9_ip6_p4"    ));
+        bs.addUserInt("mu9_ip6_p0",              muPtr->userInt("mu9_ip6_p0"    ));
+        bs.addUserInt("mu9_ip6_p1",              muPtr->userInt("mu9_ip6_p1"    ));
+        bs.addUserInt("mu9_ip6_p2",              muPtr->userInt("mu9_ip6_p2"    ));
+        bs.addUserInt("mu9_ip6_p3",              muPtr->userInt("mu9_ip6_p3"    ));
+        bs.addUserInt("mu9_ip6_p4",              muPtr->userInt("mu9_ip6_p4"    ));
 
-        bs.addUserInt("prescale_mu9_ip6_p0",  muPtr->userInt("prescale_mu9_ip6_p0"));
-        bs.addUserInt("prescale_mu9_ip6_p1",  muPtr->userInt("prescale_mu9_ip6_p1"));
-        bs.addUserInt("prescale_mu9_ip6_p2",  muPtr->userInt("prescale_mu9_ip6_p2"));
-        bs.addUserInt("prescale_mu9_ip6_p3",  muPtr->userInt("prescale_mu9_ip6_p3"));
-        bs.addUserInt("prescale_mu9_ip6_p4",  muPtr->userInt("prescale_mu9_ip6_p4"));
-        bs.addUserInt("prescale_mu9_ip6"   ,  muPtr->userInt("prescale_mu9_ip6"   ));
+        bs.addUserInt("prescale_mu9_ip6_p0",     muPtr->userInt("prescale_mu9_ip6_p0"));
+        bs.addUserInt("prescale_mu9_ip6_p1",     muPtr->userInt("prescale_mu9_ip6_p1"));
+        bs.addUserInt("prescale_mu9_ip6_p2",     muPtr->userInt("prescale_mu9_ip6_p2"));
+        bs.addUserInt("prescale_mu9_ip6_p3",     muPtr->userInt("prescale_mu9_ip6_p3"));
+        bs.addUserInt("prescale_mu9_ip6_p4",     muPtr->userInt("prescale_mu9_ip6_p4"));
+        bs.addUserInt("prescale_mu9_ip6"   ,     muPtr->userInt("prescale_mu9_ip6"   ));
+
+        bs.addUserInt("filter_mu7" ,             muPtr->userInt("filter_mu7")); 
+        bs.addUserInt("filter_mu9" ,             muPtr->userInt("filter_mu9")); 
+
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
         //std::cout << "mu pt is" << muPtr->pt() << std::endl;
-        std::cout << "saving.."<< std::endl; 
+        //std::cout << "saving.."<< std::endl; 
         //arrived = 1;
         //bs.addUserInt("arrived", arrived);
         //arrived = -1;

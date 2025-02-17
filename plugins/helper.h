@@ -14,6 +14,7 @@
 // for the fit
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
 #include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
 #include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h"
@@ -28,6 +29,9 @@
 #include "TVectorD.h"
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h"
 
+//for lxy
+#include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
+
 // for the reco function
 #include <tuple>
 
@@ -35,13 +39,49 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <typeinfo>
 
 typedef std::vector<reco::TransientTrack> TransientTrackCollection;
 
-constexpr float K_MASS = 0.493677;
-constexpr float PI_MASS = 0.139571;
+constexpr float K_MASS      = 0.493677;
+constexpr float PI_MASS     = 0.139571;
+constexpr float DS_MASS     = 1.96834;
+constexpr float DSSTAR_MASS = 2.1122;
 
 
+const std::set<int> bMesonIds  = {511, 521, 10511, 10521, 513, 523, 10513, 10523, 20513, 20523, 515, 525, 531, 10531, 533, 10533, 20533, 535, 541, 10541, 543, 10543, 20543, 545};
+
+const std::set<int> bbMesonIds = {
+        551, 10551, 100551, 110551, 200551, 210551, 
+        553, 10553, 20553, 30553, 100553, 110553, 120553, 130553, 200553, 210553, 220553, 300553, 9000553, 9010553, 
+        555, 10555, 20555, 100555, 110555, 120555, 200555, 
+        557, 100557
+};
+
+const std::set<int> bBaryonIds = {
+        5122, 5112, 5212, 5222, 
+        5114, 5214, 5224, 
+        5132, 5232, 5312, 5322, 
+        5314, 5324, 
+        5332, 5334, 
+        5142, 5242, 
+        5412, 5422, 5414, 5424, 
+        5342, 5432, 5434, 5442, 5444, 
+        5512, 5522, 5514, 5524, 
+        5532, 5534, 5542, 5544, 5554
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which checks if particle is b meson, bb meson or b bayron
+inline bool isB(int pdgId){
+
+  bool foundB = false;
+  if ( bMesonIds.count(pdgId) || bbMesonIds.count(pdgId) || bBaryonIds.count(pdgId) ) foundB = true;
+
+  return foundB;
+
+}; 
 
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +110,23 @@ inline bool isAncestor(const auto dau, const int id){
   }
   return false;
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+// function which checks if a genParticle has a certain daughter 
+
+inline bool isDaughter(const auto mom, const int id){
+  //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
+  if (fabs(mom->pdgId()) == id){ 
+    return true;
+    }
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+    if (isDaughter(mom->daughter(dauIdx), id)) return true;  
+  }
+  return false;
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 // function which checks if mom is ancestor of dau
 
@@ -125,6 +182,29 @@ inline auto getAncestor(const auto dau, const int id){
   return empty;
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+// function which returns pointer to daughter with pdgid <id> 
+
+inline auto getDaughter(const auto mom, const int id){
+
+  //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
+  //std::cout << "I am at pdg Id = " << mom->pdgId() <<  std::endl; 
+  if ((fabs(mom->pdgId()) == id)){
+    //std::cout << "sucess!" << std::endl;
+    return mom;
+  }
+
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+    //std::cout << "Now I access dau Nr " << dauIdx << "with id" << mom->daughter(dauIdx)->pdgId() <<  std::endl;
+    if (isDaughter(mom->daughter(dauIdx), id)) {
+      auto mom2 = getDaughter(mom->daughter(dauIdx), id);
+      return mom2;
+    }
+  }
+  const reco::Candidate* empty = nullptr; 
+  return empty;
+}
+
 inline int getDsID(auto pi){
   int dsID = 0; 
   if (isAncestor(pi, 431))   dsID = 431;   // Ds+ 
@@ -146,10 +226,9 @@ inline int getSecondCharmID(auto mu){
   if (isAncestor(mu, 4122))  dID = 4122; // Lambdac+ 
   return dID;
 }
-///////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
 // function which removes the un-oscillated ancestor of dau
-// f.e. dau is -531 and comes from 531 via oscillation, then this function removes oscillation
-// and returns a pointer to the 531 particle, which has the correct vertex!
+// New: remove oscillations not only for Bs -> anti-Bs but up to the first B-ancestor!
 
 inline const reco::Candidate* removeOscillations(const auto dau){
 
@@ -157,8 +236,9 @@ inline const reco::Candidate* removeOscillations(const auto dau){
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
 
-    //check if dau has a mother with the same pdg Id but opposite sign
-    if (dau->mother(momIdx)->pdgId() == (-1 * dau->pdgId())) {
+    //std::cout << "mom has pdg Id = " << dau->mother(momIdx)->pdgId() << " and vertex vx = " << dau->mother(momIdx)->vx() << std::endl; 
+    //check if dau has a mother with a "b" pdg ID 
+    if (isB(abs(dau->mother(momIdx)->pdgId()))) {
       //std::cout << "oscillation!" << std::endl;
 
       auto dau2 = removeOscillations(dau->mother(momIdx));
@@ -166,6 +246,63 @@ inline const reco::Candidate* removeOscillations(const auto dau){
     }
   }
   return dau;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+//function which returns lxy between two vertices. Return type is Measurement1D, a 
+//class which holds value, error and calculates significance
+
+inline Measurement1D lxyz(auto vtx1, auto vtx2, bool lxy){
+
+  // Define distancein xy plane, set z 0.0
+  GlobalPoint delta;
+  if (lxy){
+    delta = GlobalPoint(vtx1.position().x() - vtx2.position().x(),vtx1.position().y() - vtx2.position().y(), 0.0);
+  }
+  else {
+    delta = GlobalPoint(vtx1.position().x() - vtx2.position().x(),vtx1.position().y() - vtx2.position().y(), vtx1.position().z() - vtx2.position().z());
+  }
+
+  // propagate the error of the two individual vertex measurements
+  // the .rerr() returns the variance 
+  double total_err = sqrt(vtx1.error().rerr(delta) + vtx2.error().rerr(delta));
+
+  // delta.perp() calculates the euclidian lenght
+  Measurement1D distance = Measurement1D(delta.mag(), total_err);
+
+  return distance;
+
+}
+///////////////////////////////////////////////////////////////////////////////////
+//function which turns RefCountedKinematicVertex into reco::Vertex 
+//
+inline reco::Vertex getRecoVertex( RefCountedKinematicVertex v){
+
+  // Remark: VertexState() does provide position and error, but they are of type GlobalPoint and GlobalError, see:
+  // https://github.com/cms-sw/cmssw/blob/a83766bfe6fb83b7868264fd00b19f5fbfeefbb7/RecoVertex/VertexPrimitives/interface/VertexState.h#L62-L64 
+  // which don't have an implicit conversion into math::XYZPoint and AlgebraicSymMatrix33, needed for the
+  // reco::Vertex constructor, see:
+  // https://github.com/cms-sw/cmssw/blob/master/DataFormats/VertexReco/interface/Vertex.h#L40-L45
+  // https://github.com/cms-sw/cmssw/blob/master/DataFormats/VertexReco/interface/Vertex.h#L65
+
+  //get vertex state
+  auto vState = v->vertexState();
+  
+  // build position
+  math::XYZPoint pos(v->vertexState().position().x(),
+                     v->vertexState().position().y(),
+                     v->vertexState().position().z());
+
+  // build error matrix
+  AlgebraicSymMatrix33 err = v->vertexState().error().matrix();
+
+  // now build reco::Vertex instance
+  reco::Vertex recoVertex(pos, err);
+  
+  return recoVertex; 
+
 }
 ///////////////////////////////////////////////////////////////////////////////////
 //function which gets the hel angle between the mu and W
@@ -191,10 +328,13 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   // now take the boost vector of w
   TVector3 wBoost = w.BoostVector();
   //std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
+  if (wBoost.Mag() >=1) wBoost.SetMag(0.99999999999999);
+  //std::cout << "wBoost vector now: " << wBoost.Mag() << std::endl;
 
   //boost the muon into the w rest frame
   mu.Boost(-wBoost); 
 
+  //std::cout << "mu vector: " << mu.Mag() << std::endl;
   //boost the W back into the bs rest frame
   w.Boost(-bBoost);
  
@@ -594,4 +734,74 @@ inline RefCountedKinematicTree vertexFit(std::vector<RefCountedKinematicParticle
   return fitTree;
 
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculates impact parameter between PV and  Ds + mu flight direction
+//
+inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, double sv_z, TLorentzVector fittedDs, TLorentzVector refittedMu){
+
+  // define direction between SV and PV
+  double dx = sv_x - vtxPtr->position().x();
+  double dy = sv_y - vtxPtr->position().y();
+  double dz = sv_z - vtxPtr->position().z();
+
+  // define Ds + mu four momentum
+  TLorentzVector dsMu = fittedDs + refittedMu;
+ 
+  //get spacial dsmu components
+  double dsMu_x = dsMu.Vect().x();
+  double dsMu_y = dsMu.Vect().y();
+  double dsMu_z = dsMu.Vect().z();
+ 
+  //define cross product between the two
+  double cross_x = dy * dsMu_z - dz * dsMu_y;
+  double cross_y = dz * dsMu_x - dx * dsMu_z;
+  double cross_z = dx * dsMu_y - dy * dsMu_x;
+
+  //and take the norm of it
+  double norm_cross = std::sqrt(cross_x * cross_x + cross_y * cross_y + cross_z * cross_z);  
+ 
+  //also calcualte norm of the dsMu vector
+  double norm_dsMu = std::sqrt(dsMu_x * dsMu_x + dsMu_y * dsMu_y + dsMu_z * dsMu_z);  
+
+
+  return norm_cross / norm_dsMu; 
+
+} 
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculates impact parameter between PV and  Ds + mu flight direction (overloaded for reco::Vertex*
+//
+inline double getIP3D(reco::Vertex* vtxPtr, double sv_x, double sv_y, double sv_z, TLorentzVector fittedDs, TLorentzVector refittedMu){
+
+  // define direction between SV and PV
+  double dx = sv_x - vtxPtr->position().x();
+  double dy = sv_y - vtxPtr->position().y();
+  double dz = sv_z - vtxPtr->position().z();
+
+  // define Ds + mu four momentum
+  TLorentzVector dsMu = fittedDs + refittedMu;
+ 
+  //get spacial dsmu components
+  double dsMu_x = dsMu.Vect().x();
+  double dsMu_y = dsMu.Vect().y();
+  double dsMu_z = dsMu.Vect().z();
+ 
+  //define cross product between the two
+  double cross_x = dy * dsMu_z - dz * dsMu_y;
+  double cross_y = dz * dsMu_x - dx * dsMu_z;
+  double cross_z = dx * dsMu_y - dy * dsMu_x;
+
+  //and take the norm of it
+  double norm_cross = std::sqrt(cross_x * cross_x + cross_y * cross_y + cross_z * cross_z);  
+ 
+  //also calcualte norm of the dsMu vector
+  double norm_dsMu = std::sqrt(dsMu_x * dsMu_x + dsMu_y * dsMu_y + dsMu_z * dsMu_z);  
+
+
+  return norm_cross / norm_dsMu; 
+
+} 
+
+
 #endif

@@ -612,108 +612,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("fv_y_gen"       ,fv_y_gen);
                gen.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
-               //define vertex variables
- 
-               //float lxyBsGen   = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) ); 
-               //float lxyzBsGen  = std::sqrt(std::pow((pv_x_gen - sv_x_gen),2) + std::pow((pv_y_gen - sv_y_gen),2) + std::pow((pv_z_gen - sv_z_gen),2) ); 
-       
-               //float lxyDsGen   = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) ); 
-               //float lxyzDsGen  = std::sqrt(std::pow((sv_x_gen - tv_x_gen),2) + std::pow((sv_y_gen - tv_y_gen),2) + std::pow((sv_z_gen - tv_z_gen),2) ); 
-       
-               //float lxyPhiGen  = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) ); 
-               //float lxyzPhiGen = std::sqrt(std::pow((tv_x_gen - fv_x_gen),2) + std::pow((tv_y_gen - fv_y_gen),2) + std::pow((tv_z_gen - fv_z_gen),2) ); 
-
-               /*
-               //gen.addUserFloat("lxy_bs_gen"   ,lxyBsGen);
-               //gen.addUserFloat("lxyz_bs_gen"  ,lxyzBsGen);
-       
-               //gen.addUserFloat("lxy_ds_gen"   ,lxyDsGen);
-               //gen.addUserFloat("lxyz_ds_gen"  ,lxyzDsGen);
-       
-               //gen.addUserFloat("lxy_phi_gen"  ,lxyPhiGen);
-               //gen.addUserFloat("lxyz_phi_gen" ,lxyzPhiGen);
-
-               math::XYZPoint pvGen(pv_x_gen,pv_y_gen,pv_z_gen); 
-              
-                
-               float dxyMuGen    = muPtrGen->bestTrack()->dxy(pvGen);  
-               //float dxyMuErrGen = muPtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());  
-               //float dxyMuSigGen = dxyMuGen/dxyMuErrGen;
-       
-               float dzMuGen     = muPtrGen->bestTrack()->dz(pvGen);  
-               //float dzMuErrGen  = muPtrGen->bestTrack()->dzError();  
-               //float dzMuSigGen  = dzMuGen/dzMuErrGen ; 
-       
-               float dxyPiGen    = piPtrGen->bestTrack()->dxy(pvGen);  //maybe useful for Ds* vs Ds ? 
-               //float dxyPiErrGen = piPtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());  
-               //float dxyPiSigGen = dxyPiGen/dxyPiErrGen;
-       
-               float dzPiGen     = piPtrGen->bestTrack()->dz(pvGen);  
-               //float dzPiErrGen  = piPtrGen->bestTrack()->dzError();  
-               //float dzPiSigGen  = dzPiGen/dzPiErrGen ; 
-       
-               float dxyK1Gen    = k1PtrGen->bestTrack()->dxy(pvGen); //needed ? 
-               //float dxyK1ErrGen = k1PtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());
-               //float dxyK1SigGen = dxyK1Gen/dxyK1ErrGen;
-       
-               float dzK1Gen     = k1PtrGen->bestTrack()->dz(pvGen);  
-               //float dzK1ErrGen  = k1PtrGen->bestTrack()->dzError();  
-               //float dzK1SigGen  = dzK1Gen/dzK1ErrGen ; 
-       
-               float dxyK2Gen    = k2PtrGen->bestTrack()->dxy(pvGen); //needed ? 
-               //float dxyK2ErrGen = k2PtrGen->bestTrack()->dxyError(pvGen,pvGen.covariance());
-               //float dxyK2SigGen = dxyK2Gen/dxyK2ErrGen;
-       
-               float dzK2Gen     = k2PtrGen->bestTrack()->dz(pvGen);  
-               //float dzK2ErrGen  = k2PtrGen->bestTrack()->dzError();  
-               //float dzK2SigGen  = dzK2Gen/dzK2ErrGen ; 
-       
-               //std::cout << "10" << std::endl; 
-               gen.addUserFloat("dxy_mu_gen",     dxyMuGen);
-               gen.addUserFloat("dz_mu_gen",      dzMuGen);
-               //gen.addUserFloat("dxy_mu_err_gen", dxyMuErrGen);
-               //gen.addUserFloat("dz_mu_err_gen",  dzMuErrGen);
-               //gen.addUserFloat("dxy_mu_sig_gen", dxyMuSigGen);
-               //gen.addUserFloat("dz_mu_sig_gen",  dzMuSigGen);
-       
-               gen.addUserFloat("dxy_pi_gen",     dxyPiGen);
-               gen.addUserFloat("dz_pi_gen",      dzPiGen);
-               //gen.addUserFloat("dxy_pi_err_gen", dxyPiErrGen);
-               //gen.addUserFloat("dz_pi_err_gen",  dzPiErrGen);
-               //gen.addUserFloat("dxy_pi_sig_gen", dxyPiSigGen);
-               //gen.addUserFloat("dz_pi_sig_gen",  dzPiSigGen);
-       
-               gen.addUserFloat("dxy_k1_gen",     dxyK1Gen);
-               gen.addUserFloat("dz_k1_gen",      dzK1Gen);
-               //gen.addUserFloat("dxy_k1_err_gen", dxyK1ErrGen);
-               //gen.addUserFloat("dz_k1_err_gen",  dzK1ErrGen);
-               //gen.addUserFloat("dxy_k1_sig_gen", dxyK1SigGen);
-               //gen.addUserFloat("dz_k1_sig_gen",  dzK1SigGen);
-       
-               gen.addUserFloat("dxy_k2_gen",     dxyK2Gen);
-               gen.addUserFloat("dz_k2_gen",      dzK2Gen);
-               //gen.addUserFloat("dxy_k2_err_gen", dxyK2ErrGen);
-               //gen.addUserFloat("dz_k2_err_gen",  dzK2ErrGen);
-               //gen.addUserFloat("dxy_k2_sig_gen", dxyK2SigGen);
-               //gen.addUserFloat("dz_k2_sig_gen",  dzK2SigGen);
-               */
-
-               // muon isolation (simply looping and summing track pt's is too simple!)
-               /* there is no isolation on gen!
-               auto muIso03Gen   = muPtrGen->pfIsolationR03(); //dR = 0.3
-               auto muIso04Gen   = muPtrGen->pfIsolationR04(); //dR = 0.4
-
-               float iso03Gen    = muIso03Gen.sumChargedHadronPt() + max(muIso03Gen.sumNeutralHadronEt() + muIso03Gen.sumPhotonEt() - 0.5 * muIso03Gen.sumPUPt(), 0.0)           ,
-               float iso04Gen    = muIso04Gen.sumChargedHadronPt() + max(muIso04Gen.sumNeutralHadronEt() + muIso04Gen.sumPhotonEt() - 0.5 * muIso04Gen.sumPUPt(), 0.0)           ,
-               float relIso03Gen = iso03Gen / muPtrGen->pt();
-               float relIso04Gen = iso04Gen / muPtrGen->pt();
-
-               gen.addUserFloat("mu_iso_03_gen", iso03Gen);
-               gen.addUserFloat("mu_iso_04_gen", iso04Gen);
-               gen.addUserFloat("mu_rel_iso_03_gen", relIso03Gen);
-               gen.addUserFloat("mu_rel_iso_04_gen", relIso04Gen);
-               */
-
 
                ///////////////////////////////////////////////////////// 
                // now find the channel ID, we have the following scheme:
@@ -846,8 +744,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float photon_gen_eta;
                float photon_gen_phi;
                float photon_gen_pdgid;
-               
                float dr_gen_photon_ds;
+               float gen_dsPhoton_m;
+               float gen_dsPhotonMu_m;
  
 
                if (sigId == 0){
@@ -871,6 +770,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  photon_gen_pdgid  = -9999; 
 
                  dr_gen_photon_ds  = -9999; 
+                 gen_dsPhoton_m    = -9999; 
+                 gen_dsPhotonMu_m  = -9999; 
  
  
                }
@@ -901,6 +802,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  photon_gen_pdgid  = -9999; 
  
                  dr_gen_photon_ds  = -9999; 
+                 gen_dsPhoton_m    = -9999; 
+                 gen_dsPhotonMu_m  = -9999; 
+
                }
   
                else if (sigId == 10){
@@ -930,6 +834,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    photon_gen_pdgid  = gFromDs->pdgId();
  
                    dr_gen_photon_ds  = reco::deltaR(*gFromDs, *dsFromPi); 
+
                  }
 
                  else{
@@ -939,6 +844,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    photon_gen_pdgid  = -9999; 
    
                    dr_gen_photon_ds  = -9999; 
+                   gen_dsPhoton_m    = -9999; 
+                   gen_dsPhotonMu_m  = -9999; 
+
+
                  }
 
 
@@ -983,29 +892,36 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    photon_gen_pdgid  = -9999; 
    
                    dr_gen_photon_ds  = -9999; 
+                   gen_dsPhoton_m    = -9999; 
+                   gen_dsPhotonMu_m  = -9999; 
+
                  }
                }
   
                else{
   
-                 tau_gen_pt      = std::nan("nan");
-                 tau_gen_eta     = std::nan("nan");
-                 tau_gen_phi     = std::nan("nan");
-                 tau_gen_m       = std::nan("nan");
+                 tau_gen_pt      = -9999;
+                 tau_gen_eta     = -9999;
+                 tau_gen_phi     = -9999;
+                 tau_gen_m       = -9999;
                  tau_gen_pdgid   = -9999;
   
-                 dsStar_gen_pt     = std::nan("nan");
-                 dsStar_gen_eta    = std::nan("nan");
-                 dsStar_gen_phi    = std::nan("nan");
-                 dsStar_gen_m      = std::nan("nan");
+                 dsStar_gen_pt     = -9999;
+                 dsStar_gen_eta    = -9999;
+                 dsStar_gen_phi    = -9999;
+                 dsStar_gen_m      = -9999;
                  dsStar_gen_pdgid  = -9999;
 
-                 photon_gen_pt     = std::nan("nan");
-                 photon_gen_eta    = std::nan("nan");
-                 photon_gen_phi    = std::nan("nan");
+                 photon_gen_pt     = -9999;
+                 photon_gen_eta    = -9999;
+                 photon_gen_phi    = -9999;
                  photon_gen_pdgid  = -9999;
 
-                 dr_gen_photon_ds      = std::nan("nan");
+                 dr_gen_photon_ds  = -9999;
+                 gen_dsPhoton_m    = -9999; 
+                 gen_dsPhotonMu_m  = -9999; 
+
+
   
                }
   
@@ -1029,76 +945,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                gen.addUserFloat("dr_gen_photon_ds",   dr_gen_photon_ds);
 
+               gen.addUserFloat("gen_dsPhoton_m", gen_dsPhoton_m);
+               gen.addUserFloat("gen_dsPhotonMu_m", gen_dsPhotonMu_m );
 
-               /*
-               bool isDsStar    = false;
-               bool isDMeson    = false;
-               bool isDMesonExc = false;
-               bool isSignal    = true;
-               bool isTauSignal = false;
-
-               // Step2: distinguish between Ds + charm / Ds* + charm
-               if(isAncestor(piPtrGen, 433)) isDsStar = true; 
- 
-               // Step3: distinguish if the mu is coming from a second charmed meson
-               int dMesonIdx = -1;
-
-               for(size_t dIdx = 0; dIdx < dMesons.size(); dIdx++){
-                 if(isAncestor(muPtrGen, dMesons.at(dIdx))){
-                   dMesonIdx = dIdx; 
-                   isDMeson = true;
-                   isSignal = false;
-                   break;
-                 }
-               } 
-
-               if (dMesonIdx == 0) {
-                 //only enter here when upper loop didnt find d meson
-                 for(size_t dIdx = 0; dIdx < dMesonsExc.size(); dIdx++){
-                   if(isAncestor(muPtrGen, dMesonsExc.at(dIdx))){
-                     dMesonIdx = dIdx;
-                     isDMesonExc = true;
-                     isSignal = false;
-                     break;
-                   }
-                 }  
-               }
-                              
-               // step4: check if its a true signal or B-meson -> Ds + something leptonaically decaying 
-
-               //if its not bs and no double charm, its something else leptonically decaying
-               if ((dMesonIdx == -1) && (abs(bMotherId) != 531)) isSignal = false; 
-              
-               if ((dMesonIdx == -1) && (abs(bMotherId) == 531)) {
-                 // if its Bs and no double charm event, really be sure that we have the signal!
-
-                 std::vector<int> daus;
-                 for( size_t dauIdx = 0; dauIdx < bsFromMu->numberOfDaughters(); dauIdx++){
-
-                   int dauId = bsFromMu->daughter(dauIdx)->pdgId();
-                   //                  Ds*                   Ds                nu_tau                   tau                   nu_mu                   mu                photon
-                   if ( (abs(dauId) != 433) && (abs(dauId) != 431) &&  (abs(dauId) != 16 ) &&  (abs(dauId) != 15 ) &&  (abs(dauId) != 14 ) &&  (abs(dauId) != 13 ) && (abs(dauId) != 22)){
-                     isSignal = false; // daughter is none of the involved signal particles!
-                   }
-                   daus.push_back(abs(dauId)); //append abs of daughter id
-                   if ( abs(dauId) == 15) isTauSignal = true; // found a tau!
-                 }
-               }
-
-               // now we assign the signal Id based on our boolean flags
-               //printDaughters(bsFromMu); //-> for debugging
-
-               if (isSignal)                                sigId  = 0; // signal
-               if (isDsStar)                                sigId += 5;
-               if (isDMesonExc)                             sigId += 1; 
-               if (!isSignal && !isDMeson && !isDMesonExc)  sigId += 2; // if this is true, isDMesonEx should be false!
-               if (isSignal && isTauSignal)                 sigId += 1; // only for signals
-
-               */
-
-               //printDaughters(bsFromMu); //-> for debugging
-               //std::cout << "mom:" << bMotherId << std::endl; //for debugging
-               //std::cout << "ID is:" << sigId     << std::endl;  //for debugging;
 
                //define helicity angles
 
@@ -1356,6 +1205,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserInt("photon_gen_pdgid",   -9999);
 
             gen.addUserFloat("dr_gen_photon_ds", std::nan("") );
+            gen.addUserFloat("gen_dsPhoton_m", std::nan("") );
+            gen.addUserFloat("gen_dsPhotonMu_m", std::nan("") );
  
   
           }

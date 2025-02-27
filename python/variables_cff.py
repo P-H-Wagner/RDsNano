@@ -34,6 +34,7 @@ triggerVariables = cms.PSet(
         prescale_mu7_ip4_p2  = Var("userInt('prescale_mu7_ip4_p2')", int),
         prescale_mu7_ip4_p3  = Var("userInt('prescale_mu7_ip4_p3')", int),
         prescale_mu7_ip4_p4  = Var("userInt('prescale_mu7_ip4_p4')", int),
+        prescale_mu7_ip4     = Var("userInt('prescale_mu7_ip4')"   , int),
 
         mu9_ip6              = Var("userInt('mu9_ip6')", int),
 
@@ -48,7 +49,10 @@ triggerVariables = cms.PSet(
         prescale_mu9_ip6_p2  = Var("userInt('prescale_mu9_ip6_p2')", int),
         prescale_mu9_ip6_p3  = Var("userInt('prescale_mu9_ip6_p3')", int),
         prescale_mu9_ip6_p4  = Var("userInt('prescale_mu9_ip6_p4')", int),
+        prescale_mu9_ip6     = Var("userInt('prescale_mu9_ip6')"   , int),
 
+        filter_mu7           = Var("userInt('filter_mu7')"         , int),
+        filter_mu9           = Var("userInt('filter_mu9')"         , int),
 
 )
  
@@ -375,6 +379,9 @@ vertexVariables = cms.PSet(
 
         pv_x         = Var("userFloat('pv_x')",float),        
         pv_y         = Var("userFloat('pv_y')",float),        
+        pv_x_w_bs    = Var("userFloat('pv_x_w_bs')",float),        
+        pv_y_w_bs    = Var("userFloat('pv_y_w_bs')",float),        
+
         pv_z         = Var("userFloat('pv_z')",float),        
         pv_x_wout_bs = Var("userFloat('pv_x_wout_bs')", float),
         pv_y_wout_bs = Var("userFloat('pv_y_wout_bs')", float),
@@ -494,8 +501,10 @@ vertexVariables = cms.PSet(
         dz_pi_err_sv   = Var("userFloat('dz_pi_err_sv')",float),
         dz_pi_sig_sv   = Var("userFloat('dz_pi_sig_sv')",float),
 
-        ds_vtx_cosine_xy  = Var("userFloat('ds_vtx_cosine_xy')",float),
-        ds_vtx_cosine_xyz = Var("userFloat('ds_vtx_cosine_xyz')",float),
+        ds_vtx_cosine_xy     = Var("userFloat('ds_vtx_cosine_xy')"    ,float),
+        ds_vtx_cosine_xy_pv  = Var("userFloat('ds_vtx_cosine_xy_pv')" ,float),
+        ds_vtx_cosine_xyz    = Var("userFloat('ds_vtx_cosine_xyz')"   ,float),
+        ds_vtx_cosine_xyz_pv = Var("userFloat('ds_vtx_cosine_xyz_pv')",float),
 
 )
 

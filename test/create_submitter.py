@@ -14,18 +14,18 @@ args = parser.parse_args()
 ######################################
 
 #800 jobs per user on short queue
-nMaxJobs = 800
+nMaxJobs = 1000
 
 #default
 filesPerJob = 3
 
 if (int(args.nFiles) < nMaxJobs) and (int(args.nFiles) != -1):
   filesPerJob = 1 #below 500 jobs we can take 1 file per job and thus short
-  queue = 'short' 
-  time = 60
+  queue = 'standard' 
+  time = 3*60
 else:
   queue = 'standard'
-  time = 3*60
+  time = 8*60
 print("========> processing ", filesPerJob, " files per job")
 
 ######################################
@@ -38,6 +38,13 @@ now = datetime.now()
 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
 ######################################
+
+#binned qcd samples
+#from https://cms.cern.ch/iCMS/analysisadmin/cadilines?line=HIG-23-016
+qcd_samples = ["50to100", "100to200", "200to300", "300to500", "500to700", "700to1000", "1000to1500", "1500to2000", "2000toInf"]
+
+#####################################
+
 
 def filesFromFolder(direc):
   filenames = os.listdir(direc)
@@ -55,6 +62,7 @@ def filesFromTxt(txtFile):
 if args.channel == 'sig':
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signal from MA thesis
   directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1_PV_REFITTED/'
   #inputfiles = filesFromFolder(directory)
   inputfiles = filesFromTxt(directory)
   naming = 'all_signals'
@@ -72,30 +80,43 @@ if args.channel == 'b0':
 
 if args.channel == 'bplus':
 
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bplus/bplus.txt' #b0 
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bplus/bplus_updated.txt' #b0 
   inputfiles = filesFromTxt(directory)
   naming = 'bplus'
 
 if args.channel == 'bs':
 
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bs/bs.txt' #bs 
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bs/bs_updated.txt' #bs 
   inputfiles = filesFromTxt(directory)
   naming = 'bs'
 
 if args.channel == 'lambdab':
 
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/lambdab/lambdab.txt' #bs 
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/lambdab/lambdab_updated.txt' #lambda 
   inputfiles = filesFromTxt(directory)
   naming = 'lambdab'
 
+if args.channel == 'bc':
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/bc/bc.txt' #bc 
+  inputfiles = filesFromTxt(directory)
+  naming = 'bc'
+
 if args.channel == 'data':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/mu9.txt' #data bParking 2018 part D
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/ten_parts/BPark_2018D_part5.txt' #data bParking 2018 part D
   #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
   inputfiles = filesFromTxt(directory)
   #inputfiles = [inputfiles[0]] #debugging only first file
   naming = 'data'
+
+if args.channel in qcd_samples:
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/qcd/binned/binned_' + args.channel + '.txt'
+  inputfiles = filesFromTxt(directory)
+  naming = 'binned_' + args.channel
 
 ######################################
 

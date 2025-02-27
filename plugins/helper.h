@@ -85,6 +85,85 @@ inline bool isB(int pdgId){
 
 
 ///////////////////////////////////////////////////////////////////////////////////
+// checks if B+ -> Ds K Nu Mu
+
+inline int isKNuMu(const auto mom){
+
+  int foundSignal = -1;
+
+  std::set<int> k_dsmu         = {321, 431, 13, 14};
+  std::set<int> k_dsstarmu     = {321, 433, 13, 14};
+  std::set<int> k_dstau        = {321, 431, 15, 16};
+  std::set<int> k_dsstartau    = {321, 433, 15, 16};
+
+  std::set<int> dau_list;
+
+  int nDaus = mom->numberOfDaughters();
+
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+    dau_list.insert( abs(mom->daughter(dauIdx)->pdgId()) );
+  }
+
+  if      ((dau_list == k_dsmu)      && (nDaus == 4)) foundSignal = 107;
+  else if ((dau_list == k_dsstarmu)  && (nDaus == 4)) foundSignal = 117;
+  else if ((dau_list == k_dstau)     && (nDaus == 4)) foundSignal = 108;
+  else if ((dau_list == k_dsstartau) && (nDaus == 4)) foundSignal = 118;
+
+  return foundSignal;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// checks if signal 
+
+inline int isSignal(const auto mom){
+
+  int foundSignal = -1;
+
+  std::set<int> signal_dsmu         = {431, 13, 14};
+  std::set<int> signal_dsstarmu     = {433, 13, 14};
+  std::set<int> signal_dstau        = {431, 15, 16};
+  std::set<int> signal_dsstartau    = {433, 15, 16};
+
+  std::set<int> dau_list;
+
+  size_t nDaus = 0;
+
+  for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
+
+    unsigned int dauId = abs(mom->daughter(dauIdx)->pdgId());
+
+    if(dauId == 22){
+      //std::cout << "found photon!!" << std::endl;
+      //auto dummy = printDirectDaughters(mom, true);
+      // These are soft-photons, f.e. FSR, which however are assigned 'promptly'
+      // to the Bs. I.e. the decays often look like: Bs -> Ds + mu + nu + gamma + gamma
+      // But nevertheless, this is still a signal, we checked that they are low energy.
+
+      continue;
+    }
+
+    else{
+      dau_list.insert( dauId );
+      ++nDaus;
+    }
+
+  }
+
+  // now compare the daughters with the signal daughters
+  // the comparison of the number of daughters is important to avoid decays where
+  // we would have the same daughters but in a different multiplicity (even if I can
+  // not think of any... but lets be sure! )
+
+  if      ((dau_list == signal_dsmu)      && (nDaus == 3)) foundSignal = 0;
+  else if ((dau_list == signal_dsstarmu)  && (nDaus == 3)) foundSignal = 10;
+  else if ((dau_list == signal_dstau)     && (nDaus == 3)) foundSignal = 1;
+  else if ((dau_list == signal_dsstartau) && (nDaus == 3)) foundSignal = 11;
+
+  return foundSignal;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
 // function which prints all daughters 
 
 inline void printDaughters(const auto mom){

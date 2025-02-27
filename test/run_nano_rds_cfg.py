@@ -1,9 +1,9 @@
 from FWCore.ParameterSet.VarParsing import VarParsing
 import FWCore.ParameterSet.Config as cms
 
-# TODO: put different samples into parser (flag from command line)
-# channel = 'sig'
 channel = 'sig'
+refit = True #False 
+
 
 import os
 
@@ -11,21 +11,28 @@ import os
 globaltag = '106X_upgrade2018_realistic_v11_L1v1'
 
 #what's the purpose of this 
-annotation = '%s nevts:%d' % ('file:/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanotest.root', 100)
+#annotation = '%s nevts:%d' % ('file:/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanotest.root', 100)
 
 from Configuration.StandardSequences.Eras import eras
 process = cms.Process('RDsNANO',eras.Run2_2018)
 
 # import of standard configurations (do we need all of them?)
-process.load('Configuration.StandardSequences.Services_cff')
-process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
+process.load('Configuration.StandardSequences.Services_cff') #
+process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')      
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
-process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
+process.load('Configuration.StandardSequences.GeometryRecoDB_cff')#
 process.load("Configuration.StandardSequences.MagneticField_cff")
-process.load('PhysicsTools.RDsNano.nanoRDs_cff')
+process.load('PhysicsTools.RDsNano.nanoRDs_cff') #
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
-process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff') #
+
+#create the collection
+process.load('PhysicsTools.PatAlgos.slimming.unpackedTracksAndVertices_cfi')
+
+#load vtx 
+process.load("RecoVertex.Configuration.RecoVertex_cff")
+
 
 
 #prints the time report
@@ -37,7 +44,7 @@ process.Timing = cms.Service("Timing",
 #load all the chosen options
 process.MessageLogger.cerr.FwkReport.reportEvery =1 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(300)
+    input = cms.untracked.int32(20000)
 )
 
 def filesFromFolder(directory):
@@ -52,10 +59,12 @@ def filesFromTxt(txtFile):
 # Input source
 
 if channel == 'sig':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signals MA Thesis
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
-  inputfiles = filesFromFolder(directory)[0]
-  #inputfiles = filesFromTxt(directory)
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signals MA Thesis
+  #if refit: directory = "/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/refit/"
+  #if refit: directory = "/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1_PV_REFITTED/"
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  #inputfiles = filesFromFolder(directory)
+  inputfiles = filesFromTxt(directory)
   #inputfiles = inputfiles[0]
 
 if channel == 'hb':
@@ -73,34 +82,14 @@ if channel == 'data':
 
 process.source = cms.Source(
     "PoolSource",
-    #fileNames = cms.untracked.vstring('file:/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/all_signals_HbToDsPhiKKPiMuNu_MT_97.root'),
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch//store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/5D552231-6643-F042-9DD8-4CFC0CFD1B26.root'),
-    #fileNames = cms.untracked.vstring("file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH3/MINIAOD/UL2018_MiniAODv2-v1/50000/0B26935C-81C7-1D4F-8994-23CBB40DA54C.root"),
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2520000/543D1560-C12D-D248-9CBC-EF660D95E05E.root'), # run=321436 lumi=592 to check ds vtx cos
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50003/199766A2-70D0-674D-A9CE-D5EB255BD87A.root'), # data file which is always empty, investigate this 
+    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch////store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530009/665CB12D-9B84-144F-9811-CB4953DA52CF.root'), # contains mu9 only
     #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #data file to compare with riccs MA code
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/D0AE1369-0D7B-554C-BBB9-7B324AACCABD.root'), #data file to compare with riccs MA code
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/50002/36CD4F31-A249-DF49-A3FF-32DCA7223D09.root'), #10
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/40000/56D888ED-EB2C-B24F-A5A0-8D162DAFFA25.root'), #7
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530000/521F0FA1-D91E-ED4D-8920-5BB1E7CDDE38.root'), #7
-    fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
-    #fileNames = cms.untracked.vstring(inputfiles),
+    #fileNames = cms.untracked.vstring(inputfiles),# all_signals_HbToDsPhiKKPiMuNu_MT_0.root'), #automized case
     #fileNames = cms.untracked.vstring('file:root://eoscms.cern.ch//eos/cms/store/data/Run2018D/ParkingBPH1/MINIAOD/UL2018_MiniAODv2-v1/2530009/33EBB973-79DA-114A-9C72-1CC48E0ED7C6.root'), #fails with crab
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root'), #lxy is nan here
-    #fileNames = cms.untracked.vstring('file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/50303941-50B8-C84A-9D02-D5000919ED8A.root'), #lxy is nan here
-    #fileNames = cms.untracked.vstring(''), #lxy is nan here
-    #fileNames = cms.untracked.vstring(['file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/18444F62-3117-C244-8DCB-A065FB62C65D.root']),
-    #fileNames = cms.untracked.vstring(['file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/CB5855BC-D585-7243-B46E-40130B3B16C9.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDs_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/50303941-50B8-C84A-9D02-D5000919ED8A.root', 'file:root://cms-xrd-global.cern.ch///store/mc/RunIISummer20UL18MiniAODv2/BsToDsMuNu_DsFilter_PhiFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/MINIAODSIM/Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/40000/18444F62-3117-C244-8DCB-A065FB62C65D.root']),
-
-
-    secondaryFileNames = cms.untracked.vstring(),
-    #eventsToProcess = cms.untracked.VEventRange('325117:316225000', '325117:317459950', '325117:316794666', '325117:316199657'),
-    #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:317317084','325117:316229017','325117:317682842','325117:316762974','325117:317803805','325117:316457342','325117:317726844'), #constrained vs ma
-    #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:316762974','325117:316164638','325117:317419163'), #unconstrained vs ma
-    #eventsToProcess = cms.untracked.VEventRange('325117:316306200','325117:316362075','325117:316762974','325117:316164638','325117:317309145', '325117:317587931','325117:317002588'), #unconstrained vs new ma (same events :))
-    #eventsToProcess = cms.untracked.VEventRange('1:3316932894'),
-    #eventsToProcess = cms.untracked.VEventRange('1:3314083441'),
-
-    #eventsToProcess  = cms.untracked.VEventRange('325117:316065411','325117:316065411', '325117:316066604', '325117:316067368', '325117:316070783', '325117:339068458', '325117:339074399', '325117:339076186', '325117:339078422', '325117:339078591'),
+    fileNames = cms.untracked.vstring(inputfiles), #fails with crab
+    #eventsToProcess = cms.untracked.VEventRange('1:8708', "1:17743", "1:16520", "1:30437", "1:26990", "1:58035"),
     skipEvents=cms.untracked.uint32(0) # skip first n events   
 
 )
@@ -110,11 +99,9 @@ process.options = cms.untracked.PSet(
     SkipEvent = cms.untracked.vstring('ProductNotFound')
 )
 
-#purpose?
-process.nanoMetadata.strings.tag = annotation
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    annotation = cms.untracked.string(annotation),
+    #annotation = cms.untracked.string(annotation),
     name = cms.untracked.string('Applications'),
     version = cms.untracked.string('$Revision: 1.19 $')
 )
@@ -128,7 +115,7 @@ process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
         filterName = cms.untracked.string('')
     ),
     #fileName = cms.untracked.string('file:/scratch/pahwagne/nanoAOD/test.root' ),
-    fileName = cms.untracked.string('file:/work/pahwagne/test/nanotest.root'), #used for local tests
+    fileName = cms.untracked.string('file:/work/pahwagne/test/nanotest_sig.root'), #used for local tests
     outputCommands = cms.untracked.vstring(
       'drop *',
       "keep nanoaodFlatTable_*Table_*_*",     # event data
@@ -147,17 +134,25 @@ process.GlobalTag = GlobalTag(process.GlobalTag, globaltag, '')
 
 # add all sequences as addtributes
 from PhysicsTools.RDsNano.nanoRDs_cff import *
+process = nanoAOD_customizeStart(process)
 process = nanoAOD_customizeMuonTriggerBPark(process)  
 process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run only Trigger.cc for debugging
+
+
+## put the refit process somewhere in the beginning before all the EDAnalyzer
+process.primaryVertexRefit = process.unsortedOfflinePrimaryVertices.clone()
+process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices")
+#process.primaryVertexRefitSequence = cms.Sequence(process.primaryVertexRefit)
 
 if channel != 'data':
   #can only gen match on mc
   process = nanoAOD_customizeGenMatching(process) 
   # Path and EndPath definitions
-  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+  print("right!!!!!!!!")
+  process.nanoAOD_Bs_step= cms.Path( process.nanoSequence + process.unpackedTracksAndVertices +  process.primaryVertexRefit + process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
 
 else:
-  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence )
+  process.nanoAOD_Bs_step= cms.Path( process.nanoSequence + process.unpackedTracksAndVertices +  process.primaryVertexRefit + process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence )
  
 
 

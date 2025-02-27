@@ -613,56 +613,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
 
-               ///////////////////////////////////////////////////////// 
-               // now find the channel ID, we have the following scheme:
-              
-               // SIGNAL:
-               // Bs -> Ds mu   0
-               // Bs -> Ds tau  1
-               //
-               // Bs -> Ds* mu  5
-               // Bs -> Ds* tau 6
-               //
-               // HB: (the mother base is defined in step1 for each mother)
-               //
-               // B mother -> Ds  +  D                              mother_base + 0
-               // B mother -> Ds  +  D*                             mother_base + 1
-               // B mother -> Ds  +  (something else producing mu)  mother_base + 2
 
-               // B mother -> Ds* +  D                              mother_base + 5
-               // B mother -> Ds* +  D*                             mother_base + 6
-               // B mother -> Ds* +  (something else producing mu)  mother_base + 7
-
-               // ground state charmed mesons:  
-               std::vector<int> dMesons{
-                 411, // "           : yes 1869
-                 421, // "           : no  1864
-                 431, // "           : yes 1968
-                 4122 // "           : yes 4122
-               };
-
-               // excited charmed mesons:  
-               std::vector<int> dMesonsExc{
-                 10411, // charged/mass: yes 2400 
-                 10421, // "           : no  2400
-                 413,   // "           : yes 2010
-                 423,   // "           : no  2007
-                 10413, // "           : yes 2420
-                 10423, // "           : no  2420
-                 20413, // "           : yes ????
-                 20423, // "           : no  2430
-                 415,   // "           : yes 2460
-                 425,   // "           : no  2460
-                 10431, // "           : yes 2317
-                 433,   // "           : yes todo
-                 10433, // "           : yes 2536
-                 20433, // "           : yes 2460 (resp. 2457)
-                 435    // "           : yes 2573
-               };
-
-
+               ///////////////////////////// 
+               // now find the channel ID //
+               /////////////////////////////
+  
                bId = bMotherId;
-
+  
                // Step1: the b Mother fixes the 10s
                switch(abs(bMotherId)){
                  case 521:  sigId = 100;  break;  // B+
@@ -671,39 +628,40 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  case 5122: sigId = 400;  break;  // LambdaB
                  default:   sigId = 500;          // anything else
                }
-
+  
                //bool isNotDoubleCharm = false;
-                
+               //auto photonPtr = printDirectDaughters(bsFromMu, false);
+  
                //std::cout << "candidate nr: " << nRecoCandidates << std::endl;
                int dsID = getDsID(piPtrGen); // get charmed strange ID
                //std::cout << "ds Id is: " << dsID << std::endl;
                int dID  = getSecondCharmID(muPtrGen); // get charmed ID
                //std::cout << "d Id is: " << dID << std::endl;
-               bool isTau = isAncestor(muPtrGen, 15); 
-
+               bool isTau = isAncestor(muPtrGen, 15);
+  
                switch(dsID){
                  case 431:   sigId += 0;  break; // Ds+
                  case 433:   sigId += 10; break; // Ds+*
                  case 10431: sigId += 20; break; // Ds+(2317)*
                  case 20433: sigId += 30; break; // Ds+(2457)*
-                 default:    sigId += 40; break; // anything else
+                 default:    sigId = 500; break; // anything else
                }
-
+  
+               int checkSignal = -1;
+               int checkKNuMu  = -1;
+  
+               if (abs(bMotherId) == 531) checkSignal = isSignal(bsFromMu);
+               if (abs(bMotherId) == 521) checkKNuMu  = isKNuMu(bsFromMu);
+  
+               if (checkSignal==-1){
+                 std::cout << "this is not tagged as signal" << std::endl;
+                 //printDaughters(bsFromMu);
+               }
+  
                // Signal candidates enter here
-               if ((dID == 0) && ((dsID == 431) ||(dsID == 433))&& (abs(bMotherId) == 531)) {
-                 //std::cout << "i enter the signal tag!" << std::endl;
-                 sigId -= 300; // signal should live in 0
-                 if (isTau) sigId += 1; 
-               }
-
-               // special case of B+ -> K nu mu / B+ -> K tau nu 
-               else if((dID == 0) && (dsID == 0) && (abs(bMotherId) == 521)){
-               
-                 if (!isTau) sigId += 7;
-                 if (isTau)  sigId  += 8;
-
-               }
-
+               if (checkSignal != -1)    sigId = checkSignal;
+               else if(checkKNuMu != -1) sigId = checkKNuMu;
+  
                else {
                  switch(dID){
                    case 411:   sigId += 0;  break; // D+
@@ -712,11 +670,31 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    case 413:   sigId += 3; break;  // D+*
                    case 423:   sigId += 4; break;  // D0*
                    case 433:   sigId += 5; break;  // Ds+*
-                   case 4122:   sigId += 6; break;  // Lambda c
-
-                   default:    sigId += 9; break; // anything else
+                   case 4122:  sigId += 6; break;  // Lambda c
+  
+                   default:    sigId = 500; break; // anything else
                  }
                }
+  
+               // we want to be sure that we dont tag a Hb channel which was not simulated!
+               // since the other b meson can decay freely, this can happen! F.e. we can have stuff like
+               // Bs -> Double charm + additional pions/kaons/gammas
+               std::set<int> bs_channels      = {302, 300, 303, 312, 305, 315, 0, 1, 10 ,11};
+               std::set<int> b0_channels      = {200, 203, 210, 213, 212, 205, 215, 220, 223, 230, 233};
+               std::set<int> bplus_channels   = { 107, 108, 101, 104, 117, 118, 121, 124, 131, 134, 111, 114};
+               std::set<int> lambdab_channels = {406, 416};
+  
+               if      ((abs(bMotherId) == 531) && (bs_channels.find(sigId)       == bs_channels.end() ))      sigId = 500;
+               else if ((abs(bMotherId) == 521) && (bplus_channels.find(sigId)    == bplus_channels.end() ))   sigId = 500;
+               else if ((abs(bMotherId) == 511) && (b0_channels.find(sigId)       == b0_channels.end() ))      sigId = 500;
+               else if ((abs(bMotherId) == 5122) && (lambdab_channels.find(sigId) == lambdab_channels.end() )) sigId = 500;
+  
+               //double photonEnergy;
+               //if (photonPtr != nullptr) photonEnergy =photonPtr->energy();
+               //else photonEnergy = -9999;
+  
+  
+               /////////////////////////////////////////////
 
                ////////////////////////////////////
                // SPECIAL FOR HAMMER:            //

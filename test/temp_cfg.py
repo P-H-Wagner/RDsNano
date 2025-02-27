@@ -27,6 +27,12 @@ process.load('PhysicsTools.RDsNano.nanoRDs_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
+#create the collection
+process.load('PhysicsTools.PatAlgos.slimming.unpackedTracksAndVertices_cfi')
+
+#load vtx 
+process.load("RecoVertex.Configuration.RecoVertex_cff")
+
 
 #prints the time report
 process.Timing = cms.Service("Timing",
@@ -88,16 +94,30 @@ process.GlobalTag = GlobalTag(process.GlobalTag, globaltag, '')
 
 
 from PhysicsTools.RDsNano.nanoRDs_cff import *
+process = nanoAOD_customizeStart(process)
 process = nanoAOD_customizeMuonTriggerBPark(process)  
 process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run only Trigger.cc for debugging
+
+#load vtx step
+process.primaryVertexRefit = process.unsortedOfflinePrimaryVertices.clone()
+process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices")
 
 if channel != 'data':
   #gen match only for MC
   process = nanoAOD_customizeGenMatching(process)
-  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence + process.nanoGenMatchingSequence)
+  process.nanoAOD_Bs_step= cms.Path(  process.nanoSequence
+                                    + process.unpackedTracksAndVertices
+                                    + process.primaryVertexRefit
+                                    + process.triggerSequence  
+                                    + process.nanoBsToDsPhiKKPiMuSequence 
+                                    + process.nanoGenMatchingSequence)
 
 else:
-  process.nanoAOD_Bs_step= cms.Path(process.triggerSequence  + process.nanoBsToDsPhiKKPiMuSequence)
+  process.nanoAOD_Bs_step= cms.Path(  process.nanoSequence
+                                    + process.unpackedTracksAndVertices
+                                    + process.primaryVertexRefit
+                                    + process.triggerSequence  
+                                    + process.nanoBsToDsPhiKKPiMuSequence)
 
 
 process.endjob_step = cms.EndPath(process.endOfProcess)

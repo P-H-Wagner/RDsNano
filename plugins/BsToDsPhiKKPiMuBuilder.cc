@@ -1114,24 +1114,38 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float pv_x = pv.x(); 
         float pv_y = pv.y(); 
 
+        float pv_x_w_bs = beamSpot.x(pv_z);
+        float pv_y_w_bs = beamSpot.y(pv_z);
+
         //////////////////////////////////////////////
 
         //2d cosine
 
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> kkPi_xy;
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> kkPi_xyz;
+
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xy;
+        ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xy_pv;
+
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xyz;
-        kkPi_xy.SetXYZ(phiPi.px(), phiPi.py(),0.0);
-        kkPi_xyz.SetXYZ(phiPi.px(), phiPi.py(),phiPi.pz());
-        //ds_xy.SetXYZ(tv_x - beamSpot.x(pv_z), tv_y - beamSpot.y(pv_z) ,0.0);
-        ds_xy.SetXYZ(tv_x - sv_x, tv_y - sv_y ,0.0);
-        ds_xy.SetXYZ(tv_x - sv_x, tv_y - sv_y ,tv_z - sv_z);
+        ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xyz_pv;
+
+        kkPi_xy   .SetXYZ(phiPi.px()  , phiPi.py()  , 0.0);
+        kkPi_xyz  .SetXYZ(phiPi.px()  , phiPi.py()  , phiPi.pz());
+
+        ds_xy     .SetXYZ(tv_x - sv_x , tv_y - sv_y , 0.0);
+        ds_xy_pv  .SetXYZ(tv_x - pv_x , tv_y - pv_y , 0.0);
+
+        ds_xyz_pv .SetXYZ(tv_x - pv_x , tv_y - pv_y , tv_z - pv_z);
+        ds_xyz    .SetXYZ(tv_x - sv_x , tv_y - sv_y , tv_z - sv_z);
 
         //if (!(ds_xy.R() > 0.0)) continue;
          
-        float ds_vtx_cosine_xy  = kkPi_xy .Dot(ds_xy)  / (kkPi_xy .R() * ds_xy .R());
-        float ds_vtx_cosine_xyz = kkPi_xyz.Dot(ds_xyz) / (kkPi_xyz.R() * ds_xyz.R());
+        float ds_vtx_cosine_xy       = kkPi_xy .Dot(ds_xy)        / (kkPi_xy .R() * ds_xy    .R());
+        float ds_vtx_cosine_xy_pv    = kkPi_xy .Dot(ds_xy_pv)     / (kkPi_xy .R() * ds_xy_pv .R());
+
+        float ds_vtx_cosine_xyz      = kkPi_xyz.Dot(ds_xyz)       / (kkPi_xyz.R() * ds_xyz   .R());
+        float ds_vtx_cosine_xyz_pv   = kkPi_xyz.Dot(ds_xyz_pv)    / (kkPi_xyz.R() * ds_xyz_pv.R());
         //std::cout << "ds vtc cosine" << ds_vtx_cosine << std::endl;
 
         //if (ds_vtx_cosine < 0.8) continue;
@@ -1294,6 +1308,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_x",       pv_x); 
         bs.addUserFloat("pv_y",       pv_y); 
         bs.addUserFloat("pv_z",       pv_z); 
+
+        bs.addUserFloat("pv_x_w_bs",       pv_x_w_bs); 
+        bs.addUserFloat("pv_y_w_bs",       pv_y_w_bs); 
+
         bs.addUserFloat("pv_chi2",    pv.chi2()); // can access this directlyfor the reco::Vertex class
         bs.addUserFloat("pv_ndof",    pv.ndof());
         bs.addUserFloat("pv_redchi2", pv.normalizedChi2());
@@ -1340,8 +1358,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("fv_prob",    phiVtxProb);
 
         // opening angle between bs - ds vtx directioini and kkpi flight direction
-        bs.addUserFloat("ds_vtx_cosine_xy" , ds_vtx_cosine_xy);
-        bs.addUserFloat("ds_vtx_cosine_xyz", ds_vtx_cosine_xyz);
+        bs.addUserFloat("ds_vtx_cosine_xy"    , ds_vtx_cosine_xy);
+        bs.addUserFloat("ds_vtx_cosine_xy_pv" , ds_vtx_cosine_xy_pv);
+
+        bs.addUserFloat("ds_vtx_cosine_xyz"   , ds_vtx_cosine_xyz);
+        bs.addUserFloat("ds_vtx_cosine_xyz_pv", ds_vtx_cosine_xyz_pv);
 
 
         ///////////////////////////////////////////////////////////////////////////////////////////

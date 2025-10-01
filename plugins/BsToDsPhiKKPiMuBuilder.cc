@@ -1833,6 +1833,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float angMuWReco1   = angMuW(refittedDs,recoBsTlv1,  refittedMu);
         float angMuWReco2   = angMuW(refittedDs,recoBsTlv2,  refittedMu);
 
+        //std::cout << "coll ang: "     << angMuWColl << std::endl;
+        //std::cout << "lhcb ang: "     << angMuWLhcb << std::endl;
+        //std::cout << "lhcb alt ang: " << angMuWLhcbAlt << std::endl;
+        //std::cout << "reco1 ang: "    << angMuWReco1 << std::endl;
+        //std::cout << "reco2 ang: "    << angMuWReco2 << std::endl;
+
+        //std::cout << "coll cos: "     << cos(angMuWColl) << std::endl;
+        //std::cout << "lhcb cos: "     << cos(angMuWLhcb) << std::endl;
+        //std::cout << "lhcb alt cos: " << cos(angMuWLhcbAlt) << std::endl;
+        //std::cout << "reco1 cos: "    << cos(angMuWReco1) << std::endl;
+        //std::cout << "reco2 cos: "    << cos(angMuWReco2) << std::endl;
+
+
         bs.addUserFloat("cosMuWColl",       cos(angMuWColl)); 
         bs.addUserFloat("cosMuWLhcb",       cos(angMuWLhcb)); 
         bs.addUserFloat("cosMuWLhcbAlt",    cos(angMuWLhcbAlt)); 

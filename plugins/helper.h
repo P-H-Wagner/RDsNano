@@ -169,8 +169,8 @@ inline int isSignal(const auto mom){
 inline void printDaughters(const auto mom){
 
   for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
-    //std::cout << " Now mom is: "<< mom->pdgId() << std::endl;
-    //std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
+    std::cout << " Now mom is: "<< mom->pdgId() << "with address" << mom << std::endl;
+    std::cout << "With daughter: " << mom->daughter(dauIdx)->pdgId() << std::endl;
     printDaughters(mom->daughter(dauIdx)); 
   }
   return;
@@ -244,7 +244,7 @@ inline std::vector<double> infoAncestor(const auto dau, const int id){
 inline auto getAncestor(const auto dau, const int id){
 
   //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
-  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << std::endl; 
+  //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << "with address" << dau << std::endl; 
   if ((fabs(dau->pdgId()) == id)){
     //std::cout << "sucess!" << std::endl;
     return dau;
@@ -413,10 +413,12 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   //boost the muon into the w rest frame
   mu.Boost(-wBoost); 
 
-  //std::cout << "mu vector: " << mu.Mag() << std::endl;
   //boost the W back into the bs rest frame
   w.Boost(-bBoost);
  
+  //std::cout << "--> mu vector: " << mu.Mag() << std::endl;
+  //std::cout << "--> b  vector: " << b.Mag()  << std::endl;
+
   //now take the angle
   return w.Angle(mu.Vect());
 

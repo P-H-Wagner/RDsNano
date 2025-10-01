@@ -55,6 +55,8 @@
 #include "TVectorD.h"
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h" 
 
+//for the pile up
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 // counters
 int nEventsGen = 0;
@@ -154,6 +156,9 @@ private:
   const edm::InputTag packedGenTag; //packed contains much more info->most likely not needed!
   const edm::EDGetTokenT<pat::PackedGenParticleCollection> packedGen_;
 
+  const edm::InputTag pileupInfoTag; 
+  const edm::EDGetTokenT<std::vector<PileupSummaryInfo>> pileupInfo_;
+
 };
 
 //define the constructor
@@ -191,7 +196,10 @@ genMatching::genMatching(const edm::ParameterSet& iConfig):
     prunedGenTag(iConfig.getParameter<edm::InputTag>("prunedCand")),
     prunedGen_(consumes<reco::GenParticleCollection>(prunedGenTag)),
     packedGenTag(iConfig.getParameter<edm::InputTag>("packedCand")),
-    packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)){
+    packedGen_(consumes<pat::PackedGenParticleCollection>(packedGenTag)),
+    pileupInfoTag(iConfig.getParameter<edm::InputTag>("pileup")),
+    pileupInfo_(consumes<std::vector<PileupSummaryInfo>>(pileupInfoTag))
+    {
        // output collection
        produces<pat::CompositeCandidateCollection>("gen");
        //produces<pat::CompositeCandidateCollection>("gen");
@@ -215,6 +223,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
   edm::Handle<pat::PackedGenParticleCollection> packedGen;
   iEvent.getByToken(packedGen_,packedGen);
+
+  edm::Handle<std::vector<PileupSummaryInfo>> pileupInfo;
+  iEvent.getByToken(pileupInfo_, pileupInfo); 
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> ret_value(new pat::CompositeCandidateCollection());
@@ -363,6 +374,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //////////////////////////////////////////////////
                nKKPiMuGen++;     
  
+               //std::cout << "found a gen matched kkpimu candiate!" << std::endl;
                //Should we pick the best gen match (in terms of dR) only? -> No, like this is better 
 
                const reco::Candidate* k1Reco = k1PtrGen.get(); 
@@ -375,12 +387,14 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                auto phiFromK2 = getAncestor(k2Reco,333);
                if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
                nFoundPhi++;               
+               //std::cout << "found a gen matched phi candiate!" << std::endl;
      
                // searching for ds resonance 
                auto dsFromPhi = getAncestor(phiFromK1,431);
                auto dsFromPi  = getAncestor(piReco,431);
                if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
                nFoundDs++;               
+               //std::cout << "found a gen matched ds candiate!" << std::endl;
 
                // we dont know what b mother we have
                int bMotherId = 0;
@@ -402,6 +416,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                }
               
                if (bMotherId == 0) break; // no b mother found
+               //std::cout << "found a b mom!" << std::endl;
 
                // Even if the mu is not required to come brom the b mother directly (would be signal case)
                // if it comes from another D meson (double charm background case), we still want
@@ -410,12 +425,25 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                auto bsFromDs = getAncestor(dsFromPhi,bMotherId);
                auto bsFromMu = getAncestor(muReco,   bMotherId);
 
+               //std::cout << "Bs from Ds has daughters" << std::endl;
+               //printDaughters(bsFromDs); //-> for debugging
+               //std::cout << "Bs from Mu has daughters" << std::endl;
+               //printDaughters(bsFromMu); //-> for debugging
+
                if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
    
+               //std::cout << "found a common b mom!" << std::endl;
                nFoundB++;
                
                if (bsFromMu->mass() > maxBsMass_) continue;
                nBMassCut++;
+
+
+               // CHECK FSR 
+               //std::cout << " ---- CHECK FSR FROM MU ----" << std::endl;
+               auto fsrFromMu = getAncestor(muReco,   22);
+               //std::cout << " ---------------------------" << std::endl;
+
 
                //remove oscillations
                auto bsFromMuWOOsc = removeOscillations(bsFromMu);
@@ -512,6 +540,19 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //gen.addUserCand("k2_gen",k2PtrGen);
                //gen.addUserCand("pi_gen",piPtrGen);
 
+               // add pileup info
+               int numTrueInts = -1;
+               int numPUInts   = -1;
+
+               for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
+                 int BX = iPU->getBunchCrossing();
+                 if(BX == 0){ // "0" is the in-time crossing. Negative are early crossings. Positive are late.
+                   numTrueInts = iPU->getTrueNumInteractions();
+                   numPUInts   = iPU->getPU_NumInteractions();
+                 }
+               }
+
+               //std::cout << "we have n pilue up: " << numTrueInts << std::endl;
 
                //printDaughters(bsFromMu); //-> for debugging
 
@@ -521,7 +562,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("mu_gen_pt"      ,muPtrGen->pt());
                gen.addUserFloat("mu_gen_eta"     ,muPtrGen->eta());
                gen.addUserFloat("mu_gen_phi"     ,muPtrGen->phi());
-               gen.addUserFloat("mu_gen_m"    ,muPtrGen->mass());
+               gen.addUserFloat("mu_gen_m"       ,muPtrGen->mass());
                gen.addUserFloat("mu_gen_charge"  ,muPtrGen->charge());
                gen.addUserInt(  "mu_gen_pdgid"   ,muPtrGen->pdgId());
      
@@ -612,7 +653,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("fv_y_gen"       ,fv_y_gen);
                gen.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
-
+               gen.addUserInt( "numTrueInts",numTrueInts );
+               gen.addUserInt( "numPUInts"  ,numPUInts   );
 
                ///////////////////////////// 
                // now find the channel ID //
@@ -654,7 +696,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if (abs(bMotherId) == 521) checkKNuMu  = isKNuMu(bsFromMu);
   
                if (checkSignal==-1){
-                 std::cout << "this is not tagged as signal" << std::endl;
+                 //std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
                  //printDaughters(bsFromMu);
                }
   
@@ -797,12 +839,49 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
                  auto gFromDs      = getDaughter(dsStarFromDs, 22); 
- 
+                 auto nuFromBs     = getDaughter(bsFromMu, 14); //look for the muon neutrino 
+
+                 //std::cout << " ---- CHECK FSR FROM DS * ----" << std::endl;
+                 auto fsrFromMu = getAncestor(dsStarFromDs,   22);
+                 //std::cout << " ---------------------------" << std::endl;
+
+                 double nu_gen_pt    = nuFromBs->pt();
+                 double nu_gen_eta   = nuFromBs->eta();
+                 double nu_gen_phi   = nuFromBs->phi();
+                 double nu_gen_m     = 0.0; 
+                 double nu_gen_pdgid = nuFromBs->pdgId();
+
                  dsStar_gen_pt    = dsStarFromDs->pt();
                  dsStar_gen_eta   = dsStarFromDs->eta();
                  dsStar_gen_phi   = dsStarFromDs->phi();
                  dsStar_gen_m     = dsStarMass_; 
                  dsStar_gen_pdgid = dsStarFromDs->pdgId();
+
+                 //std::cout << "nu_gen_pt="    << nu_gen_pt    << " "
+                 //          << "nu_gen_eta="   << nu_gen_eta   << " "
+                 //          << "nu_gen_phi="   << nu_gen_phi   << " "
+                 //          << "nu_gen_m="     << nu_gen_m     << " " << std::endl;
+                 
+
+                 //std::cout << "dsStar_gen_pt="    << dsStar_gen_pt    << " "
+                 //          << "dsStar_gen_eta="   << dsStar_gen_eta   << " "
+                 //          << "dsStar_gen_phi="   << dsStar_gen_phi   << " "
+                 //          << "dsStar_gen_m="     << dsStar_gen_m     << " " << std::endl;
+
+
+                 //std::cout << "mu_gen_pt="    <<  muPtrGen->pt()         << " "
+                 //          << "mu_gen_eta="   <<  muPtrGen->eta()        << " "
+                 //          << "mu_gen_phi="   <<  muPtrGen->phi()        << " "
+                 //          << "mu_gen_m="     <<  muPtrGen->mass()       << " " << std::endl;
+
+
+                 //std::cout << "bs_gen_pt="    << bsFromMu->pt()     << " "
+                 //          << "bs_gen_eta="   << bsFromMu->eta()    << " "
+                 //          << "bs_gen_phi="   << bsFromMu->phi()    << " "
+                 //          << "bs_gen_m="     << bsFromMu->mass()   << " " << std::endl;
+
+
+
 
                  if (gFromDs != nullptr){ 
                    //can be nullptr if f.e. Ds* -> Ds + pi^0
@@ -847,12 +926,50 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
                  auto gFromDs      = getDaughter(dsStarFromDs, 22);
+                 auto nuFromBs     = getDaughter(bsFromMu, 16); //look for the muon neutrino 
+
+                 double nu_gen_pt    = nuFromBs->pt();
+                 double nu_gen_eta   = nuFromBs->eta();
+                 double nu_gen_phi   = nuFromBs->phi();
+                 double nu_gen_m     = 0.0; 
+                 double nu_gen_pdgid = nuFromBs->pdgId();
+
   
                  dsStar_gen_pt     = dsStarFromDs->pt();
                  dsStar_gen_eta    = dsStarFromDs->eta();
                  dsStar_gen_phi    = dsStarFromDs->phi();
                  dsStar_gen_m      = dsStarMass_; 
                  dsStar_gen_pdgid  = dsStarFromDs->pdgId();
+
+
+                 //std::cout << "nu_gen_pt="    << nu_gen_pt    << " "
+                 //          << "nu_gen_eta="   << nu_gen_eta   << " "
+                 //          << "nu_gen_phi="   << nu_gen_phi   << " "
+                 //          << "nu_gen_m="     << nu_gen_m     << " " << std::endl;
+                 
+
+                 //std::cout << "dsStar_gen_pt="    << dsStar_gen_pt    << " "
+                 //          << "dsStar_gen_eta="   << dsStar_gen_eta   << " "
+                 //          << "dsStar_gen_phi="   << dsStar_gen_phi   << " "
+                 //          << "dsStar_gen_m="     << dsStar_gen_m     << " " << std::endl;
+
+
+                 //std::cout << "tau_gen_pt="    <<  tau_gen_pt         << " "
+                 //          << "tau_gen_eta="   <<  tau_gen_eta        << " "
+                 //          << "tau_gen_phi="   <<  tau_gen_phi        << " "
+                 //          << "tau_gen_m="     <<  tau_gen_m          << " " << std::endl;
+
+
+                 //std::cout << "bs_gen_pt="    << bsFromMu->pt()     << " "
+                 //          << "bs_gen_eta="   << bsFromMu->eta()    << " "
+                 //          << "bs_gen_phi="   << bsFromMu->phi()    << " "
+                 //          << "bs_gen_m="     << bsFromMu->mass()   << " " << std::endl;
+
+
+
+
+
+
  
                  if (gFromDs != nullptr){ 
                    //can be nullptr if f.e. Ds* -> Ds + pi^0
@@ -1137,7 +1254,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("fv_x_gen"       ,std::nan(""));
             gen.addUserFloat("fv_y_gen"       ,std::nan(""));
             gen.addUserFloat("fv_z_gen"       ,std::nan(""));
-   
+ 
+            gen.addUserInt( "numTrueInts",-9999);
+            gen.addUserInt( "numPUInts"  ,-9999);
+  
             gen.addUserFloat("angMuWGen"      ,std::nan(""));
             gen.addUserFloat("cosMuWGen"      ,std::nan(""));
             gen.addUserFloat("cosMuWGenLhcb"      ,std::nan(""));

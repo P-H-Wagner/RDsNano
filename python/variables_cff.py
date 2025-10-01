@@ -306,10 +306,13 @@ genVariables = cms.PSet(
         fv_y          = Var("userFloat('fv_y_gen')",float),
         fv_z          = Var("userFloat('fv_z_gen')",float),
 
+        numTrueInts   = Var("userInt('numTrueInts')", int),
+        numPUInts     = Var("userInt('numPUInts')"  , int),
+
         m2_miss       = ufloat('m2_miss_gen'),
         pt_miss       = ufloat('pt_miss_gen'),
         q2            = ufloat('q2_gen'),
-        e_star            = ufloat('e_star_gen'),
+        e_star        = ufloat('e_star_gen'),
 
         cosMuW        = Var("userFloat('cosMuWGen')",float),
         cosMuWLhcb    = Var("userFloat('cosMuWGenLhcb')",float),

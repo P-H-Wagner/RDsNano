@@ -17,15 +17,15 @@ args = parser.parse_args()
 nMaxJobs = 1000
 
 #default
-filesPerJob = 3
+filesPerJob = 1
 
 if (int(args.nFiles) < nMaxJobs) and (int(args.nFiles) != -1):
   filesPerJob = 1 #below 500 jobs we can take 1 file per job and thus short
   queue = 'standard' 
-  time = 3*60
+  time = 6*60
 else:
   queue = 'standard'
-  time = 8*60
+  time = 4*60
 print("========> processing ", filesPerJob, " files per job")
 
 ######################################
@@ -48,6 +48,7 @@ qcd_samples = ["50to100", "100to200", "200to300", "300to500", "500to700", "700to
 
 def filesFromFolder(direc):
   filenames = os.listdir(direc)
+  filenames = [file for file in filenames if "root" in file]
   return ['file:' + direc + filename for filename in filenames ]
 
 def filesFromTxt(txtFile):
@@ -68,7 +69,9 @@ if args.channel == 'sig':
   naming = 'all_signals'
 
 if args.channel == 'hb':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' #hb 
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/hbInclusiveToDsPhiKKPi_20250829/hbInclusiveToDsPhiKKPi/hbInclusiveToDsPhiKKPi_MINI/250829_074208/0000/' #new hb
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' #hb 
   inputfiles = filesFromFolder(directory)
   naming = 'hb_inclusive'
 
@@ -163,14 +166,32 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
 
   to_write = '\n'.join([
          '#!/bin/bash',
-         'cd /work/pahwagne/CMSSW_10_6_37/src/PhysicsTools/RDsNano/test/'+dt_string ,
-         'scramv1 runtime -sh',
+         # --- create scratch dir and create temp .sh file in scratch ---
          'mkdir -p /scratch/pahwagne/'+dt_string,
+         'payload=/scratch/pahwagne/'+dt_string+'/apptainer-payload-{0}.sh'.format(i),
+         # --- write into temp ---
+         'cat > "$payload" << EOF',
+         'cd /work/pahwagne/CMSSW_10_6_37/src/PhysicsTools/RDsNano',
+         'source $VO_CMS_SW_DIR/cmsset_default.sh',
+         'export SCRAM_ARCH=slc7_amd64_gcc700', #export new arch
+         'cmsenv',
+         'echo ">>>> cmsenv activated"',
+         
+         'cd /work/pahwagne/CMSSW_10_6_37/src/' ,
+         'scramv1 runtime -sh',
+         'cd /work/pahwagne/CMSSW_10_6_37/src/PhysicsTools/RDsNano/test/'+dt_string ,
          'ls /scratch/pahwagne/',
          'cmsRun cfg_chunk_{1}.py'.format(dt_string,i),
-         'xrdcp /scratch/pahwagne/{0}/{1}_chunk_{2}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{0}/{1}_chunk_{2}.root'.format(dt_string,naming,i),
+         'xrdcp /scratch/pahwagne/{0}/{1}_chunk_{2}.root root://t3dcachedb03.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/{0}/{1}_chunk_{2}.root'.format(dt_string,naming,i),
+         'EOF',
+         # --- close tmp file ---
+         'echo "printing payload content:"',
+         'cat /scratch/pahwagne/'+dt_string+'/apptainer-payload-{0}.sh'.format(i),
          'rm /scratch/pahwagne/{0}/{1}_chunk_{2}.root'.format(dt_string,naming,i),
-         '',
+         'echo ">>>> Done, launching cfg "',
+         # --- make payload executable and run it in el7 singularity ---
+         'chmod u+x "$payload"',
+         '/cvmfs/cms.cern.ch/common/cmssw-el7  --bind /scratch,/work --command-to-run $payload'
      ])
 
   with open("{0}/submitter_chunk_{1}.sh".format(dt_string,i), "wt") as flauncher:

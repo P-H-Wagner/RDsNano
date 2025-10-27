@@ -251,6 +251,9 @@ inline auto getAncestor(const auto dau, const int id){
   }
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
+
+    const reco::GenParticle* test = dynamic_cast<const reco::GenParticle*>(dau->mother(momIdx));
+    //std::cout << "is last copy?" << test->isLastCopy() << std::endl; 
     //std::cout << "Now I access mom Nr " << momIdx << std::endl;
     if (isAncestor(dau->mother(momIdx), id)) {
       auto dau2 = getAncestor(dau->mother(momIdx),id);

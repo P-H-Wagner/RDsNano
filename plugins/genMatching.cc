@@ -279,6 +279,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
       //define a pointer to the gen muon    
       edm::Ptr<reco::GenParticle> muPtrGen(prunedGen, muIdxGen);
 
+
       //select only useful gen muons -> check this selection!
       if((fabs(muPtrGen->pdgId()) != 13) || muPtrGen->pt() < minMuPt_ || fabs(muPtrGen->eta()) > maxMuEta_ || (muBs->charge() * muPtrGen->charge() < 0)) continue; 
       muSel1CounterGen++;
@@ -292,6 +293,11 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
       //std::cout << muPtrGen->pt() << std::endl;
       //std::cout << "found a gen matched muon" << std::endl;
+
+      //check if it is the last instance
+      //bool lastCopy = muPtrGen->isLastCopy();
+      //std::cout << "this muon is last copy?" << lastCopy << std::endl;
+
 
       ////////////////////////////////////////////////
       // find gen matched k1                        //
@@ -316,6 +322,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         if(drK1Match > drMatchGen_) continue;
         k1Sel2CounterGen++;
         //std::cout << "found a gen matched k1!" << std::endl;
+
+        //lastCopy = k1PtrGen->isLastCopy();
+        //std::cout << "this kaon is last copy?" << lastCopy << std::endl;
+
 
         ////////////////////////////////////////////////
         // find gen matched k2                        //
@@ -343,6 +353,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
              k2Sel2CounterGen++;
 
              //std::cout << "found a gen matched k2!\n" << std::endl;
+             //lastCopy = k2PtrGen->isLastCopy();
+             //std::cout << "this kaon is last copy?" << lastCopy << std::endl;
 
              ////////////////////////////////////////////////
              // find gen matched pion                      //
@@ -369,6 +381,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //std::cout << "found a gen matched pion!" << std::endl;
                piSel2CounterGen++;
 
+
+               //lastCopy = piPtrGen->isLastCopy();
+               //std::cout << "this pion is last copy?" << lastCopy << std::endl;
+
+
+
+
                //////////////////////////////////////////////////
                // Find resonances at gen level                 //
                //////////////////////////////////////////////////
@@ -388,13 +407,19 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if( (phiFromK1 != phiFromK2) || (phiFromK1 == nullptr) || (phiFromK2 == nullptr)) continue; 
                nFoundPhi++;               
                //std::cout << "found a gen matched phi candiate!" << std::endl;
-     
+ 
+               //lastCopy = phiFromK1->isLastCopy();
+               //std::cout << "this phi is last copy?" << lastCopy << std::endl;
+    
                // searching for ds resonance 
                auto dsFromPhi = getAncestor(phiFromK1,431);
                auto dsFromPi  = getAncestor(piReco,431);
                if( (dsFromPhi != dsFromPi) || (dsFromPhi == nullptr) || (dsFromPi == nullptr)) continue; 
                nFoundDs++;               
                //std::cout << "found a gen matched ds candiate!" << std::endl;
+
+               //lastCopy = dsFromPi ->isLastCopy();
+               //std::cout << "this ds is last copy?" << lastCopy << std::endl;
 
                // we dont know what b mother we have
                int bMotherId = 0;
@@ -415,7 +440,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  }
                }
               
-               if (bMotherId == 0) break; // no b mother found
+               //std::cout << "Before the break statement!!!" << std::endl;
+               if (bMotherId == 0) continue; // no b mother found
                //std::cout << "found a b mom!" << std::endl;
 
                // Even if the mu is not required to come brom the b mother directly (would be signal case)
@@ -434,7 +460,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
    
                //std::cout << "found a common b mom!" << std::endl;
                nFoundB++;
-               
+ 
+               //lastCopy = bsFromMu ->isLastCopy();
+               //std::cout << "this bs is last copy?" << lastCopy << std::endl;
+              
                if (bsFromMu->mass() > maxBsMass_) continue;
                nBMassCut++;
 
@@ -840,6 +869,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
                  auto gFromDs      = getDaughter(dsStarFromDs, 22); 
                  auto nuFromBs     = getDaughter(bsFromMu, 14); //look for the muon neutrino 
+                 
 
                  //std::cout << " ---- CHECK FSR FROM DS * ----" << std::endl;
                  auto fsrFromMu = getAncestor(dsStarFromDs,   22);

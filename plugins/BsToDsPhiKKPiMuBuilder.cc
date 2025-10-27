@@ -932,13 +932,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float minDeltaDsStar  = 0;
         int photonIdx         = -1;
 
-        float dr_photon_ds = -9999; 
-        float dsPhoton_m   = -9999;
-        float dsPhotonMu_m = -9999;
-        float photon_pt    = -9999; 
-        float photon_eta   = -9999; 
-        float photon_phi   = -9999; 
-        int   photon_pdgid = -9999; 
+        float dr_photon_ds = 0.0; 
+        float dsPhoton_m   = 0.0;
+        float dsPhotonMu_m = 0.0;
+        float photon_pt    = 0.0; 
+        float photon_eta   = 0.0; 
+        float photon_phi   = 0.0; 
+        int   photon_pdgid = 0.0; 
 
         TLorentzVector photonTlv(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
         edm::Ptr<pat::PackedCandidate> phtPtr;
@@ -1586,10 +1586,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double q2_coll      = collQTlv.M2();
         float  e_star_coll  = getEStar(collBsTlv,refittedMu); 
 
-        bs.addUserFloat("bs_px_coll",collBsTlv.Px());
-        bs.addUserFloat("bs_py_coll",collBsTlv.Py());
-        bs.addUserFloat("bs_pz_coll",collBsTlv.Pz());
-        bs.addUserFloat("bs_pt_coll",collBsTlv.Pt());
+        bs.addUserFloat("bs_px_coll" ,collBsTlv.Px());
+        bs.addUserFloat("bs_py_coll" ,collBsTlv.Py());
+        bs.addUserFloat("bs_pz_coll" ,collBsTlv.Pz());
+        bs.addUserFloat("bs_pt_coll" ,collBsTlv.Pt());
         bs.addUserFloat("bs_eta_coll",collBsTlv.Eta());
         bs.addUserFloat("bs_phi_coll",collBsTlv.Phi());
 
@@ -1598,8 +1598,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("q2_coll",q2_coll);
         bs.addUserFloat("e_star_coll",e_star_coll);
 
-        bs.addUserFloat("b_boost_coll",collBsTlv.BoostVector().Mag());
-        bs.addUserFloat("b_boost_coll_pt",collBsTlv.BoostVector().Pt());
+        bs.addUserFloat("b_boost_coll"    ,collBsTlv.BoostVector().Mag());
+        bs.addUserFloat("b_boost_coll_pt" ,collBsTlv.BoostVector().Pt());
         bs.addUserFloat("b_boost_coll_eta",collBsTlv.BoostVector().Eta());
         bs.addUserFloat("b_boost_coll_phi",collBsTlv.BoostVector().Phi());
 
@@ -1645,20 +1645,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float e_star_lhcb_alt  = getEStar(lhcbAltBsTlv,refittedMu); 
 
-        bs.addUserFloat("bs_px_lhcb_alt",lhcbAltBsTlv.Px());
-        bs.addUserFloat("bs_py_lhcb_alt",lhcbAltBsTlv.Py());
-        bs.addUserFloat("bs_pz_lhcb_alt",lhcbAltBsTlv.Pz());
-        bs.addUserFloat("bs_pt_lhcb_alt",lhcbAltBsTlv.Pt());
+        bs.addUserFloat("bs_px_lhcb_alt", lhcbAltBsTlv.Px());
+        bs.addUserFloat("bs_py_lhcb_alt", lhcbAltBsTlv.Py());
+        bs.addUserFloat("bs_pz_lhcb_alt", lhcbAltBsTlv.Pz());
+        bs.addUserFloat("bs_pt_lhcb_alt", lhcbAltBsTlv.Pt());
         bs.addUserFloat("bs_eta_lhcb_alt",lhcbAltBsTlv.Eta());
         bs.addUserFloat("bs_phi_lhcb_alt",lhcbAltBsTlv.Phi());
 
         bs.addUserFloat("m2_miss_lhcb_alt",lhcbAltMissTlv.M2());
         bs.addUserFloat("pt_miss_lhcb_alt",lhcbAltMissTlv.Pt());
-        bs.addUserFloat("q2_lhcb_alt",lhcbAltQTlv.M2());
-        bs.addUserFloat("e_star_lhcb_alt",e_star_lhcb_alt);
+        bs.addUserFloat("q2_lhcb_alt"     ,lhcbAltQTlv.M2())   ;
+        bs.addUserFloat("e_star_lhcb_alt" ,e_star_lhcb_alt)    ;
 
-        bs.addUserFloat("b_boost_lhcb_alt",lhcbAltBsTlv.BoostVector().Mag());
-        bs.addUserFloat("b_boost_lhcb_alt_pt",lhcbAltBsTlv.BoostVector().Pt());
+        bs.addUserFloat("b_boost_lhcb_alt"    ,lhcbAltBsTlv.BoostVector().Mag());
+        bs.addUserFloat("b_boost_lhcb_alt_pt" ,lhcbAltBsTlv.BoostVector().Pt() );
         bs.addUserFloat("b_boost_lhcb_alt_eta",lhcbAltBsTlv.BoostVector().Eta());
         bs.addUserFloat("b_boost_lhcb_alt_phi",lhcbAltBsTlv.BoostVector().Phi());
 
@@ -1699,17 +1699,17 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("disc_is_negative",discIsNegative);
         bs.addUserFloat("disc_negativity",discNegativity);
 
-        bs.addUserFloat("bs_px_reco_1",recoBsTlv1.Px());
-        bs.addUserFloat("bs_py_reco_1",recoBsTlv1.Py());
-        bs.addUserFloat("bs_pz_reco_1",recoBsTlv1.Pz());
-        bs.addUserFloat("bs_pt_reco_1",recoBsTlv1.Pt()); 
+        bs.addUserFloat("bs_px_reco_1" ,recoBsTlv1.Px());
+        bs.addUserFloat("bs_py_reco_1" ,recoBsTlv1.Py());
+        bs.addUserFloat("bs_pz_reco_1" ,recoBsTlv1.Pz());
+        bs.addUserFloat("bs_pt_reco_1" ,recoBsTlv1.Pt()); 
         bs.addUserFloat("bs_eta_reco_1",recoBsTlv1.Eta()); 
         bs.addUserFloat("bs_phi_reco_1",recoBsTlv1.Phi()); 
 
-        bs.addUserFloat("bs_px_reco_2",recoBsTlv2.Px());
-        bs.addUserFloat("bs_py_reco_2",recoBsTlv2.Py());
-        bs.addUserFloat("bs_pz_reco_2",recoBsTlv2.Pz());
-        bs.addUserFloat("bs_pt_reco_2",recoBsTlv2.Pt()); 
+        bs.addUserFloat("bs_px_reco_2" ,recoBsTlv2.Px());
+        bs.addUserFloat("bs_py_reco_2" ,recoBsTlv2.Py());
+        bs.addUserFloat("bs_pz_reco_2" ,recoBsTlv2.Pz());
+        bs.addUserFloat("bs_pt_reco_2" ,recoBsTlv2.Pt()); 
         bs.addUserFloat("bs_eta_reco_2",recoBsTlv2.Eta()); 
         bs.addUserFloat("bs_phi_reco_2",recoBsTlv2.Phi()); 
 
@@ -1724,14 +1724,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_reco_1",e_star_reco_1);
         bs.addUserFloat("e_star_reco_2",e_star_reco_2);
 
-        bs.addUserFloat("b_boost_reco_1",recoBsTlv1.BoostVector().Mag());
-        bs.addUserFloat("b_boost_reco_1_pt",recoBsTlv1.BoostVector().Pt());
+        bs.addUserFloat("b_boost_reco_1"    ,recoBsTlv1.BoostVector().Mag());
+        bs.addUserFloat("b_boost_reco_1_pt" ,recoBsTlv1.BoostVector().Pt());
         bs.addUserFloat("b_boost_reco_1_eta",recoBsTlv1.BoostVector().Eta());
         bs.addUserFloat("b_boost_reco_1_phi",recoBsTlv1.BoostVector().Phi());
 
 
-        bs.addUserFloat("b_boost_reco_2",recoBsTlv2.BoostVector().Mag());
-        bs.addUserFloat("b_boost_reco_2_pt",recoBsTlv2.BoostVector().Pt());
+        bs.addUserFloat("b_boost_reco_2"    ,recoBsTlv2.BoostVector().Mag());
+        bs.addUserFloat("b_boost_reco_2_pt" ,recoBsTlv2.BoostVector().Pt());
         bs.addUserFloat("b_boost_reco_2_eta",recoBsTlv2.BoostVector().Eta());
         bs.addUserFloat("b_boost_reco_2_phi",recoBsTlv2.BoostVector().Phi());
 
@@ -2381,142 +2381,144 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ////////////////////////////////////////////////
         // Redo all the methods if we have a photon!  //
         ////////////////////////////////////////////////
-        double dsPerpPhoton                 = -9999;
-        double dsMuPerpPhoton               = -9999;
-        double bsMassCorrPhoton             = -9999;
+        double dsPerpPhoton                 = dsPerp            ;
+        double dsMuPerpPhoton               = dsMuPerp          ;
+        double bsMassCorrPhoton             = bsMassCorr        ;
+                                                                      
+        double m2_miss_coll_photon          = m2_miss_coll;
+        double pt_miss_coll_photon          = pt_miss_coll;
+        double q2_coll_photon               = q2_coll     ;
+        float  e_star_coll_photon           = e_star_coll ;
+                                                                      
+        double bs_px_coll_photon            = collBsTlv.Px() ;
+        double bs_py_coll_photon            = collBsTlv.Py() ;
+        double bs_pz_coll_photon            = collBsTlv.Pz() ;
+        double bs_pt_coll_photon            = collBsTlv.Pt() ;
+        double bs_eta_coll_photon           = collBsTlv.Eta();
+        double bs_phi_coll_photon           = collBsTlv.Phi();
+                                                                     
+        double b_boost_coll_photon          = collBsTlv.BoostVector().Mag();
+        double b_boost_coll_pt_photon       = collBsTlv.BoostVector().Pt() ;
+        double b_boost_coll_eta_photon      = collBsTlv.BoostVector().Eta();
+        double b_boost_coll_phi_photon      = collBsTlv.BoostVector().Phi();
+                                                                     
+        double m2_miss_lhcb_alt_photon      = lhcbAltMissTlv.M2();
+        double pt_miss_lhcb_alt_photon      = lhcbAltMissTlv.Pt(); 
+        double q2_lhcb_alt_photon           = lhcbAltQTlv.M2()   ; 
+        double e_star_lhcb_alt_photon       = e_star_lhcb_alt    ;  
 
-        double m2_miss_coll_photon          = -9999;
-        double pt_miss_coll_photon          = -9999;
-        double q2_coll_photon               = -9999;
-        float  e_star_coll_photon           = -9999;
+        double bs_px_lhcb_alt_photon        = lhcbAltBsTlv.Px() ;
+        double bs_py_lhcb_alt_photon        = lhcbAltBsTlv.Py() ;
+        double bs_pz_lhcb_alt_photon        = lhcbAltBsTlv.Pz() ;
+        double bs_pt_lhcb_alt_photon        = lhcbAltBsTlv.Pt() ;
+        double bs_eta_lhcb_alt_photon       = lhcbAltBsTlv.Eta();
+        double bs_phi_lhcb_alt_photon       = lhcbAltBsTlv.Phi();
 
-        double bs_px_coll_photon            = -9999;
-        double bs_py_coll_photon            = -9999;
-        double bs_pz_coll_photon            = -9999;
-        double bs_pt_coll_photon            = -9999;
-        double bs_eta_coll_photon           = -9999;
-        double bs_phi_coll_photon           = -9999;
+        double b_boost_lhcb_alt_photon      = lhcbAltBsTlv.BoostVector().Mag();
+        double b_boost_lhcb_alt_pt_photon   = lhcbAltBsTlv.BoostVector().Pt() ;
+        double b_boost_lhcb_alt_eta_photon  = lhcbAltBsTlv.BoostVector().Eta();
+        double b_boost_lhcb_alt_phi_photon  = lhcbAltBsTlv.BoostVector().Phi();
 
-        double b_boost_coll_photon         = -9999;
-        double b_boost_coll_pt_photon      = -9999;
-        double b_boost_coll_eta_photon     = -9999;
-        double b_boost_coll_phi_photon     = -9999;
+        double m2_miss_reco_1_photon        = m2_miss_reco_1        ;
+        double pt_miss_reco_1_photon        = pt_miss_reco_1        ; 
+        double q2_reco_1_photon             = q2_reco_1             ; 
+        double e_star_reco_1_photon         = e_star_reco_1         ;  
+                                                                           
+        double bs_px_reco_1_photon          = recoBsTlv1.Px() ;
+        double bs_py_reco_1_photon          = recoBsTlv1.Py() ;
+        double bs_pz_reco_1_photon          = recoBsTlv1.Pz() ;
+        double bs_pt_reco_1_photon          = recoBsTlv1.Pt() ;
+        double bs_eta_reco_1_photon         = recoBsTlv1.Eta();
+        double bs_phi_reco_1_photon         = recoBsTlv1.Phi();
 
-        double m2_miss_lhcb_alt_photon      = -9999;
-        double pt_miss_lhcb_alt_photon      = -9999; 
-        double q2_lhcb_alt_photon           = -9999; 
-        double e_star_lhcb_alt_photon       = -9999;  
+        double b_boost_reco_1_photon        = recoBsTlv1.BoostVector().Mag();
+        double b_boost_reco_1_pt_photon     = recoBsTlv1.BoostVector().Pt();
+        double b_boost_reco_1_eta_photon    = recoBsTlv1.BoostVector().Eta();
+        double b_boost_reco_1_phi_photon    = recoBsTlv1.BoostVector().Phi();
 
-        double bs_px_lhcb_alt_photon        = -9999;
-        double bs_py_lhcb_alt_photon        = -9999;
-        double bs_pz_lhcb_alt_photon        = -9999;
-        double bs_pt_lhcb_alt_photon        = -9999;
-        double bs_eta_lhcb_alt_photon       = -9999;
-        double bs_phi_lhcb_alt_photon       = -9999;
+        double m2_miss_reco_2_photon        = m2_miss_reco_2      ;
+        double pt_miss_reco_2_photon        = pt_miss_reco_2      ; 
+        double q2_reco_2_photon             = q2_reco_2           ; 
+        double e_star_reco_2_photon         = e_star_reco_2       ;  
+                                                                         
+        double bs_px_reco_2_photon          = recoBsTlv2.Px() ;
+        double bs_py_reco_2_photon          = recoBsTlv2.Py() ;
+        double bs_pz_reco_2_photon          = recoBsTlv2.Pz() ;
+        double bs_pt_reco_2_photon          = recoBsTlv2.Pt() ;
+        double bs_eta_reco_2_photon         = recoBsTlv2.Eta();
+        double bs_phi_reco_2_photon         = recoBsTlv2.Phi();
+                                                                   
+        double b_boost_reco_2_photon        = recoBsTlv2.BoostVector().Mag();
+        double b_boost_reco_2_pt_photon     = recoBsTlv2.BoostVector().Pt(); 
+        double b_boost_reco_2_eta_photon    = recoBsTlv2.BoostVector().Eta();
+        double b_boost_reco_2_phi_photon    = recoBsTlv2.BoostVector().Phi();
 
-        double b_boost_lhcb_alt_photon     = -9999;
-        double b_boost_lhcb_alt_pt_photon  = -9999;
-        double b_boost_lhcb_alt_eta_photon = -9999;
-        double b_boost_lhcb_alt_phi_photon = -9999;
-
-        double m2_miss_reco_1_photon        = -9999;
-        double pt_miss_reco_1_photon        = -9999; 
-        double q2_reco_1_photon             = -9999; 
-        double e_star_reco_1_photon         = -9999;  
-
-        double bs_px_reco_1_photon          = -9999;
-        double bs_py_reco_1_photon          = -9999;
-        double bs_pz_reco_1_photon          = -9999;
-        double bs_pt_reco_1_photon          = -9999;
-        double bs_eta_reco_1_photon         = -9999;
-        double bs_phi_reco_1_photon         = -9999;
-
-        double b_boost_reco_1_photon       = -9999;
-        double b_boost_reco_1_pt_photon    = -9999;
-        double b_boost_reco_1_eta_photon   = -9999;
-        double b_boost_reco_1_phi_photon   = -9999;
-
-        double m2_miss_reco_2_photon        = -9999;
-        double pt_miss_reco_2_photon        = -9999; 
-        double q2_reco_2_photon             = -9999; 
-        double e_star_reco_2_photon         = -9999;  
-
-        double bs_px_reco_2_photon          = -9999;
-        double bs_py_reco_2_photon          = -9999;
-        double bs_pz_reco_2_photon          = -9999;
-        double bs_pt_reco_2_photon          = -9999;
-        double bs_eta_reco_2_photon         = -9999;
-        double bs_phi_reco_2_photon         = -9999;
-
-        double b_boost_reco_2_photon       = -9999;
-        double b_boost_reco_2_pt_photon    = -9999;
-        double b_boost_reco_2_eta_photon   = -9999;
-        double b_boost_reco_2_phi_photon   = -9999;
-
-        double discNegativityPhoton         = -9999;
-        double discIsNegativePhoton         = -9999;
+        double discNegativityPhoton         = discNegativity         ;
+        double discIsNegativePhoton         = discIsNegative         ;
 
         //angle between Mu and W
-        float cosMuWCollPhoton             = -9999;
-        float cosMuWLhcbAltPhoton          = -9999;
-        float cosMuWReco1Photon            = -9999;
-        float cosMuWReco2Photon            = -9999;
+        float cosMuWCollPhoton              = cos(angMuWColl)       ;
+        float cosMuWLhcbAltPhoton           = cos(angMuWLhcbAlt)    ;
+        float cosMuWReco1Photon             = cos(angMuWReco1)      ;
+        float cosMuWReco2Photon             = cos(angMuWReco2)      ;
 
-        float cosPhiDsCollPhoton           = -9999; 
-        float cosPhiDsLhcbAltPhoton        = -9999; 
-        float cosPhiDsReco1Photon          = -9999; 
-        float cosPhiDsReco2Photon          = -9999; 
 
-        float cosPiDsCollPhoton            = -9999; 
-        float cosPiDsLhcbAltPhoton         = -9999; 
-        float cosPiDsReco1Photon           = -9999; 
-        float cosPiDsReco2Photon           = -9999; 
+                                                                      
+        float cosPhiDsCollPhoton            =  cos(angPhiDsColl)       ; 
+        float cosPhiDsLhcbAltPhoton         =  cos(angPhiDsLhcbAlt)    ; 
+        float cosPhiDsReco1Photon           =  cos(angPhiDsReco1)      ; 
+        float cosPhiDsReco2Photon           =  cos(angPhiDsReco2)      ; 
+                                                                      
+        float cosPiDsCollPhoton             = cos(angPiDsColl)       ; 
+        float cosPiDsLhcbAltPhoton          = cos(angPiDsLhcbAlt)    ; 
+        float cosPiDsReco1Photon            = cos(angPiDsReco1)      ; 
+        float cosPiDsReco2Photon            = cos(angPiDsReco2)      ; 
 
         // helicity plane angle
-        float cosPlaneBsCollPhoton         = -9999;
-        float cosPlaneBsLhcbAltPhoton      = -9999;
-        float cosPlaneBsReco1Photon        = -9999;
-        float cosPlaneBsReco2Photon        = -9999;
-
-        float cosPlaneDsCollPhoton         = -9999;
-        float cosPlaneDsLhcbAltPhoton      = -9999;
-        float cosPlaneDsReco1Photon        = -9999;
-        float cosPlaneDsReco2Photon        = -9999;
-
-        float iso03Photon                  = -9999;
-        float iso04Photon                  = -9999;
-        float relIso03Photon               = -9999;
-        float relIso04Photon               = -9999;
-        float relIso03PhotonRefitted       = -9999;
-        float relIso04PhotonRefitted       = -9999;
-
-        float iso03PhotonPv                = -9999;
-        float iso04PhotonPv                = -9999;
-        float relIso03PhotonPv             = -9999;
-        float relIso04PhotonPv             = -9999;
-        float relIso03PhotonRefittedPv     = -9999;
-        float relIso04PhotonRefittedPv     = -9999;
-
-        float iso03PhotonSv                = -9999;
-        float iso04PhotonSv                = -9999;
-        float relIso03PhotonSv             = -9999;
-        float relIso04PhotonSv             = -9999;
-        float relIso03PhotonRefittedSv     = -9999;
-        float relIso04PhotonRefittedSv     = -9999;
-
-        float iso03PhotonTv                = -9999;
-        float iso04PhotonTv                = -9999;
-        float relIso03PhotonTv             = -9999;
-        float relIso04PhotonTv             = -9999;
-        float relIso03PhotonRefittedTv     = -9999;
-        float relIso04PhotonRefittedTv     = -9999;
-
-        float iso03DsPhotonSv              = -9999;
-        float iso04DsPhotonSv              = -9999;
-        float relIso03DsPhotonSv           = -9999;
-        float relIso04DsPhotonSv           = -9999;
-        float relIso03DsPhotonRefittedSv   = -9999;
-        float relIso04DsPhotonRefittedSv   = -9999;
+        float cosPlaneBsCollPhoton          = cos(angPlaneBsColl)    ;
+        float cosPlaneBsLhcbAltPhoton       = cos(angPlaneBsLhcbAlt) ;
+        float cosPlaneBsReco1Photon         = cos(angPlaneBsReco1)   ;
+        float cosPlaneBsReco2Photon         = cos(angPlaneBsReco2)   ;
+                                                                      
+        float cosPlaneDsCollPhoton          = cos(angPlaneDsColl)    ;
+        float cosPlaneDsLhcbAltPhoton       = cos(angPlaneDsLhcbAlt) ;
+        float cosPlaneDsReco1Photon         = cos(angPlaneDsReco1)   ;
+        float cosPlaneDsReco2Photon         = cos(angPlaneDsReco2)   ;
+                                                                            
+        float iso03Photon                   =  iso03                  ;
+        float iso04Photon                   =  iso04                  ;
+        float relIso03Photon                =  relIso03               ;
+        float relIso04Photon                =  relIso04               ;
+        float relIso03PhotonRefitted        =  refittedRelIso03 ;
+        float relIso04PhotonRefitted        =  refittedRelIso04 ;
+                                                                            
+        float iso03PhotonPv                 =  iso03_pv;
+        float iso04PhotonPv                 =  iso04_pv;
+        float relIso03PhotonPv              =  iso03_pv / muPtr->pt()    ;
+        float relIso04PhotonPv              =  iso04_pv / muPtr->pt()    ;
+        float relIso03PhotonRefittedPv      =  iso03_pv / refittedMu.Pt();
+        float relIso04PhotonRefittedPv      =  iso04_pv / refittedMu.Pt(); 
+                                                                            
+        float iso03PhotonSv                 =  iso03_sv;
+        float iso04PhotonSv                 =  iso04_sv;
+        float relIso03PhotonSv              =  iso03_sv / muPtr->pt()    ;
+        float relIso04PhotonSv              =  iso04_sv / muPtr->pt()    ;
+        float relIso03PhotonRefittedSv      =  iso03_sv / refittedMu.Pt();
+        float relIso04PhotonRefittedSv      =  iso04_sv / refittedMu.Pt(); 
+                                               
+        float iso03PhotonTv                 =  iso03_tv;
+        float iso04PhotonTv                 =  iso04_tv;
+        float relIso03PhotonTv              =  iso03_tv / muPtr->pt()    ;
+        float relIso04PhotonTv              =  iso04_tv / muPtr->pt()    ;
+        float relIso03PhotonRefittedTv      =  iso03_tv / refittedMu.Pt();
+        float relIso04PhotonRefittedTv      =  iso04_tv / refittedMu.Pt(); 
+                                                                            
+        float iso03DsPhotonSv               = iso03_ds_sv ;
+        float iso04DsPhotonSv               = iso04_ds_sv ;
+        float relIso03DsPhotonSv            = iso03_ds_sv / phiPi.pt() ;
+        float relIso04DsPhotonSv            = iso04_ds_sv / phiPi.pt() ;
+        float relIso03DsPhotonRefittedSv    = iso03_ds_sv / refittedDs.Pt();
+        float relIso04DsPhotonRefittedSv    = iso04_ds_sv / refittedDs.Pt();
 
         if (foundPhoton){
 

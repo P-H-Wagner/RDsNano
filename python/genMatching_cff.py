@@ -16,21 +16,20 @@ genMatcher = cms.EDProducer(
     bs           = cms.InputTag('BsToDsPhiKKPiMu', 'bs'),
     prunedCand   = cms.InputTag("prunedGenParticles"),
     packedCand   = cms.InputTag("packedGenParticles"),
+    pileup       = cms.InputTag("slimmedAddPileupInfo"),
     hadSelection = cms.string(' &&  '.join([
 'abs(pdgId) != 11',
 'abs(pdgId) != 13',
 'charge != 0',
 'pt > 0.7', 
-'eta > -2.1',
-'eta < 2.1',
+'eta > -2.4',
+'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
-'pt > 0.7', 
-'eta > -2.1',
-'eta < 2.1'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
-minMuPt     = cms.double(7.0),
-maxMuEta    = cms.double(1.5),
+])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+minMuPt     = cms.double(6.0),
+maxMuEta    = cms.double(2.0),
 maxdRHadMuon = cms.double(1.2),       # max dR between hadron and muon
 mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.6),   # difference in dz between muon/pv and had/pv

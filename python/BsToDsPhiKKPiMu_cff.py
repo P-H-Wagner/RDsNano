@@ -28,7 +28,7 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'abs(pdgId) != 11',
 'abs(pdgId) != 13',
 'charge != 0',
-'pt > 1.0', 
+'pt > 0.7', 
 'eta > -2.4',
 'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
@@ -38,16 +38,14 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
-'pt > 0.7', 
-'eta > -2.1',
-'eta < 2.1'])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),     # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds
-maxdzDiffHadMuon = cms.double( 0.5),   # difference in dz between muon/pv and had/pv
+maxdzDiffHadMuon = cms.double( 1.0),       # difference in dz between muon/pv and had/pv
 maxdxyHadPv      = cms.double( 0.6),
-phiMassAllowance = cms.double( 0.015),  # allow 15 MeV when collecting candidates for phi 
-dsMassAllowance  = cms.double( 0.06),   # allow 60 MeV when collecting candidates for ds
+phiMassAllowance = cms.double( 0.02),    # allow 20 MeV when collecting candidates for phi 
+dsMassAllowance  = cms.double( 0.06),    # allow 60 MeV when collecting candidates for ds
 dsStarMassAllowance  = cms.double( 0.1), # allow 100 MeV when collecting candidates for dsstar
 drMatchGen       = cms.double( 0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
 maxBsMass        = cms.double( 8.0 ),  
@@ -56,7 +54,7 @@ piMassSigma      = cms.double( 0.00000018),      # pi mass
 kMass            = cms.double( 0.493677),         # kaon mass
 kMassSigma       = cms.double( 0.000016),         # kaon mass
 phiMass          = cms.double( 1.019461),       # phi mass
-constrainPhiMass = cms.bool(True),    # constrain phi mass in the vtx fit?
+constrainPhiMass = cms.bool(False),    # constrain phi mass in the vtx fit?
 minPhiVtxProb    = cms.double( 0.01),
 dsMass           = cms.double( 1.96834),         # ds mass
 constrainDsMass  = cms.bool(False),     # constrain Ds mass in the vtx fit?

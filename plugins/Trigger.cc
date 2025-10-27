@@ -99,6 +99,8 @@ private:
     const string hlt_9_6_p4_;
  
     const double maxdR_; 
+
+
 };
 
 //constructor definition (outsde class)
@@ -159,6 +161,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   edm::Handle<edm::TriggerResults> triggerBits;
   iEvent.getByToken(triggerBits_, triggerBits);
+
 
   // for every event, get the name list of the triggers
   const edm::TriggerNames &names = iEvent.triggerNames(*triggerBits);
@@ -236,6 +239,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //only continue when we the event passes one of the triggers
   if (pass_7_4 || pass_9_6 ) {
 
+    //std::cout << "passed :) " << muons->size() << std::endl;
     
     // get the prescale (if one part is on, all should be, but leet's be on the safe side)
     int prescale_7_4_p0 = triggerPrescales->getPrescaleForIndex(index_7_4_p0);
@@ -372,7 +376,19 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         trgMatchedMuon.addUserInt("filter_mu9"         ,  filterLabelMu9);
 
         //std::cout << "found trg obj!" << std::endl; 
+        //if (!beamSpotHandle.isValid()) continue;
+        //const reco::BeamSpot& beamSpot = *beamSpotHandle;
+        //double dxyErr = muon.bestTrack()->dxyError();
+        //double ipSig;
+        //if (dxyErr > 0) {
+        //  ipSig = std::abs(muon.bestTrack()->dxy(beamSpot.position()) / dxyErr);
+        //  std::cout << "ip sig is: " << ipSig << std::endl;
+        //} else {
+        //  ipSig = 0;
+        //  std::cout << "dxyError zero or negative" << std::endl;
+        //}
 
+        //std::cout << "it has impact parameter: " << ipSig << std::endl;
         counter++;
         trgMuons->emplace_back(trgMatchedMuon); 
   

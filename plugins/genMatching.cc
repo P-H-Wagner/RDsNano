@@ -211,6 +211,7 @@ genMatching::genMatching(const edm::ParameterSet& iConfig):
 // this starts the event loop
 void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSetup &iSetup) const {
 
+  //std::cout <<  " I AM HERE!!!" << std::endl; 
   //input
   edm::Handle<reco::VertexCollection> primaryVtx;
   iEvent.getByToken(primaryVtx_,primaryVtx);
@@ -451,22 +452,29 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                auto bsFromDs = getAncestor(dsFromPhi,bMotherId);
                auto bsFromMu = getAncestor(muReco,   bMotherId);
 
-               //std::cout << "Bs from Ds has daughters" << std::endl;
+               // Remark: the bsFromMu is allowed to be a nullptr, if f.e. the muon
+               // is not coming from the same b-mom ! We only need to require that the ds is coming
+               // from a B mom. 
+               
+              
+               if (bsFromDs == nullptr)  continue; 
+ 
                //printDaughters(bsFromDs); //-> for debugging
                //std::cout << "Bs from Mu has daughters" << std::endl;
-               //printDaughters(bsFromMu); //-> for debugging
 
-               if( (bsFromDs != bsFromMu) || (bsFromDs == nullptr) || (bsFromMu == nullptr)) continue; 
-   
-               //std::cout << "found a common b mom!" << std::endl;
+ 
+               int sameMother = 0;
+               if (bsFromDs == bsFromMu) sameMother = 1;
+               if (sameMother == 0 ) std::cout << " --> not the same mom!!" << std::endl;
+ 
+               //std::cout << "found a b mom!" << std::endl;
                nFoundB++;
  
-               //lastCopy = bsFromMu ->isLastCopy();
-               //std::cout << "this bs is last copy?" << lastCopy << std::endl;
               
-               if (bsFromMu->mass() > maxBsMass_) continue;
+               if (bsFromDs->mass() > maxBsMass_) continue;
                nBMassCut++;
 
+               //std::cout << "applied mass criterion " << std::endl;
 
                // CHECK FSR 
                //std::cout << " ---- CHECK FSR FROM MU ----" << std::endl;
@@ -474,8 +482,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //std::cout << " ---------------------------" << std::endl;
 
 
+               //std::cout << "checked fsr" << std::endl;
+
                //remove oscillations
-               auto bsFromMuWOOsc = removeOscillations(bsFromMu);
+               auto bsFromDsWOOsc = removeOscillations(bsFromDs);
+
+               //std::cout << "removed osc" << std::endl;
 
                nGenMatches++;
                genMatchSuccess = 1;
@@ -503,8 +515,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                genPhiTlv.SetXYZM( phiFromK1->px(),     phiFromK1->py(),     phiFromK1->pz(),     phiMass_);
                genDsTlv.SetXYZM(  dsFromPi->px(),      dsFromPi->py(),      dsFromPi->pz(),      dsMass_);
-               //genBsTlv.SetXYZM(  bsFromMuWOOsc->px(), bsFromMuWOOsc->py(), bsFromMuWOOsc->pz(), bsMass_); //changed
-               genBsTlv.SetXYZM(  bsFromMu->px(), bsFromMu->py(), bsFromMu->pz(), bsMass_); //changed
+               //genBsTlv.SetXYZM(  bsFromDsWOOsc->px(), bsFromDsWOOsc->py(), bsFromDsWOOsc->pz(), bsMass_); //changed
+               genBsTlv.SetXYZM(  bsFromDs->px(), bsFromDs->py(), bsFromDs->pz(), bsMass_); //changed
 
                genMissTlv = genBsTlv - (genDsTlv + genMuTlv); 
                genQTlv    = genBsTlv - (genDsTlv); 
@@ -522,9 +534,9 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("q2_gen",q2_gen);
 
                //vertices
-               float pv_x_gen = bsFromMuWOOsc->vx();//This is the bs production vertex!
-               float pv_y_gen = bsFromMuWOOsc->vy();
-               float pv_z_gen = bsFromMuWOOsc->vz();
+               float pv_x_gen = bsFromDsWOOsc->vx();//This is the bs production vertex!
+               float pv_y_gen = bsFromDsWOOsc->vy();
+               float pv_z_gen = bsFromDsWOOsc->vz();
 
                // Do a cross check on gen: Is there another primary vtx in the primary vertex collection which
                // is closer to the gen truth?
@@ -583,7 +595,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //std::cout << "we have n pilue up: " << numTrueInts << std::endl;
 
-               //printDaughters(bsFromMu); //-> for debugging
 
                gen.addUserFloat("mu_gen_px"      ,muPtrGen->px());
                gen.addUserFloat("mu_gen_py"      ,muPtrGen->py());
@@ -654,13 +665,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("ds_gen_charge" ,dsFromPi->charge());
                gen.addUserInt(  "ds_gen_pdgid"  ,dsFromPi->pdgId());
 
-               gen.addUserFloat("bs_gen_px"     ,bsFromMu->px());
-               gen.addUserFloat("bs_gen_py"     ,bsFromMu->py());
-               gen.addUserFloat("bs_gen_pz"     ,bsFromMu->pz());
-               gen.addUserFloat("bs_gen_pt"     ,bsFromMu->pt());
-               gen.addUserFloat("bs_gen_eta"    ,bsFromMu->eta());
-               gen.addUserFloat("bs_gen_phi"    ,bsFromMu->phi());
-               gen.addUserFloat("bs_gen_m"      ,bsFromMu->mass());
+               gen.addUserFloat("bs_gen_px"     ,bsFromDs->px());
+               gen.addUserFloat("bs_gen_py"     ,bsFromDs->py());
+               gen.addUserFloat("bs_gen_pz"     ,bsFromDs->pz());
+               gen.addUserFloat("bs_gen_pt"     ,bsFromDs->pt());
+               gen.addUserFloat("bs_gen_eta"    ,bsFromDs->eta());
+               gen.addUserFloat("bs_gen_phi"    ,bsFromDs->phi());
+               gen.addUserFloat("bs_gen_m"      ,bsFromDs->mass());
 
                gen.addUserFloat("pv_x_gen"      ,pv_x_gen); //This is the bs production vertex!
                gen.addUserFloat("pv_y_gen"      ,pv_y_gen);
@@ -670,8 +681,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("scnd_pv_z_gen"      ,scnd_pv_z_gen);
                gen.addUserInt("scnd_pv_idx_gen"      ,goldenIdxGen);
 
-               gen.addUserFloat("bs_gen_charge" ,bsFromMu->charge());
-               gen.addUserInt(  "bs_gen_pdgid"  ,bsFromMu->pdgId());
+               gen.addUserFloat("bs_gen_charge" ,bsFromDs->charge());
+               gen.addUserInt(  "bs_gen_pdgid"  ,bsFromDs->pdgId());
                gen.addUserFloat("b_boost_gen"   ,genBsTlv.BoostVector().Mag());
                gen.addUserFloat("b_boost_gen_pt"   ,genBsTlv.BoostVector().Pt());
                gen.addUserFloat("b_boost_gen_eta"   ,genBsTlv.BoostVector().Eta());
@@ -685,10 +696,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserInt( "numTrueInts",numTrueInts );
                gen.addUserInt( "numPUInts"  ,numPUInts   );
 
+               gen.addUserInt( "same_mother", sameMother);
+
                ///////////////////////////// 
                // now find the channel ID //
                /////////////////////////////
   
+               //std::cout << "arrived at gen matching " << std::endl;
                bId = bMotherId;
   
                // Step1: the b Mother fixes the 10s
@@ -701,11 +715,12 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                }
   
                //bool isNotDoubleCharm = false;
-               //auto photonPtr = printDirectDaughters(bsFromMu, false);
+               //auto photonPtr = printDirectDaughters(bsFromDs, false);
   
                //std::cout << "candidate nr: " << nRecoCandidates << std::endl;
                int dsID = getDsID(piPtrGen); // get charmed strange ID
                //std::cout << "ds Id is: " << dsID << std::endl;
+               // if no D found, this is zero
                int dID  = getSecondCharmID(muPtrGen); // get charmed ID
                //std::cout << "d Id is: " << dID << std::endl;
                bool isTau = isAncestor(muPtrGen, 15);
@@ -721,13 +736,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                int checkSignal = -1;
                int checkKNuMu  = -1;
   
-               if (abs(bMotherId) == 531) checkSignal = isSignal(bsFromMu);
-               if (abs(bMotherId) == 521) checkKNuMu  = isKNuMu(bsFromMu);
+               if ((abs(bMotherId) == 531) and (sameMother == 1)) checkSignal = isSignal(bsFromDs);
+               if ((abs(bMotherId) == 521) and (sameMother == 1)) checkKNuMu  = isKNuMu(bsFromDs);
   
-               if (checkSignal==-1){
-                 //std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
-                 //printDaughters(bsFromMu);
-               }
+               //if (checkSignal==-1){
+               //std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
+               //printDaughters(bsFromDs);
+               //}
   
                // Signal candidates enter here
                if (checkSignal != -1)    sigId = checkSignal;
@@ -764,7 +779,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //if (photonPtr != nullptr) photonEnergy =photonPtr->energy();
                //else photonEnergy = -9999;
   
-  
+   
+               //std::cout << "found signal id:" << sigId << std::endl;
                /////////////////////////////////////////////
 
                ////////////////////////////////////
@@ -798,7 +814,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float gen_dsPhotonMu_m;
  
 
-               if (sigId == 0){
+               if (sigId == 0 and sameMother == 1){
   
                  //  Bs -> Ds + mu + nu 
                  tau_gen_pt       = -9999;
@@ -826,7 +842,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                }
   
   
-               else if (sigId == 1){
+               else if (sigId == 1 and sameMother == 1){
   
                  //  Bs -> Ds + tau + nu 
   
@@ -856,7 +872,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                }
   
-               else if (sigId == 10){
+               else if (sigId == 10 and sameMother == 1){
   
                  //  Bs -> Ds* + mu + nu 
                  tau_gen_pt       = -9999;
@@ -868,7 +884,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
                  auto gFromDs      = getDaughter(dsStarFromDs, 22); 
-                 auto nuFromBs     = getDaughter(bsFromMu, 14); //look for the muon neutrino 
+                 auto nuFromBs     = getDaughter(bsFromDs, 14); //look for the muon neutrino 
                  
 
                  //std::cout << " ---- CHECK FSR FROM DS * ----" << std::endl;
@@ -905,10 +921,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  //          << "mu_gen_m="     <<  muPtrGen->mass()       << " " << std::endl;
 
 
-                 //std::cout << "bs_gen_pt="    << bsFromMu->pt()     << " "
-                 //          << "bs_gen_eta="   << bsFromMu->eta()    << " "
-                 //          << "bs_gen_phi="   << bsFromMu->phi()    << " "
-                 //          << "bs_gen_m="     << bsFromMu->mass()   << " " << std::endl;
+                 //std::cout << "bs_gen_pt="    << bsFromDs->pt()     << " "
+                 //          << "bs_gen_eta="   << bsFromDs->eta()    << " "
+                 //          << "bs_gen_phi="   << bsFromDs->phi()    << " "
+                 //          << "bs_gen_m="     << bsFromDs->mass()   << " " << std::endl;
 
 
 
@@ -940,7 +956,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                }
   
-               else if (sigId == 11){
+               else if (sigId == 11 and sameMother == 1){
   
                  //  Bs -> Ds* + tau + nu 
   
@@ -956,7 +972,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  // get the Ds* (we know its there)
                  auto dsStarFromDs = getAncestor(dsFromPi,433);
                  auto gFromDs      = getDaughter(dsStarFromDs, 22);
-                 auto nuFromBs     = getDaughter(bsFromMu, 16); //look for the muon neutrino 
+                 auto nuFromBs     = getDaughter(bsFromDs, 16); //look for the muon neutrino 
 
                  double nu_gen_pt    = nuFromBs->pt();
                  double nu_gen_eta   = nuFromBs->eta();
@@ -990,10 +1006,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  //          << "tau_gen_m="     <<  tau_gen_m          << " " << std::endl;
 
 
-                 //std::cout << "bs_gen_pt="    << bsFromMu->pt()     << " "
-                 //          << "bs_gen_eta="   << bsFromMu->eta()    << " "
-                 //          << "bs_gen_phi="   << bsFromMu->phi()    << " "
-                 //          << "bs_gen_m="     << bsFromMu->mass()   << " " << std::endl;
+                 //std::cout << "bs_gen_pt="    << bsFromDs->pt()     << " "
+                 //          << "bs_gen_eta="   << bsFromDs->eta()    << " "
+                 //          << "bs_gen_phi="   << bsFromDs->phi()    << " "
+                 //          << "bs_gen_m="     << bsFromDs->mass()   << " " << std::endl;
 
 
 
@@ -1051,6 +1067,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                }
   
   
+               //std::cout << "survived the hammer tagging" << std::endl;
+
                gen.addUserFloat("tau_gen_pt",         tau_gen_pt);
                gen.addUserFloat("tau_gen_eta",        tau_gen_eta);
                gen.addUserFloat("tau_gen_phi",        tau_gen_phi);
@@ -1143,6 +1161,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //if we reached this point we have found our gen match and we can stop the loop
 
+               //std::cout << "survived the angle calc." << std::endl;
                goto end;
                //////////////////////////////////////////////////
 
@@ -1336,6 +1355,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("gen_dsPhoton_m", std::nan("") );
             gen.addUserFloat("gen_dsPhotonMu_m", std::nan("") );
  
+            gen.addUserInt("same_mother",   -9999);
   
           }
   

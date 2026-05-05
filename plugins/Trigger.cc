@@ -85,65 +85,27 @@ private:
     //the maximal dR you allow between pat muon and trigger muon candidate
     const string trgFilterLabelMu7_4_ ;
     const string trgFilterLabelMu8_3_ ;
+    const string trgFilterLabelMu8p5_3p5_ ;
     const string trgFilterLabelMu8_5_ ;
     const string trgFilterLabelMu8_6_ ;
     const string trgFilterLabelMu9_4_ ;
     const string trgFilterLabelMu9_5_ ;
     const string trgFilterLabelMu9_6_ ;
+    const string trgFilterLabelMu10p5_3p5_ ;
     const string trgFilterLabelMu12_6_;
 
-    const string hlt_7_4_p0_;
-    const string hlt_7_4_p1_;
-    const string hlt_7_4_p2_;
-    const string hlt_7_4_p3_;
-    const string hlt_7_4_p4_;
-
-    const string hlt_8_3_p0_;
-    const string hlt_8_3_p1_;
-    const string hlt_8_3_p2_;
-    const string hlt_8_3_p3_;
-    const string hlt_8_3_p4_;
-
-    const string hlt_8_5_p0_;
-    const string hlt_8_5_p1_;
-    const string hlt_8_5_p2_;
-    const string hlt_8_5_p3_;
-    const string hlt_8_5_p4_;
-
-    const string hlt_8_6_p0_;
-    const string hlt_8_6_p1_;
-    const string hlt_8_6_p2_;
-    const string hlt_8_6_p3_;
-    const string hlt_8_6_p4_;
-
-    const string hlt_9_4_p0_;
-    const string hlt_9_4_p1_;
-    const string hlt_9_4_p2_;
-    const string hlt_9_4_p3_;
-    const string hlt_9_4_p4_;
-
-    const string hlt_9_5_p0_;
-    const string hlt_9_5_p1_;
-    const string hlt_9_5_p2_;
-    const string hlt_9_5_p3_;
-    const string hlt_9_5_p4_;
-
-    const string hlt_9_6_p0_;
-    const string hlt_9_6_p1_;
-    const string hlt_9_6_p2_;
-    const string hlt_9_6_p3_;
-    const string hlt_9_6_p4_;
-
-    const string hlt_12_6_p0_;
-    const string hlt_12_6_p1_;
-    const string hlt_12_6_p2_;
-    const string hlt_12_6_p3_;
-    const string hlt_12_6_p4_;
-
-
+    const string hlt_7_4_ ;
+    const string hlt_8_3_ ;
+    const string hlt_8p5_3p5_ ;
+    const string hlt_8_5_ ;
+    const string hlt_8_6_ ;
+    const string hlt_9_4_ ;
+    const string hlt_9_5_ ;
+    const string hlt_9_6_ ;
+    const string hlt_10p5_3p5_ ;
+    const string hlt_12_6_;
  
     const double maxdR_; 
-
 
 };
 
@@ -170,60 +132,25 @@ Trigger::Trigger(const edm::ParameterSet& iConfig):
   //parameters
   trgFilterLabelMu7_4_ (iConfig.getParameter<string>                    ("trgFilterLabelMu7_4" )),
   trgFilterLabelMu8_3_ (iConfig.getParameter<string>                    ("trgFilterLabelMu8_3" )),
+  trgFilterLabelMu8p5_3p5_ (iConfig.getParameter<string>                ("trgFilterLabelMu8p5_3p5" )),
   trgFilterLabelMu8_5_ (iConfig.getParameter<string>                    ("trgFilterLabelMu8_5" )),
   trgFilterLabelMu8_6_ (iConfig.getParameter<string>                    ("trgFilterLabelMu8_6" )),
   trgFilterLabelMu9_4_ (iConfig.getParameter<string>                    ("trgFilterLabelMu9_4" )),
   trgFilterLabelMu9_5_ (iConfig.getParameter<string>                    ("trgFilterLabelMu9_5" )),
   trgFilterLabelMu9_6_ (iConfig.getParameter<string>                    ("trgFilterLabelMu9_6" )),
+  trgFilterLabelMu10p5_3p5_ (iConfig.getParameter<string>               ("trgFilterLabelMu10p5_3p5" )),
   trgFilterLabelMu12_6_(iConfig.getParameter<string>                    ("trgFilterLabelMu12_6")),
 
-  hlt_7_4_p0_(iConfig.getParameter<string>                           ("hlt_7_4_p0")),
-  hlt_7_4_p1_(iConfig.getParameter<string>                           ("hlt_7_4_p1")),
-  hlt_7_4_p2_(iConfig.getParameter<string>                           ("hlt_7_4_p2")),
-  hlt_7_4_p3_(iConfig.getParameter<string>                           ("hlt_7_4_p3")),
-  hlt_7_4_p4_(iConfig.getParameter<string>                           ("hlt_7_4_p4")),
-
-  hlt_8_3_p0_(iConfig.getParameter<string>                           ("hlt_8_3_p0")),
-  hlt_8_3_p1_(iConfig.getParameter<string>                           ("hlt_8_3_p1")),
-  hlt_8_3_p2_(iConfig.getParameter<string>                           ("hlt_8_3_p2")),
-  hlt_8_3_p3_(iConfig.getParameter<string>                           ("hlt_8_3_p3")),
-  hlt_8_3_p4_(iConfig.getParameter<string>                           ("hlt_8_3_p4")),
-
-  hlt_8_5_p0_(iConfig.getParameter<string>                           ("hlt_8_5_p0")),
-  hlt_8_5_p1_(iConfig.getParameter<string>                           ("hlt_8_5_p1")),
-  hlt_8_5_p2_(iConfig.getParameter<string>                           ("hlt_8_5_p2")),
-  hlt_8_5_p3_(iConfig.getParameter<string>                           ("hlt_8_5_p3")),
-  hlt_8_5_p4_(iConfig.getParameter<string>                           ("hlt_8_5_p4")),
-
-  hlt_8_6_p0_(iConfig.getParameter<string>                           ("hlt_8_6_p0")),
-  hlt_8_6_p1_(iConfig.getParameter<string>                           ("hlt_8_6_p1")),
-  hlt_8_6_p2_(iConfig.getParameter<string>                           ("hlt_8_6_p2")),
-  hlt_8_6_p3_(iConfig.getParameter<string>                           ("hlt_8_6_p3")),
-  hlt_8_6_p4_(iConfig.getParameter<string>                           ("hlt_8_6_p4")),
-
-  hlt_9_4_p0_(iConfig.getParameter<string>                           ("hlt_9_4_p0")),
-  hlt_9_4_p1_(iConfig.getParameter<string>                           ("hlt_9_4_p1")),
-  hlt_9_4_p2_(iConfig.getParameter<string>                           ("hlt_9_4_p2")),
-  hlt_9_4_p3_(iConfig.getParameter<string>                           ("hlt_9_4_p3")),
-  hlt_9_4_p4_(iConfig.getParameter<string>                           ("hlt_9_4_p4")),
-
-  hlt_9_5_p0_(iConfig.getParameter<string>                           ("hlt_9_5_p0")),
-  hlt_9_5_p1_(iConfig.getParameter<string>                           ("hlt_9_5_p1")),
-  hlt_9_5_p2_(iConfig.getParameter<string>                           ("hlt_9_5_p2")),
-  hlt_9_5_p3_(iConfig.getParameter<string>                           ("hlt_9_5_p3")),
-  hlt_9_5_p4_(iConfig.getParameter<string>                           ("hlt_9_5_p4")),
-
-  hlt_9_6_p0_(iConfig.getParameter<string>                           ("hlt_9_6_p0")),
-  hlt_9_6_p1_(iConfig.getParameter<string>                           ("hlt_9_6_p1")),
-  hlt_9_6_p2_(iConfig.getParameter<string>                           ("hlt_9_6_p2")),
-  hlt_9_6_p3_(iConfig.getParameter<string>                           ("hlt_9_6_p3")),
-  hlt_9_6_p4_(iConfig.getParameter<string>                           ("hlt_9_6_p4")),
-
-  hlt_12_6_p0_(iConfig.getParameter<string>                          ("hlt_12_6_p0")),
-  hlt_12_6_p1_(iConfig.getParameter<string>                          ("hlt_12_6_p1")),
-  hlt_12_6_p2_(iConfig.getParameter<string>                          ("hlt_12_6_p2")),
-  hlt_12_6_p3_(iConfig.getParameter<string>                          ("hlt_12_6_p3")),
-  hlt_12_6_p4_(iConfig.getParameter<string>                          ("hlt_12_6_p4")),
+  hlt_7_4_     (iConfig.getParameter<string>                           ("hlt_7_4")),
+  hlt_8_3_     (iConfig.getParameter<string>                           ("hlt_8_3")),
+  hlt_8p5_3p5_ (iConfig.getParameter<string>                           ("hlt_8p5_3p5")),
+  hlt_8_5_     (iConfig.getParameter<string>                           ("hlt_8_5")),
+  hlt_8_6_     (iConfig.getParameter<string>                           ("hlt_8_6")),
+  hlt_9_4_     (iConfig.getParameter<string>                           ("hlt_9_4")),
+  hlt_9_5_     (iConfig.getParameter<string>                           ("hlt_9_5")),
+  hlt_9_6_     (iConfig.getParameter<string>                           ("hlt_9_6")),
+  hlt_10p5_3p5_(iConfig.getParameter<string>                           ("hlt_10p5_3p5")),
+  hlt_12_6_    (iConfig.getParameter<string>                           ("hlt_12_6")),
 
   maxdR_(iConfig.getParameter<double>                                ("maxdR_matching"))
 
@@ -252,10 +179,190 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // for every event, get the name list of the triggers
   const edm::TriggerNames &names = iEvent.triggerNames(*triggerBits);
 
+      
+  unsigned int trgBitsMax = triggerBits->size();
+
+  unsigned int index_7_4       = trgBitsMax; 
+  unsigned int index_8_3       = trgBitsMax; 
+  unsigned int index_8p5_3p5   = trgBitsMax; 
+  unsigned int index_8_5       = trgBitsMax; 
+  unsigned int index_8_6       = trgBitsMax; 
+  unsigned int index_9_4       = trgBitsMax; 
+  unsigned int index_9_5       = trgBitsMax; 
+  unsigned int index_9_6       = trgBitsMax; 
+  unsigned int index_10p5_3p5  = trgBitsMax; 
+  unsigned int index_12_6      = trgBitsMax; 
+
+  bool pass_7_4         = false; 
+  bool pass_8_3         = false; 
+  bool pass_8p5_3p5     = false; 
+  bool pass_8_5         = false; 
+  bool pass_8_6         = false; 
+  bool pass_9_4         = false; 
+  bool pass_9_5         = false; 
+  bool pass_9_6         = false; 
+  bool pass_10p5_3p5    = false; 
+  bool pass_12_6        = false; 
+
+  int prescale_7_4      = 0;
+  int prescale_8_3      = 0;
+  int prescale_8p5_3p5  = 0;
+  int prescale_8_5      = 0;
+  int prescale_8_6      = 0;
+  int prescale_9_4      = 0;
+  int prescale_9_5      = 0;
+  int prescale_9_6      = 0;
+  int prescale_10p5_3p5 = 0;
+  int prescale_12_6     = 0;
+
+
   ///////////// Debugging:
-  std::cout << "Available trigger names:" << std::endl;
   for (unsigned int i = 0; i < names.size(); ++i) {
-    std::cout << names.triggerName(i) << std::endl;
+
+    std::string trgName = names.triggerName(i);
+
+    if (trgName.find(hlt_7_4_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_7_4 = names.triggerIndex(trgName);
+
+      if ((index_7_4 < trgBitsMax) && (triggerBits->accept(index_7_4))){
+        //std::cout << "index is: "  << index_7_4 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_7_4) << std::endl;
+        pass_7_4 = true;
+        prescale_7_4  = triggerPrescales->getPrescaleForIndex (index_7_4 );
+        prescale_7_4 *= 5;
+      }
+
+    }
+    if (trgName.find(hlt_8_3_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_8_3 = names.triggerIndex(trgName);
+      if ((index_8_3 < trgBitsMax) && (triggerBits->accept(index_8_3))){
+        //std::cout << "index is: "  << index_8_3 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_8_3) << std::endl;
+        pass_8_3      = true;
+        prescale_8_3  = triggerPrescales->getPrescaleForIndex (index_8_3 );
+        prescale_8_3 *= 5;
+      }
+
+    }
+    if (trgName.find(hlt_8_5_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_8_5 = names.triggerIndex(trgName);
+      if ((index_8_5 < trgBitsMax) && (triggerBits->accept(index_8_5))){
+        //std::cout << "index is: "  << index_8_5 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_8_5) << std::endl;
+        pass_8_5 = true;
+        prescale_8_5  = triggerPrescales->getPrescaleForIndex (index_8_5 );
+        prescale_8_5 *= 5;
+      }
+
+    }
+    if (trgName.find(hlt_8_6_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_8_6 = names.triggerIndex(trgName);
+      if ((index_8_6 < trgBitsMax) && (triggerBits->accept(index_8_6))){
+        //std::cout << "index is: "  << index_8_6 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_8_6) << std::endl;
+        pass_8_6 = true;
+        prescale_8_6  = triggerPrescales->getPrescaleForIndex (index_8_6 );
+        prescale_8_6 *= 5;
+      }
+
+    }
+
+
+    if (trgName.find(hlt_8p5_3p5_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_8p5_3p5 = names.triggerIndex(trgName);
+      if ((index_8p5_3p5 < trgBitsMax) && (triggerBits->accept(index_8p5_3p5))){
+        //std::cout << "index is: "  << index_8p5_3p5 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_8p5_3p5) << std::endl;
+        pass_8p5_3p5 = true;
+        prescale_8p5_3p5  = triggerPrescales->getPrescaleForIndex (index_8p5_3p5 );
+        prescale_8p5_3p5 *= 5;
+      }
+
+    }
+
+
+    if (trgName.find(hlt_9_4_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_9_4 = names.triggerIndex(trgName);
+      if ((index_9_4 < trgBitsMax) && (triggerBits->accept(index_9_4))){
+        //std::cout << "index is: "  << index_9_4 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_9_4) << std::endl;
+        pass_9_4 = true;
+        prescale_9_4  = triggerPrescales->getPrescaleForIndex (index_9_4 );
+        prescale_9_4 *= 5;
+      }
+
+    }
+    if (trgName.find(hlt_9_5_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_9_5 = names.triggerIndex(trgName);
+      if ((index_9_5 < trgBitsMax) && (triggerBits->accept(index_9_5))){
+        //std::cout << "index is: "  << index_9_5 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_9_5) << std::endl;
+        pass_9_5 = true;
+        prescale_9_5  = triggerPrescales->getPrescaleForIndex (index_9_5 );
+        prescale_9_5 *= 5;
+      }
+
+    }
+    if (trgName.find(hlt_9_6_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_9_6 = names.triggerIndex(trgName);
+      if ((index_9_6 < trgBitsMax) && (triggerBits->accept(index_9_6))){
+        //std::cout << "index is: "  << index_9_6 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_9_6) << std::endl;
+        pass_9_6 = true;
+        prescale_9_6  = triggerPrescales->getPrescaleForIndex (index_9_6 );
+        prescale_9_6 *= 5;
+      }
+
+    }
+
+    if (trgName.find(hlt_10p5_3p5_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_10p5_3p5 = names.triggerIndex(trgName);
+      if ((index_10p5_3p5 < trgBitsMax) && (triggerBits->accept(index_10p5_3p5))){
+        //std::cout << "index is: "  << index_10p5_3p5 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_10p5_3p5) << std::endl;
+        pass_10p5_3p5 = true;
+        prescale_10p5_3p5  = triggerPrescales->getPrescaleForIndex (index_10p5_3p5 );
+        prescale_10p5_3p5 *= 5;
+      }
+
+    }
+
+
+
+
+    if (trgName.find(hlt_12_6_) != std::string::npos){
+
+      //std::cout << trgName << std::endl;
+      index_12_6 = names.triggerIndex(trgName);
+      if ((index_12_6 < trgBitsMax) && (triggerBits->accept(index_12_6))){
+        //std::cout << "index is: "  << index_12_6 << std::endl;
+        //std::cout << "accepted ? " << triggerBits->accept(index_12_6) << std::endl;
+        pass_12_6 = true;
+        prescale_12_6  = triggerPrescales->getPrescaleForIndex (index_12_6 );
+        prescale_12_6 *= 5;
+      }
+
+    }
+
+
   }
   /////////////
 
@@ -272,192 +379,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // to save
   std::unique_ptr<pat::MuonCollection> trgMuons(new pat::MuonCollection);
  
-  // Getting the indices of the HLT paths
-  unsigned int index_7_4_p0      = names.triggerIndex(hlt_7_4_p0_); 
-  unsigned int index_7_4_p1      = names.triggerIndex(hlt_7_4_p1_); 
-  unsigned int index_7_4_p2      = names.triggerIndex(hlt_7_4_p2_); 
-  unsigned int index_7_4_p3      = names.triggerIndex(hlt_7_4_p3_); 
-  unsigned int index_7_4_p4      = names.triggerIndex(hlt_7_4_p4_); 
-
-  unsigned int index_8_3_p0      = names.triggerIndex(hlt_8_3_p0_); 
-  unsigned int index_8_3_p1      = names.triggerIndex(hlt_8_3_p1_); 
-  unsigned int index_8_3_p2      = names.triggerIndex(hlt_8_3_p2_); 
-  unsigned int index_8_3_p3      = names.triggerIndex(hlt_8_3_p3_); 
-  unsigned int index_8_3_p4      = names.triggerIndex(hlt_8_3_p4_); 
-
-  unsigned int index_8_5_p0      = names.triggerIndex(hlt_8_5_p0_); 
-  unsigned int index_8_5_p1      = names.triggerIndex(hlt_8_5_p1_); 
-  unsigned int index_8_5_p2      = names.triggerIndex(hlt_8_5_p2_); 
-  unsigned int index_8_5_p3      = names.triggerIndex(hlt_8_5_p3_); 
-  unsigned int index_8_5_p4      = names.triggerIndex(hlt_8_5_p4_); 
-
-  unsigned int index_8_6_p0      = names.triggerIndex(hlt_8_6_p0_); 
-  unsigned int index_8_6_p1      = names.triggerIndex(hlt_8_6_p1_); 
-  unsigned int index_8_6_p2      = names.triggerIndex(hlt_8_6_p2_); 
-  unsigned int index_8_6_p3      = names.triggerIndex(hlt_8_6_p3_); 
-  unsigned int index_8_6_p4      = names.triggerIndex(hlt_8_6_p4_); 
-
-  unsigned int index_9_4_p0      = names.triggerIndex(hlt_9_4_p0_); 
-  unsigned int index_9_4_p1      = names.triggerIndex(hlt_9_4_p1_); 
-  unsigned int index_9_4_p2      = names.triggerIndex(hlt_9_4_p2_); 
-  unsigned int index_9_4_p3      = names.triggerIndex(hlt_9_4_p3_); 
-  unsigned int index_9_4_p4      = names.triggerIndex(hlt_9_4_p4_); 
-
-  unsigned int index_9_5_p0      = names.triggerIndex(hlt_9_5_p0_); 
-  unsigned int index_9_5_p1      = names.triggerIndex(hlt_9_5_p1_); 
-  unsigned int index_9_5_p2      = names.triggerIndex(hlt_9_5_p2_); 
-  unsigned int index_9_5_p3      = names.triggerIndex(hlt_9_5_p3_); 
-  unsigned int index_9_5_p4      = names.triggerIndex(hlt_9_5_p4_); 
-
-  unsigned int index_9_6_p0      = names.triggerIndex(hlt_9_6_p0_); 
-  unsigned int index_9_6_p1      = names.triggerIndex(hlt_9_6_p1_); 
-  unsigned int index_9_6_p2      = names.triggerIndex(hlt_9_6_p2_); 
-  unsigned int index_9_6_p3      = names.triggerIndex(hlt_9_6_p3_); 
-  unsigned int index_9_6_p4      = names.triggerIndex(hlt_9_6_p4_); 
-
-  unsigned int index_12_6_p0      = names.triggerIndex(hlt_12_6_p0_); 
-  unsigned int index_12_6_p1      = names.triggerIndex(hlt_12_6_p1_); 
-  unsigned int index_12_6_p2      = names.triggerIndex(hlt_12_6_p2_); 
-  unsigned int index_12_6_p3      = names.triggerIndex(hlt_12_6_p3_); 
-  unsigned int index_12_6_p4      = names.triggerIndex(hlt_12_6_p4_); 
-
-  
-  std::cout << "trigger bits size: " << triggerBits->size() << std::endl;
-  std::cout << "Mu 7: " << std::endl;
-  std::cout <<"0 index  "<< index_7_4_p0 << std::endl; // << " and accepted? " <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
-  std::cout <<"1 index  "<< index_7_4_p1 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
-  std::cout <<"2 index  "<< index_7_4_p2 << std::endl; // << " and accepted? " <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
-  std::cout <<"3 index  "<< index_7_4_p3 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
-  std::cout <<"4 index  "<< index_7_4_p4 << std::endl; // << " and accepted? " <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
-  std::cout << "Mu 9 IP4 : " << std::endl;
-  std::cout <<"0 index  "<< index_9_4_p0 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_4_p0)) << std::endl;
-  std::cout <<"1 index  "<< index_9_4_p1 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_4_p1)) << std::endl;
-  std::cout <<"2 index  "<< index_9_4_p2 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_4_p2)) << std::endl;
-  std::cout <<"3 index  "<< index_9_4_p3 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_4_p3)) << std::endl;
-  std::cout <<"4 index  "<< index_9_4_p4 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_4_p4)) << std::endl;
-  std::cout << "Mu 9 IP5 : " << std::endl;
-  std::cout <<"0 index  "<< index_9_5_p0 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_5_p0)) << std::endl;
-  std::cout <<"1 index  "<< index_9_5_p1 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_5_p1)) << std::endl;
-  std::cout <<"2 index  "<< index_9_5_p2 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_5_p2)) << std::endl;
-  std::cout <<"3 index  "<< index_9_5_p3 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_5_p3)) << std::endl;
-  std::cout <<"4 index  "<< index_9_5_p4 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_5_p4)) << std::endl;
-  std::cout << "Mu 9 IP6 : " << std::endl;
-  std::cout <<"0 index  "<< index_9_6_p0 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_6_p0)) << std::endl;
-  std::cout <<"1 index  "<< index_9_6_p1 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_6_p1)) << std::endl;
-  std::cout <<"2 index  "<< index_9_6_p2 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_6_p2)) << std::endl;
-  std::cout <<"3 index  "<< index_9_6_p3 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_6_p3)) << std::endl;
-  std::cout <<"4 index  "<< index_9_6_p4 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_9_6_p4)) << std::endl;
-  std::cout << "Mu 8 IP3: " << std::endl;
-  std::cout <<"0 index  "<< index_8_3_p0 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_8_3_p0)) << std::endl;
-  std::cout <<"1 index  "<< index_8_3_p1 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_8_3_p1)) << std::endl;
-  std::cout <<"2 index  "<< index_8_3_p2 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_8_3_p2)) << std::endl;
-  std::cout <<"3 index  "<< index_8_3_p3 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_8_3_p3)) << std::endl;
-  std::cout <<"4 index  "<< index_8_3_p4 << std::endl; // << " and accepted? " <<     (triggerBits->accept(index_8_3_p4)) << std::endl;
-
-
-
-  //std::cout << "Mu 7: " << std::endl;
-  //std::cout <<"0 index is valid? "<< (index_7_4_p0 < triggerBits->size())  << " and accepted? " <<      (triggerBits->accept(index_7_4_p0)) << std::endl;
-  //std::cout <<"1 index is valid? "<< (index_7_4_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p1)) << std::endl;
-  //std::cout <<"2 index is valid? "<< (index_7_4_p2 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p2)) << std::endl;
-  //std::cout <<"3 index is valid? "<< (index_7_4_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_7_4_p3)) << std::endl;
-  //std::cout <<"4 index is valid? "<< (index_7_4_p4 < triggerBits->size())  << " and accepted? " <<    (triggerBits->accept(index_7_4_p4)) << std::endl;
-  //std::cout << "Mu 9 IP4 : " << std::endl;
-  //std::cout <<"0 index is valid? "<< (index_9_4_p0 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_4_p0)) << std::endl;
-  //std::cout <<"1 index is valid? "<< (index_9_4_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_4_p1)) << std::endl;
-  //std::cout <<"2 index is valid? "<< (index_9_4_p2 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_4_p2)) << std::endl;
-  //std::cout <<"3 index is valid? "<< (index_9_4_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_4_p3)) << std::endl;
-  //std::cout <<"4 index is valid? "<< (index_9_4_p4 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_4_p4)) << std::endl;
-  //std::cout << "Mu 9 IP5 : " << std::endl;
-  //std::cout <<"0 index is valid? "<< (index_9_5_p0 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_5_p0)) << std::endl;
-  //std::cout <<"1 index is valid? "<< (index_9_5_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_5_p1)) << std::endl;
-  //std::cout <<"2 index is valid? "<< (index_9_5_p2 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_5_p2)) << std::endl;
-  //std::cout <<"3 index is valid? "<< (index_9_5_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_5_p3)) << std::endl;
-  //std::cout <<"4 index is valid? "<< (index_9_5_p4 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_5_p4)) << std::endl;
-  std::cout << "Mu 9 IP6 : " << std::endl;
-  std::cout <<"0 index is valid? "<< (index_9_6_p0 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p0)) << std::endl;
-  std::cout <<"1 index is valid? "<< (index_9_6_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p1)) << std::endl;
-  std::cout <<"2 index is valid? "<< (index_9_6_p2 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p2)) << std::endl;
-  std::cout <<"3 index is valid? "<< (index_9_6_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p3)) << std::endl;
-  std::cout <<"4 index is valid? "<< (index_9_6_p4 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_9_6_p4)) << std::endl;
-  std::cout << "Mu 8 IP3: " << std::endl;
-  std::cout <<"0 index is valid? "<< (index_8_3_p0 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_8_3_p0)) << std::endl;
-  std::cout <<"1 index is valid? "<< (index_8_3_p1 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_8_3_p1)) << std::endl;
-  std::cout <<"2 index is valid? "<< (index_8_3_p2 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_8_3_p2)) << std::endl;
-  std::cout <<"3 index is valid? "<< (index_8_3_p3 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_8_3_p3)) << std::endl;
-  std::cout <<"4 index is valid? "<< (index_8_3_p4 < triggerBits->size())  << " and accepted? " <<     (triggerBits->accept(index_8_3_p4)) << std::endl;
-
-  //default is false  
-  bool pass_7_4_p0  = false, pass_7_4_p1  = false, pass_7_4_p2  = false, pass_7_4_p3  = false, pass_7_4_p4  = false;
-  bool pass_8_3_p0  = false, pass_8_3_p1  = false, pass_8_3_p2  = false, pass_8_3_p3  = false, pass_8_3_p4  = false;
-  bool pass_8_5_p0  = false, pass_8_5_p1  = false, pass_8_5_p2  = false, pass_8_5_p3  = false, pass_8_5_p4  = false;
-  bool pass_8_6_p0  = false, pass_8_6_p1  = false, pass_8_6_p2  = false, pass_8_6_p3  = false, pass_8_6_p4  = false;
-  bool pass_9_4_p0  = false, pass_9_4_p1  = false, pass_9_4_p2  = false, pass_9_4_p3  = false, pass_9_4_p4  = false;
-  bool pass_9_5_p0  = false, pass_9_5_p1  = false, pass_9_5_p2  = false, pass_9_5_p3  = false, pass_9_5_p4  = false;
-  bool pass_9_6_p0  = false, pass_9_6_p1  = false, pass_9_6_p2  = false, pass_9_6_p3  = false, pass_9_6_p4  = false;
-  bool pass_12_6_p0 = false, pass_12_6_p1 = false, pass_12_6_p2 = false, pass_12_6_p3 = false, pass_12_6_p4 = false;
-
-  // check first if the index is valid, i.e. if it is not out of range (maximum is givrn by triggerBits->size())
-  // and if so, check if the trigger has fired with accept() 
-
-  pass_7_4_p0      = ((index_7_4_p0 < triggerBits->size())   && (triggerBits->accept(index_7_4_p0)));
-  pass_7_4_p1      = ((index_7_4_p1 < triggerBits->size())   && (triggerBits->accept(index_7_4_p1)));
-  pass_7_4_p2      = ((index_7_4_p2 < triggerBits->size())   && (triggerBits->accept(index_7_4_p2)));
-  pass_7_4_p3      = ((index_7_4_p3 < triggerBits->size())   && (triggerBits->accept(index_7_4_p3)));
-  pass_7_4_p4      = ((index_7_4_p4 < triggerBits->size())   && (triggerBits->accept(index_7_4_p4)));
-
-  pass_8_3_p0      = ((index_8_3_p0 < triggerBits->size())   && (triggerBits->accept(index_8_3_p0)));
-  pass_8_3_p1      = ((index_8_3_p1 < triggerBits->size())   && (triggerBits->accept(index_8_3_p1)));
-  pass_8_3_p2      = ((index_8_3_p2 < triggerBits->size())   && (triggerBits->accept(index_8_3_p2)));
-  pass_8_3_p3      = ((index_8_3_p3 < triggerBits->size())   && (triggerBits->accept(index_8_3_p3)));
-  pass_8_3_p4      = ((index_8_3_p4 < triggerBits->size())   && (triggerBits->accept(index_8_3_p4)));
-
-  pass_8_5_p0      = ((index_8_5_p0 < triggerBits->size())   && (triggerBits->accept(index_8_5_p0)));
-  pass_8_5_p1      = ((index_8_5_p1 < triggerBits->size())   && (triggerBits->accept(index_8_5_p1)));
-  pass_8_5_p2      = ((index_8_5_p2 < triggerBits->size())   && (triggerBits->accept(index_8_5_p2)));
-  pass_8_5_p3      = ((index_8_5_p3 < triggerBits->size())   && (triggerBits->accept(index_8_5_p3)));
-  pass_8_5_p4      = ((index_8_5_p4 < triggerBits->size())   && (triggerBits->accept(index_8_5_p4)));
-
-  pass_8_6_p0      = ((index_8_6_p0 < triggerBits->size())   && (triggerBits->accept(index_8_6_p0)));
-  pass_8_6_p1      = ((index_8_6_p1 < triggerBits->size())   && (triggerBits->accept(index_8_6_p1)));
-  pass_8_6_p2      = ((index_8_6_p2 < triggerBits->size())   && (triggerBits->accept(index_8_6_p2)));
-  pass_8_6_p3      = ((index_8_6_p3 < triggerBits->size())   && (triggerBits->accept(index_8_6_p3)));
-  pass_8_6_p4      = ((index_8_6_p4 < triggerBits->size())   && (triggerBits->accept(index_8_6_p4)));
-
-  pass_9_4_p0      = ((index_9_4_p0 < triggerBits->size())   && (triggerBits->accept(index_9_4_p0)));
-  pass_9_4_p1      = ((index_9_4_p1 < triggerBits->size())   && (triggerBits->accept(index_9_4_p1)));
-  pass_9_4_p2      = ((index_9_4_p2 < triggerBits->size())   && (triggerBits->accept(index_9_4_p2)));
-  pass_9_4_p3      = ((index_9_4_p3 < triggerBits->size())   && (triggerBits->accept(index_9_4_p3)));
-  pass_9_4_p4      = ((index_9_4_p4 < triggerBits->size())   && (triggerBits->accept(index_9_4_p4)));
-
-  pass_9_5_p0      = ((index_9_5_p0 < triggerBits->size())   && (triggerBits->accept(index_9_5_p0)));
-  pass_9_5_p1      = ((index_9_5_p1 < triggerBits->size())   && (triggerBits->accept(index_9_5_p1)));
-  pass_9_5_p2      = ((index_9_5_p2 < triggerBits->size())   && (triggerBits->accept(index_9_5_p2)));
-  pass_9_5_p3      = ((index_9_5_p3 < triggerBits->size())   && (triggerBits->accept(index_9_5_p3)));
-  pass_9_5_p4      = ((index_9_5_p4 < triggerBits->size())   && (triggerBits->accept(index_9_5_p4)));
-
-  pass_9_6_p0      = ((index_9_6_p0 < triggerBits->size())   && (triggerBits->accept(index_9_6_p0)));
-  pass_9_6_p1      = ((index_9_6_p1 < triggerBits->size())   && (triggerBits->accept(index_9_6_p1)));
-  pass_9_6_p2      = ((index_9_6_p2 < triggerBits->size())   && (triggerBits->accept(index_9_6_p2)));
-  pass_9_6_p3      = ((index_9_6_p3 < triggerBits->size())   && (triggerBits->accept(index_9_6_p3)));
-  pass_9_6_p4      = ((index_9_6_p4 < triggerBits->size())   && (triggerBits->accept(index_9_6_p4)));
-
-  pass_12_6_p0      = ((index_12_6_p0 < triggerBits->size())   && (triggerBits->accept(index_12_6_p0)));
-  pass_12_6_p1      = ((index_12_6_p1 < triggerBits->size())   && (triggerBits->accept(index_12_6_p1)));
-  pass_12_6_p2      = ((index_12_6_p2 < triggerBits->size())   && (triggerBits->accept(index_12_6_p2)));
-  pass_12_6_p3      = ((index_12_6_p3 < triggerBits->size())   && (triggerBits->accept(index_12_6_p3)));
-  pass_12_6_p4      = ((index_12_6_p4 < triggerBits->size())   && (triggerBits->accept(index_12_6_p4)));
-
-
-  bool pass_7_4    = (pass_7_4_p0 || pass_7_4_p1 || pass_7_4_p2 || pass_7_4_p3 || pass_7_4_p4) ;
-  bool pass_8_3    = (pass_8_3_p0 || pass_8_3_p1 || pass_8_3_p2 || pass_8_3_p3 || pass_8_3_p4) ;
-  bool pass_8_5    = (pass_8_5_p0 || pass_8_5_p1 || pass_8_5_p2 || pass_8_5_p3 || pass_8_5_p4) ;
-  bool pass_8_6    = (pass_8_6_p0 || pass_8_6_p1 || pass_8_6_p2 || pass_8_6_p3 || pass_8_6_p4) ;
-  bool pass_9_4    = (pass_9_4_p0 || pass_9_4_p1 || pass_9_4_p2 || pass_9_4_p3 || pass_9_4_p4) ;
-  bool pass_9_5    = (pass_9_5_p0 || pass_9_5_p1 || pass_9_5_p2 || pass_9_5_p3 || pass_9_5_p4) ;
-  bool pass_9_6    = (pass_9_6_p0 || pass_9_6_p1 || pass_9_6_p2 || pass_9_6_p3 || pass_9_6_p4) ;
-  bool pass_12_6   = (pass_12_6_p0 || pass_12_6_p1 || pass_12_6_p2 || pass_12_6_p3 || pass_12_6_p4) ;
-
  
   //std::cout << "before passing " << muons->size() << std::endl;
   //only continue when we the event passes one of the triggers
@@ -465,65 +386,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
     //std::cout << "passed :) " << muons->size() << std::endl;
     
-    // get the prescale (if one part is on, all should be, but leet's be on the safe side)
-    int prescale_7_4_p0 = triggerPrescales->getPrescaleForIndex(index_7_4_p0);
-    int prescale_7_4_p1 = triggerPrescales->getPrescaleForIndex(index_7_4_p1);
-    int prescale_7_4_p2 = triggerPrescales->getPrescaleForIndex(index_7_4_p2);
-    int prescale_7_4_p3 = triggerPrescales->getPrescaleForIndex(index_7_4_p3);
-    int prescale_7_4_p4 = triggerPrescales->getPrescaleForIndex(index_7_4_p4);
-
-    int prescale_8_3_p0 = triggerPrescales->getPrescaleForIndex(index_8_3_p0);
-    int prescale_8_3_p1 = triggerPrescales->getPrescaleForIndex(index_8_3_p1);
-    int prescale_8_3_p2 = triggerPrescales->getPrescaleForIndex(index_8_3_p2);
-    int prescale_8_3_p3 = triggerPrescales->getPrescaleForIndex(index_8_3_p3);
-    int prescale_8_3_p4 = triggerPrescales->getPrescaleForIndex(index_8_3_p4);
-
-    int prescale_8_5_p0 = triggerPrescales->getPrescaleForIndex(index_8_5_p0);
-    int prescale_8_5_p1 = triggerPrescales->getPrescaleForIndex(index_8_5_p1);
-    int prescale_8_5_p2 = triggerPrescales->getPrescaleForIndex(index_8_5_p2);
-    int prescale_8_5_p3 = triggerPrescales->getPrescaleForIndex(index_8_5_p3);
-    int prescale_8_5_p4 = triggerPrescales->getPrescaleForIndex(index_8_5_p4);
-
-    int prescale_8_6_p0 = triggerPrescales->getPrescaleForIndex(index_8_6_p0);
-    int prescale_8_6_p1 = triggerPrescales->getPrescaleForIndex(index_8_6_p1);
-    int prescale_8_6_p2 = triggerPrescales->getPrescaleForIndex(index_8_6_p2);
-    int prescale_8_6_p3 = triggerPrescales->getPrescaleForIndex(index_8_6_p3);
-    int prescale_8_6_p4 = triggerPrescales->getPrescaleForIndex(index_8_6_p4);
-
-    int prescale_9_4_p0 = triggerPrescales->getPrescaleForIndex(index_9_4_p0);
-    int prescale_9_4_p1 = triggerPrescales->getPrescaleForIndex(index_9_4_p1);
-    int prescale_9_4_p2 = triggerPrescales->getPrescaleForIndex(index_9_4_p2);
-    int prescale_9_4_p3 = triggerPrescales->getPrescaleForIndex(index_9_4_p3);
-    int prescale_9_4_p4 = triggerPrescales->getPrescaleForIndex(index_9_4_p4);
-
-    int prescale_9_5_p0 = triggerPrescales->getPrescaleForIndex(index_9_5_p0);
-    int prescale_9_5_p1 = triggerPrescales->getPrescaleForIndex(index_9_5_p1);
-    int prescale_9_5_p2 = triggerPrescales->getPrescaleForIndex(index_9_5_p2);
-    int prescale_9_5_p3 = triggerPrescales->getPrescaleForIndex(index_9_5_p3);
-    int prescale_9_5_p4 = triggerPrescales->getPrescaleForIndex(index_9_5_p4);
-
-    int prescale_9_6_p0 = triggerPrescales->getPrescaleForIndex(index_9_6_p0);
-    int prescale_9_6_p1 = triggerPrescales->getPrescaleForIndex(index_9_6_p1);
-    int prescale_9_6_p2 = triggerPrescales->getPrescaleForIndex(index_9_6_p2);
-    int prescale_9_6_p3 = triggerPrescales->getPrescaleForIndex(index_9_6_p3);
-    int prescale_9_6_p4 = triggerPrescales->getPrescaleForIndex(index_9_6_p4);
-
-    int prescale_12_6_p0 = triggerPrescales->getPrescaleForIndex(index_12_6_p0);
-    int prescale_12_6_p1 = triggerPrescales->getPrescaleForIndex(index_12_6_p1);
-    int prescale_12_6_p2 = triggerPrescales->getPrescaleForIndex(index_12_6_p2);
-    int prescale_12_6_p3 = triggerPrescales->getPrescaleForIndex(index_12_6_p3);
-    int prescale_12_6_p4 = triggerPrescales->getPrescaleForIndex(index_12_6_p4);
-
-
-    int prescale_7_4    = 5*(prescale_7_4_p0  || prescale_7_4_p1  || prescale_7_4_p2  || prescale_7_4_p3  || prescale_7_4_p4 );
-    int prescale_8_3    = 5*(prescale_8_3_p0  || prescale_8_3_p1  || prescale_8_3_p2  || prescale_8_3_p3  || prescale_8_3_p4 );
-    int prescale_8_5    = 5*(prescale_8_5_p0  || prescale_8_5_p1  || prescale_8_5_p2  || prescale_8_5_p3  || prescale_8_5_p4 );
-    int prescale_8_6    = 5*(prescale_8_6_p0  || prescale_8_6_p1  || prescale_8_6_p2  || prescale_8_6_p3  || prescale_8_6_p4 );
-    int prescale_9_4    = 5*(prescale_9_4_p0  || prescale_9_4_p1  || prescale_9_4_p2  || prescale_9_4_p3  || prescale_9_4_p4 );
-    int prescale_9_5    = 5*(prescale_9_5_p0  || prescale_9_5_p1  || prescale_9_5_p2  || prescale_9_5_p3  || prescale_9_5_p4 );
-    int prescale_9_6    = 5*(prescale_9_6_p0  || prescale_9_6_p1  || prescale_9_6_p2  || prescale_9_6_p3  || prescale_9_6_p4 );
-    int prescale_12_6   = 5*(prescale_12_6_p0 || prescale_12_6_p1 || prescale_12_6_p2 || prescale_12_6_p3 || prescale_12_6_p4 );
-
     passesHLT++;
 
     //////////////////////////////////////////////////////////////////////
@@ -560,11 +422,13 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
       int   filterLabelMu7_4  = -1;
       int   filterLabelMu8_3  = -1;
+      int   filterLabelMu8p5_3p5  = -1;
       int   filterLabelMu8_5  = -1;
       int   filterLabelMu8_6  = -1;
       int   filterLabelMu9_4  = -1;
       int   filterLabelMu9_5  = -1;
       int   filterLabelMu9_6  = -1;
+      int   filterLabelMu10p5_3p5  = -1;
       int   filterLabelMu12_6 = -1;
 
       for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
@@ -585,11 +449,13 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         const bool passTrigger =
             (pass_7_4  && trgObj.hasFilterLabel(trgFilterLabelMu7_4_))  ||
             (pass_8_3  && trgObj.hasFilterLabel(trgFilterLabelMu8_3_))  ||
+            (pass_8p5_3p5  && trgObj.hasFilterLabel(trgFilterLabelMu8p5_3p5_))  ||
             (pass_8_5  && trgObj.hasFilterLabel(trgFilterLabelMu8_5_))  ||
             (pass_8_6  && trgObj.hasFilterLabel(trgFilterLabelMu8_6_))  ||
             (pass_9_4  && trgObj.hasFilterLabel(trgFilterLabelMu9_4_))  ||
             (pass_9_5  && trgObj.hasFilterLabel(trgFilterLabelMu9_5_))  ||
             (pass_9_6  && trgObj.hasFilterLabel(trgFilterLabelMu9_6_))  ||
+            (pass_10p5_3p5  && trgObj.hasFilterLabel(trgFilterLabelMu10p5_3p5_))  ||
             (pass_12_6 && trgObj.hasFilterLabel(trgFilterLabelMu12_6_)) ;
         
         if (!passTrigger) continue;
@@ -606,11 +472,13 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   	      trgObjIdx    = objIdx;
               filterLabelMu7_4    = trgObj.hasFilterLabel(trgFilterLabelMu7_4_) ;
               filterLabelMu8_3    = trgObj.hasFilterLabel(trgFilterLabelMu8_3_) ;
+              filterLabelMu8p5_3p5    = trgObj.hasFilterLabel(trgFilterLabelMu8p5_3p5_) ;
               filterLabelMu8_5    = trgObj.hasFilterLabel(trgFilterLabelMu8_5_) ;
               filterLabelMu8_6    = trgObj.hasFilterLabel(trgFilterLabelMu8_6_) ;
               filterLabelMu9_4    = trgObj.hasFilterLabel(trgFilterLabelMu9_4_) ;
               filterLabelMu9_5    = trgObj.hasFilterLabel(trgFilterLabelMu9_5_) ;
               filterLabelMu9_6    = trgObj.hasFilterLabel(trgFilterLabelMu9_6_) ;
+              filterLabelMu10p5_3p5    = trgObj.hasFilterLabel(trgFilterLabelMu10p5_3p5_) ;
               filterLabelMu12_6   = trgObj.hasFilterLabel(trgFilterLabelMu12_6_);
 
         }
@@ -635,134 +503,45 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
    	trgMatchedMuon.addUserInt("trgObjIdx",            trgObjIdx);
 
         trgMatchedMuon.addUserInt("mu7_ip4",              pass_7_4);
+        trgMatchedMuon.addUserInt("prescale_mu7_ip4",  prescale_7_4);
 
-        trgMatchedMuon.addUserInt("mu7_ip4_p0",           pass_7_4_p0);
-        trgMatchedMuon.addUserInt("mu7_ip4_p1",           pass_7_4_p1);
-        trgMatchedMuon.addUserInt("mu7_ip4_p2",           pass_7_4_p2);
-        trgMatchedMuon.addUserInt("mu7_ip4_p3",           pass_7_4_p3);
-        trgMatchedMuon.addUserInt("mu7_ip4_p4",           pass_7_4_p4);
+        trgMatchedMuon.addUserInt("mu8_ip3",           pass_8_3);
+        trgMatchedMuon.addUserInt("prescale_mu8_ip3",  prescale_8_3);
 
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4_p0",  prescale_7_4_p0);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4_p1",  prescale_7_4_p1);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4_p2",  prescale_7_4_p2);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4_p3",  prescale_7_4_p3);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4_p4",  prescale_7_4_p4);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4",     prescale_7_4);
+        trgMatchedMuon.addUserInt("mu8_ip5",           pass_8_5);
+        trgMatchedMuon.addUserInt("prescale_mu8_ip5",  prescale_8_5);
 
-        trgMatchedMuon.addUserInt("mu8_ip3",              pass_8_3);
-
-        trgMatchedMuon.addUserInt("mu8_ip3_p0",           pass_8_3_p0);
-        trgMatchedMuon.addUserInt("mu8_ip3_p1",           pass_8_3_p1);
-        trgMatchedMuon.addUserInt("mu8_ip3_p2",           pass_8_3_p2);
-        trgMatchedMuon.addUserInt("mu8_ip3_p3",           pass_8_3_p3);
-        trgMatchedMuon.addUserInt("mu8_ip3_p4",           pass_8_3_p4);
-
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3_p0",  prescale_8_3_p0);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3_p1",  prescale_8_3_p1);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3_p2",  prescale_8_3_p2);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3_p3",  prescale_8_3_p3);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3_p4",  prescale_8_3_p4);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3",     prescale_8_3);
-
-        trgMatchedMuon.addUserInt("mu8_ip5",              pass_8_5);
-
-        trgMatchedMuon.addUserInt("mu8_ip5_p0",           pass_8_5_p0);
-        trgMatchedMuon.addUserInt("mu8_ip5_p1",           pass_8_5_p1);
-        trgMatchedMuon.addUserInt("mu8_ip5_p2",           pass_8_5_p2);
-        trgMatchedMuon.addUserInt("mu8_ip5_p3",           pass_8_5_p3);
-        trgMatchedMuon.addUserInt("mu8_ip5_p4",           pass_8_5_p4);
-
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5_p0",  prescale_8_5_p0);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5_p1",  prescale_8_5_p1);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5_p2",  prescale_8_5_p2);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5_p3",  prescale_8_5_p3);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5_p4",  prescale_8_5_p4);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5",     prescale_8_5);
-
-        trgMatchedMuon.addUserInt("mu8_ip6",              pass_8_6);
-
-        trgMatchedMuon.addUserInt("mu8_ip6_p0",           pass_8_6_p0);
-        trgMatchedMuon.addUserInt("mu8_ip6_p1",           pass_8_6_p1);
-        trgMatchedMuon.addUserInt("mu8_ip6_p2",           pass_8_6_p2);
-        trgMatchedMuon.addUserInt("mu8_ip6_p3",           pass_8_6_p3);
-        trgMatchedMuon.addUserInt("mu8_ip6_p4",           pass_8_6_p4);
-
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6_p0",  prescale_8_6_p0);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6_p1",  prescale_8_6_p1);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6_p2",  prescale_8_6_p2);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6_p3",  prescale_8_6_p3);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6_p4",  prescale_8_6_p4);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6",     prescale_8_6);
+        trgMatchedMuon.addUserInt("mu8p5_ip3p5",           pass_8p5_3p5);
+        trgMatchedMuon.addUserInt("prescale_mu8p5_ip3p5",  prescale_8p5_3p5);
 
 
-        trgMatchedMuon.addUserInt("mu9_ip4",              pass_9_4);
- 
-        trgMatchedMuon.addUserInt("mu9_ip4_p0",           pass_9_4_p0);
-        trgMatchedMuon.addUserInt("mu9_ip4_p1",           pass_9_4_p1);
-        trgMatchedMuon.addUserInt("mu9_ip4_p2",           pass_9_4_p2);
-        trgMatchedMuon.addUserInt("mu9_ip4_p3",           pass_9_4_p3);
-        trgMatchedMuon.addUserInt("mu9_ip4_p4",           pass_9_4_p4);
+        trgMatchedMuon.addUserInt("mu8_ip6",           pass_8_6);
+        trgMatchedMuon.addUserInt("prescale_mu8_ip6",  prescale_8_6);
 
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4_p0",  prescale_9_4_p0);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4_p1",  prescale_9_4_p1);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4_p2",  prescale_9_4_p2);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4_p3",  prescale_9_4_p3);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4_p4",  prescale_9_4_p4);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4"   ,  prescale_9_4);
+        trgMatchedMuon.addUserInt("mu9_ip4",           pass_9_4);
+        trgMatchedMuon.addUserInt("prescale_mu9_ip4",  prescale_9_4);
 
-        trgMatchedMuon.addUserInt("mu9_ip5",              pass_9_5);
- 
-        trgMatchedMuon.addUserInt("mu9_ip5_p0",           pass_9_5_p0);
-        trgMatchedMuon.addUserInt("mu9_ip5_p1",           pass_9_5_p1);
-        trgMatchedMuon.addUserInt("mu9_ip5_p2",           pass_9_5_p2);
-        trgMatchedMuon.addUserInt("mu9_ip5_p3",           pass_9_5_p3);
-        trgMatchedMuon.addUserInt("mu9_ip5_p4",           pass_9_5_p4);
+        trgMatchedMuon.addUserInt("mu9_ip5",           pass_9_5);
+        trgMatchedMuon.addUserInt("prescale_mu9_ip5",  prescale_9_5);
 
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5_p0",  prescale_9_5_p0);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5_p1",  prescale_9_5_p1);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5_p2",  prescale_9_5_p2);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5_p3",  prescale_9_5_p3);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5_p4",  prescale_9_5_p4);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5"   ,  prescale_9_5);
+        trgMatchedMuon.addUserInt("mu9_ip6",           pass_9_6);
+        trgMatchedMuon.addUserInt("prescale_mu9_ip6",  prescale_9_6);
 
-        trgMatchedMuon.addUserInt("mu9_ip6",              pass_9_6);
- 
-        trgMatchedMuon.addUserInt("mu9_ip6_p0",           pass_9_6_p0);
-        trgMatchedMuon.addUserInt("mu9_ip6_p1",           pass_9_6_p1);
-        trgMatchedMuon.addUserInt("mu9_ip6_p2",           pass_9_6_p2);
-        trgMatchedMuon.addUserInt("mu9_ip6_p3",           pass_9_6_p3);
-        trgMatchedMuon.addUserInt("mu9_ip6_p4",           pass_9_6_p4);
-
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p0",  prescale_9_6_p0);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p1",  prescale_9_6_p1);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p2",  prescale_9_6_p2);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p3",  prescale_9_6_p3);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6_p4",  prescale_9_6_p4);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6"   ,  prescale_9_6);
+        trgMatchedMuon.addUserInt("mu10p5_ip3p5",           pass_10p5_3p5);
+        trgMatchedMuon.addUserInt("prescale_mu10p5_ip3p5",  prescale_10p5_3p5);
 
         trgMatchedMuon.addUserInt("mu12_ip6",              pass_12_6);
- 
-        trgMatchedMuon.addUserInt("mu12_ip6_p0",           pass_12_6_p0);
-        trgMatchedMuon.addUserInt("mu12_ip6_p1",           pass_12_6_p1);
-        trgMatchedMuon.addUserInt("mu12_ip6_p2",           pass_12_6_p2);
-        trgMatchedMuon.addUserInt("mu12_ip6_p3",           pass_12_6_p3);
-        trgMatchedMuon.addUserInt("mu12_ip6_p4",           pass_12_6_p4);
-
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6_p0",  prescale_12_6_p0);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6_p1",  prescale_12_6_p1);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6_p2",  prescale_12_6_p2);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6_p3",  prescale_12_6_p3);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6_p4",  prescale_12_6_p4);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6"   ,  prescale_12_6);
-
+        trgMatchedMuon.addUserInt("prescale_mu12_ip6",  prescale_12_6);
 
         trgMatchedMuon.addUserInt("filter_mu7_4"         ,  filterLabelMu7_4);
         trgMatchedMuon.addUserInt("filter_mu8_3"         ,  filterLabelMu8_3);
         trgMatchedMuon.addUserInt("filter_mu8_5"         ,  filterLabelMu8_5);
+        trgMatchedMuon.addUserInt("filter_mu8p5_3p5"     ,  filterLabelMu8p5_3p5);
         trgMatchedMuon.addUserInt("filter_mu8_6"         ,  filterLabelMu8_6);
         trgMatchedMuon.addUserInt("filter_mu9_4"         ,  filterLabelMu9_4);
         trgMatchedMuon.addUserInt("filter_mu9_5"         ,  filterLabelMu9_5);
         trgMatchedMuon.addUserInt("filter_mu9_6"         ,  filterLabelMu9_6);
+        trgMatchedMuon.addUserInt("filter_mu10p5_3p5"     ,  filterLabelMu10p5_3p5);
         trgMatchedMuon.addUserInt("filter_mu12_6"        ,  filterLabelMu12_6);
 
         //std::cout << "found trg obj!" << std::endl; 

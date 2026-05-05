@@ -22,37 +22,45 @@ triggerVariables = cms.PSet(
         trg_obj_idx          = Var("userInt('trgObjIdx')", int),
         
         mu7_ip4              = Var("userInt('mu7_ip4')", int),
-
-        mu7_ip4_p0           = Var("userInt('mu7_ip4_p0')", int),
-        mu7_ip4_p1           = Var("userInt('mu7_ip4_p1')", int),
-        mu7_ip4_p2           = Var("userInt('mu7_ip4_p2')", int),
-        mu7_ip4_p3           = Var("userInt('mu7_ip4_p3')", int),
-        mu7_ip4_p4           = Var("userInt('mu7_ip4_p4')", int),
-
-        prescale_mu7_ip4_p0  = Var("userInt('prescale_mu7_ip4_p0')", int),
-        prescale_mu7_ip4_p1  = Var("userInt('prescale_mu7_ip4_p1')", int),
-        prescale_mu7_ip4_p2  = Var("userInt('prescale_mu7_ip4_p2')", int),
-        prescale_mu7_ip4_p3  = Var("userInt('prescale_mu7_ip4_p3')", int),
-        prescale_mu7_ip4_p4  = Var("userInt('prescale_mu7_ip4_p4')", int),
         prescale_mu7_ip4     = Var("userInt('prescale_mu7_ip4')"   , int),
 
+        mu8_ip3              = Var("userInt('mu8_ip3')", int),
+        prescale_mu8_ip3     = Var("userInt('prescale_mu8_ip3')"   , int),
+
+        mu8p5_3p5            = Var("userInt('mu8p5_ip3p5')", int),
+        prescale_mu8p5_3p5   = Var("userInt('prescale_mu8p5_ip3p5')"   , int),
+
+        mu8_ip5              = Var("userInt('mu8_ip5')", int),
+        prescale_mu8_ip5     = Var("userInt('prescale_mu8_ip5')"   , int),
+
+        mu8_ip6              = Var("userInt('mu8_ip6')", int),
+        prescale_mu8_ip6     = Var("userInt('prescale_mu8_ip6')"   , int),
+
+        mu9_ip4              = Var("userInt('mu9_ip4')", int),
+        prescale_mu9_ip4     = Var("userInt('prescale_mu9_ip4')"   , int),
+
+        mu9_ip5              = Var("userInt('mu9_ip5')", int),
+        prescale_mu9_ip5     = Var("userInt('prescale_mu9_ip5')"   , int),
+
         mu9_ip6              = Var("userInt('mu9_ip6')", int),
-
-        mu9_ip6_p0           = Var("userInt('mu9_ip6_p0')", int),
-        mu9_ip6_p1           = Var("userInt('mu9_ip6_p1')", int),
-        mu9_ip6_p2           = Var("userInt('mu9_ip6_p2')", int),
-        mu9_ip6_p3           = Var("userInt('mu9_ip6_p3')", int),
-        mu9_ip6_p4           = Var("userInt('mu9_ip6_p4')", int),
-
-        prescale_mu9_ip6_p0  = Var("userInt('prescale_mu9_ip6_p0')", int),
-        prescale_mu9_ip6_p1  = Var("userInt('prescale_mu9_ip6_p1')", int),
-        prescale_mu9_ip6_p2  = Var("userInt('prescale_mu9_ip6_p2')", int),
-        prescale_mu9_ip6_p3  = Var("userInt('prescale_mu9_ip6_p3')", int),
-        prescale_mu9_ip6_p4  = Var("userInt('prescale_mu9_ip6_p4')", int),
         prescale_mu9_ip6     = Var("userInt('prescale_mu9_ip6')"   , int),
 
-        filter_mu7           = Var("userInt('filter_mu7')"         , int),
-        filter_mu9           = Var("userInt('filter_mu9')"         , int),
+        mu10p5_3p5           = Var("userInt('mu10p5_ip3p5')", int),
+        prescale_mu10p5_3p5  = Var("userInt('prescale_mu10p5_ip3p5')"   , int),
+
+        mu12_ip6             = Var("userInt('mu12_ip6')", int),
+        prescale_mu12_ip6    = Var("userInt('prescale_mu12_ip6')"   , int),
+
+        filter_mu7_4         = Var("userInt('filter_mu7_4')"       , int),
+        filter_mu8_3         = Var("userInt('filter_mu8_3')"       , int),
+        filter_mu8p5_3p5     = Var("userInt('filter_mu8p5_3p5')"   , int),
+        filter_mu8_5         = Var("userInt('filter_mu8_5')"       , int),
+        filter_mu8_6         = Var("userInt('filter_mu8_6')"       , int),
+        filter_mu9_4         = Var("userInt('filter_mu9_4')"       , int),
+        filter_mu9_5         = Var("userInt('filter_mu9_5')"       , int),
+        filter_mu9_6         = Var("userInt('filter_mu9_6')"       , int),
+        filter_mu10p5_3p5    = Var("userInt('filter_mu10p5_3p5')"   , int),
+        filter_mu12_6        = Var("userInt('filter_mu12_6')"      , int),
 
 )
  
@@ -366,6 +374,7 @@ genVariables = cms.PSet(
         dsPhoton_m     = Var("userFloat('gen_dsPhoton_m')",float),
         dsPhotonMu_m   = Var("userFloat('gen_dsPhotonMu_m')",float),
 
+        same_mother    = Var("userInt('same_mother')",int),
 )
 
 ##################################################
@@ -475,6 +484,16 @@ vertexVariables = cms.PSet(
         dxy_mu_pv      = Var("userFloat('dxy_mu_pv')",float),
         dxy_mu_err_pv  = Var("userFloat('dxy_mu_err_pv')",float),
         dxy_mu_sig_pv  = Var("userFloat('dxy_mu_sig_pv')",float),
+
+        dxy_mu_pv_dz      = Var("userFloat('dxy_mu_pv_dz')",float),
+        dxy_mu_err_pv_dz  = Var("userFloat('dxy_mu_err_pv_dz')",float),
+        dxy_mu_sig_pv_dz  = Var("userFloat('dxy_mu_sig_pv_dz')",float),
+
+        dxy_mu_pv_general      = Var("userFloat('dxy_mu_pv_general')",float),
+        dxy_mu_err_pv_general  = Var("userFloat('dxy_mu_err_pv_general')",float),
+        dxy_mu_sig_pv_general  = Var("userFloat('dxy_mu_sig_pv_general')",float),
+
+
 
         dxy_mu_sv      = Var("userFloat('dxy_mu_sv')",float),
         dxy_mu_err_sv  = Var("userFloat('dxy_mu_err_sv')",float),

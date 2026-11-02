@@ -382,110 +382,133 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
  
   //std::cout << "before passing " << muons->size() << std::endl;
   //only continue when we the event passes one of the triggers
-  if (pass_7_4 || pass_8_3 || pass_8_5 || pass_8_6 || pass_9_4 || pass_9_5 || pass_9_6 || pass_12_6) {
+  if (pass_7_4 || pass_8_3 || pass_8_5 || pass_8_6 || pass_9_4 || pass_9_5 || pass_9_6 || pass_12_6 || pass_8p5_3p5 || pass_10p5_3p5) {
 
     //std::cout << "passed :) " << muons->size() << std::endl;
-    
     passesHLT++;
 
-    //////////////////////////////////////////////////////////////////////
-    // Make sure that you can find a pat muon matching the HLT object   //
-    // and take the best match in dR as candidate                       //
-    //////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////
+    // Loop over trigger objects and unpack  //
+    ///////////////////////////////////////////
+
+    std::vector<bool> passTrigger_Vec          ;
+    std::vector<bool> filterLabelMu7_4_Vec     ;
+    std::vector<bool> filterLabelMu8_3_Vec     ;
+    std::vector<bool> filterLabelMu8p5_3p5_Vec ;
+    std::vector<bool> filterLabelMu8_5_Vec     ;
+    std::vector<bool> filterLabelMu8_6_Vec     ;
+    std::vector<bool> filterLabelMu9_4_Vec     ;
+    std::vector<bool> filterLabelMu9_5_Vec     ;
+    std::vector<bool> filterLabelMu9_6_Vec     ;
+    std::vector<bool> filterLabelMu10p5_3p5_Vec;
+    std::vector<bool> filterLabelMu12_6_Vec    ;
+
+
+    for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
+
+
+      // get object
+      pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
+
+      //unpack trigger labels
+      trgObj.unpackFilterLabels(iEvent, *triggerBits);
+
+      // get filter labels  
+      std::vector<std::string> filterLabels = trgObj.filterLabels();
+
+      int filterLabelMu7_4        = trgObj.hasFilterLabel(trgFilterLabelMu7_4_)     ;
+      int filterLabelMu8_3        = trgObj.hasFilterLabel(trgFilterLabelMu8_3_)     ;
+      int filterLabelMu8p5_3p5    = trgObj.hasFilterLabel(trgFilterLabelMu8p5_3p5_) ;
+      int filterLabelMu8_5        = trgObj.hasFilterLabel(trgFilterLabelMu8_5_)     ;
+      int filterLabelMu8_6        = trgObj.hasFilterLabel(trgFilterLabelMu8_6_)     ;
+      int filterLabelMu9_4        = trgObj.hasFilterLabel(trgFilterLabelMu9_4_)     ;
+      int filterLabelMu9_5        = trgObj.hasFilterLabel(trgFilterLabelMu9_5_)     ;
+      int filterLabelMu9_6        = trgObj.hasFilterLabel(trgFilterLabelMu9_6_)     ;
+      int filterLabelMu10p5_3p5   = trgObj.hasFilterLabel(trgFilterLabelMu10p5_3p5_);
+      int filterLabelMu12_6       = trgObj.hasFilterLabel(trgFilterLabelMu12_6_)    ;
   
+      // check if the trigger object was actually firing our trigger
+      const bool passTrigger =
+          (pass_7_4       && filterLabelMu7_4)      ||
+          (pass_8_3       && filterLabelMu8_3)      ||
+          (pass_8p5_3p5   && filterLabelMu8p5_3p5)  ||
+          (pass_8_5       && filterLabelMu8_5)      ||
+          (pass_8_6       && filterLabelMu8_6)      ||
+          (pass_9_4       && filterLabelMu9_4)      ||
+          (pass_9_5       && filterLabelMu9_5)      ||
+          (pass_9_6       && filterLabelMu9_6)      ||
+          (pass_10p5_3p5  && filterLabelMu10p5_3p5) ||
+          (pass_12_6      && filterLabelMu12_6)     ;
+
+      passTrigger_Vec          .push_back(passTrigger)           ;      
+      filterLabelMu7_4_Vec     .push_back(filterLabelMu7_4)     ;
+      filterLabelMu8_3_Vec     .push_back(filterLabelMu8_3)     ;
+      filterLabelMu8p5_3p5_Vec .push_back(filterLabelMu8p5_3p5) ;
+      filterLabelMu8_5_Vec     .push_back(filterLabelMu8_5)     ;
+      filterLabelMu8_6_Vec     .push_back(filterLabelMu8_6)     ;
+      filterLabelMu9_4_Vec     .push_back(filterLabelMu9_4)     ;
+      filterLabelMu9_5_Vec     .push_back(filterLabelMu9_5)     ;
+      filterLabelMu9_6_Vec     .push_back(filterLabelMu9_6)     ;
+      filterLabelMu10p5_3p5_Vec.push_back(filterLabelMu10p5_3p5);
+      filterLabelMu12_6_Vec    .push_back(filterLabelMu12_6)    ;
+
+
+      if (passTrigger) passesHLTFilter++ ;
+    }
+
+
     // count the nr of pat::muons which fired the trigger -> reset to 0 in every event
     int counter = 0;
-  
+
+    ///////////////////////////////
+    // Loop over muons and match //
+    ///////////////////////////////
+
     //std::cout << "#muons in this event " << muons->size() << std::endl;
 
     for (unsigned int muIdx=0; muIdx<muons->size(); ++muIdx){
-      //if (iEvent.id().event() != 31516) continue;  
-      //if (iEvent.id().luminosityBlock() != 2007) continue;  
       //std::cout << iEvent.id().event() << std::endl;
-      //std::cout << "event found! "<< std::endl;
 
       const pat::Muon& muon = (*muons)[muIdx];    
   
-      //std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
       // muon cuts
-
       if (!muSelection_(muon)) continue; 
-      
+      //std::cout<<"found pat muon with pt:"<< muon.pt() << std::endl;
+ 
+      // validd track ?
+      if (muon.bestTrack() == nullptr) continue;
+      const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField);  
+      if (!ttrackTrgMuon.isValid()) continue;
+
+      // this is a possible trigger cand 
       patTriggerCand++;
   
       // initialize start values
       float drMuonTrgObj   = 0.0;
-
       int   trgObjIdx      = -1;
-      int   iTrg           = 0 ;
-      int   iMatch         = 0 ;
 
-      int   filterLabelMu7_4  = -1;
-      int   filterLabelMu8_3  = -1;
-      int   filterLabelMu8p5_3p5  = -1;
-      int   filterLabelMu8_5  = -1;
-      int   filterLabelMu8_6  = -1;
-      int   filterLabelMu9_4  = -1;
-      int   filterLabelMu9_5  = -1;
-      int   filterLabelMu9_6  = -1;
-      int   filterLabelMu10p5_3p5  = -1;
-      int   filterLabelMu12_6 = -1;
+
+      //////////////////////////////////////////////
+      // Match muon candidates to trigger objects //
+      //////////////////////////////////////////////
 
       for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
-  
-        iTrg++;
-  
-        pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
 
-        //unpack trigger labels
-        trgObj.unpackFilterLabels(iEvent, *triggerBits);
-  
-        std::vector<std::string> filterLabels = trgObj.filterLabels();
-    
-        // check if the trigger object was actually firing our trigger
+        if (!passTrigger_Vec.at(objIdx)) continue;
 
-        //if (!((pass_7_4 && trgObj.hasFilterLabel(trgFilterLabelMu7_4_) ) || (pass_9_6 && trgObj.hasFilterLabel(trgFilterLabelMu9_6_)) || (pass_8_3 && trgObj.hasFilterLabel(trgFilterLabelMu8_3_)) )) continue; 
-        
-        const bool passTrigger =
-            (pass_7_4  && trgObj.hasFilterLabel(trgFilterLabelMu7_4_))  ||
-            (pass_8_3  && trgObj.hasFilterLabel(trgFilterLabelMu8_3_))  ||
-            (pass_8p5_3p5  && trgObj.hasFilterLabel(trgFilterLabelMu8p5_3p5_))  ||
-            (pass_8_5  && trgObj.hasFilterLabel(trgFilterLabelMu8_5_))  ||
-            (pass_8_6  && trgObj.hasFilterLabel(trgFilterLabelMu8_6_))  ||
-            (pass_9_4  && trgObj.hasFilterLabel(trgFilterLabelMu9_4_))  ||
-            (pass_9_5  && trgObj.hasFilterLabel(trgFilterLabelMu9_5_))  ||
-            (pass_9_6  && trgObj.hasFilterLabel(trgFilterLabelMu9_6_))  ||
-            (pass_10p5_3p5  && trgObj.hasFilterLabel(trgFilterLabelMu10p5_3p5_))  ||
-            (pass_12_6 && trgObj.hasFilterLabel(trgFilterLabelMu12_6_)) ;
-        
-        if (!passTrigger) continue;
+        pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];
  
-        passesHLTFilter++;   
-        iMatch++;
-
         float dr = reco::deltaR(trgObj, muon);
-     
-        if( ((dr < drMuonTrgObj) || (trgObjIdx < 0))  && (dr < maxdR_))
-        {
+
+        if( ((dr < drMuonTrgObj) || (trgObjIdx < 0))  && (dr < maxdR_)){
               //modify dR and the reco and triggering muon index
   	      drMuonTrgObj = dr;
   	      trgObjIdx    = objIdx;
-              filterLabelMu7_4    = trgObj.hasFilterLabel(trgFilterLabelMu7_4_) ;
-              filterLabelMu8_3    = trgObj.hasFilterLabel(trgFilterLabelMu8_3_) ;
-              filterLabelMu8p5_3p5    = trgObj.hasFilterLabel(trgFilterLabelMu8p5_3p5_) ;
-              filterLabelMu8_5    = trgObj.hasFilterLabel(trgFilterLabelMu8_5_) ;
-              filterLabelMu8_6    = trgObj.hasFilterLabel(trgFilterLabelMu8_6_) ;
-              filterLabelMu9_4    = trgObj.hasFilterLabel(trgFilterLabelMu9_4_) ;
-              filterLabelMu9_5    = trgObj.hasFilterLabel(trgFilterLabelMu9_5_) ;
-              filterLabelMu9_6    = trgObj.hasFilterLabel(trgFilterLabelMu9_6_) ;
-              filterLabelMu10p5_3p5    = trgObj.hasFilterLabel(trgFilterLabelMu10p5_3p5_) ;
-              filterLabelMu12_6   = trgObj.hasFilterLabel(trgFilterLabelMu12_6_);
-
         }
   
       } // closing loop over trg muons
   
-      //save pat muon if we found a matching candidate 
+      //save pat muon if we found a matching trigger object 
       if(trgObjIdx != -1){
      
         trgCand++;
@@ -494,15 +517,12 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   	pat::Muon trgMatchedMuon(muon);
   
         // only take muons with valid tracks
-        const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField);  
-        if (!ttrackTrgMuon.isValid()) continue;
-
   
         //store
-  	trgMatchedMuon.addUserInt("muIdx",                muIdx    );
-   	trgMatchedMuon.addUserInt("trgObjIdx",            trgObjIdx);
+  	trgMatchedMuon.addUserInt("muIdx",     muIdx    );
+   	trgMatchedMuon.addUserInt("trgObjIdx", trgObjIdx);
 
-        trgMatchedMuon.addUserInt("mu7_ip4",              pass_7_4);
+        trgMatchedMuon.addUserInt("mu7_ip4",           pass_7_4);
         trgMatchedMuon.addUserInt("prescale_mu7_ip4",  prescale_7_4);
 
         trgMatchedMuon.addUserInt("mu8_ip3",           pass_8_3);
@@ -533,16 +553,16 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         trgMatchedMuon.addUserInt("mu12_ip6",              pass_12_6);
         trgMatchedMuon.addUserInt("prescale_mu12_ip6",  prescale_12_6);
 
-        trgMatchedMuon.addUserInt("filter_mu7_4"         ,  filterLabelMu7_4);
-        trgMatchedMuon.addUserInt("filter_mu8_3"         ,  filterLabelMu8_3);
-        trgMatchedMuon.addUserInt("filter_mu8_5"         ,  filterLabelMu8_5);
-        trgMatchedMuon.addUserInt("filter_mu8p5_3p5"     ,  filterLabelMu8p5_3p5);
-        trgMatchedMuon.addUserInt("filter_mu8_6"         ,  filterLabelMu8_6);
-        trgMatchedMuon.addUserInt("filter_mu9_4"         ,  filterLabelMu9_4);
-        trgMatchedMuon.addUserInt("filter_mu9_5"         ,  filterLabelMu9_5);
-        trgMatchedMuon.addUserInt("filter_mu9_6"         ,  filterLabelMu9_6);
-        trgMatchedMuon.addUserInt("filter_mu10p5_3p5"     ,  filterLabelMu10p5_3p5);
-        trgMatchedMuon.addUserInt("filter_mu12_6"        ,  filterLabelMu12_6);
+        trgMatchedMuon.addUserInt("filter_mu7_4"         ,  filterLabelMu7_4_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu8_3"         ,  filterLabelMu8_3_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu8_5"         ,  filterLabelMu8_5_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu8p5_3p5"     ,  filterLabelMu8p5_3p5_Vec  .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu8_6"         ,  filterLabelMu8_6_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu9_4"         ,  filterLabelMu9_4_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu9_5"         ,  filterLabelMu9_5_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu9_6"         ,  filterLabelMu9_6_Vec      .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu10p5_3p5"    ,  filterLabelMu10p5_3p5_Vec .at(trgObjIdx));
+        trgMatchedMuon.addUserInt("filter_mu12_6"        ,  filterLabelMu12_6_Vec     .at(trgObjIdx));
 
         //std::cout << "found trg obj!" << std::endl; 
         //if (!beamSpotHandle.isValid()) continue;
@@ -574,9 +594,9 @@ void Trigger::endJob(){
 std::cout << "\n--------- TRIGGER MODULE ----------\n" << std::endl;
 std::cout << "#Events                                                   : " << nEvents  << std::endl;
 std::cout << "#Events where HLT fired                                   : " << passesHLT  << std::endl;
-std::cout << "#Events where HLT fired and HLT Filter passed             : " << passesHLTFilter  << std::endl;
+std::cout << "#Events where HLT fired and HLT Filter passed             : " << passesHLTFilter << std::endl;
 std::cout << "#Muon candidates which possibly fire HLT (unmatched)      : " << patTriggerCand  << std::endl;
-std::cout << "#Muon candidates which fired HLT (matched to trg object!) : " << patTriggerCand  << std::endl;
+std::cout << "#Muon candidates which fired HLT (matched to trg object!) : " << trgCand         << std::endl;
 
 }
 

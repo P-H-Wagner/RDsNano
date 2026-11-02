@@ -50,6 +50,7 @@
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h" 
 
 // Helper functions and ROOT 
+#include "trackCorrection.h"
 #include "helper.h"         // helper functions
 #include "PVRefitter.h"     // refit the primary vertex 
 #include "TLorentzVector.h" 
@@ -206,6 +207,10 @@ private:
   const double bsMass_;
   const double isoCone_;
 
+  // track correction
+  //std::unique_ptr<const rdscalib::TrackCalib> trkCalib_;
+  const std::string  trkCalibFile_;
+
   //tokens to access data later
 
   //beamspot
@@ -286,6 +291,8 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     muMassSigma_        (iConfig.getParameter<double>     ("muMassSigma"        )),
     bsMass_             (iConfig.getParameter<double>     ("bsMass"             )),
     isoCone_            (iConfig.getParameter<double>     ("isoCone"            )),
+
+    trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       )),
 
     beamSpotTag(iConfig.getParameter<edm::InputTag>       ("offBeamSpot"        )),
     beamSpot_(consumes<reco::BeamSpot>                    (beamSpotTag          )),
@@ -390,6 +397,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   //std::cout << "Track collections have different sizes!" << std::endl;
   //}
 
+  //std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
+  //trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
+
 
   //////////////////////////////////////////////////////
   // Match the trigger muon with a muon from the      //
@@ -423,8 +433,27 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       }
     }
 
+    float minDz_w_bs  = 0.0;
+    int pvIdx_dz_w_bs = -1;
+    reco::Vertex pv_dz_w_bs;
+
+    for(size_t vtxIdx = 0; vtxIdx < vtxWithBs->size(); ++vtxIdx){
+      nPv++;
+      edm::Ptr<reco::Vertex> vtxPtr(vtxWithBs, vtxIdx);
+      float dz  = fabs(muPtr->bestTrack()->dz (vtxPtr->position())); 
+      if((dz < minDz_w_bs) || (pvIdx_dz_w_bs < 0)){
+        minDz_w_bs    = dz;
+        pvIdx_dz_w_bs = vtxIdx;
+      }
+    }
+
     if (pvIdx_dz <0) continue;
     else pv_dz = primaryVtx->at(pvIdx_dz);
+
+    if (pvIdx_dz_w_bs <0) continue;
+    else pv_dz_w_bs = vtxWithBs->at(pvIdx_dz_w_bs);
+
+
     muSelCounter++;
 
     // Before we start the kkpi event loop, define already collections of charged/neutral pf Idx for the muon isolation
@@ -473,7 +502,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       bool k1Sel = (( muonK1dR < maxdRHadMuon_ )                                                                      && 
       (reco::deltaR(*k1Ptr, *muPtr) > mindRHadMuon_)                                                                  && 
       (abs(k1Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
-      (abs(k1Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
+      (abs(k1Ptr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
 
       if (!k1Sel) continue;
 
@@ -503,7 +532,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       bool k2Sel = (( muonK2dR < maxdRHadMuon_ )                                                                      && 
       (reco::deltaR(*k2Ptr, *muPtr) > mindRHadMuon_)                                                                  && 
       (abs(k2Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
-      (abs(k2Ptr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
+      (abs(k2Ptr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
 
       int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
@@ -537,7 +566,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bool piSel = ((muonPidR < maxdRHadMuon_)                                                                        && 
         (reco::deltaR(*piPtr, *muPtr) > mindRHadMuon_)                                                                  &&
         (abs(piPtr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
-        (abs(piPtr->bestTrack()->dxy(pv_dz.position()) < maxdxyHadPv_ )) ;
+        (abs(piPtr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
 
         int piMuCharge = piPtr->charge() * muPtr->charge();
         
@@ -545,6 +574,51 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //std::cout << " ----- found pi: " << piPtr->pt() << std::endl;
         piSel2Counter++;
+
+
+        //////////////////////////////////////////////////
+        // Correct the track                            //
+        //////////////////////////////////////////////////
+
+        //PF canidates are always assigned with the pi mass, we have to force the kaon mass
+        math::PtEtaPhiMLorentzVector k1P4(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), K_MASS);
+        math::PtEtaPhiMLorentzVector k2P4(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), K_MASS);
+        math::PtEtaPhiMLorentzVector piP4(piPtr->pt(), piPtr->eta(), piPtr->phi(), PI_MASS); //just to be sure lets also force the pi mass
+ 
+        //if (!iEvent.isRealData()) {
+        //  const auto& id = iEvent.id();
+        //  const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k1Idx);
+        //  const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k2Idx);
+        //  const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), piIdx);
+        //  const double f_k1 = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
+        //  const double f_k2 = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
+        //  const double f_pi = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
+
+        //  //std::cout << "Before: pt=" << k1P4.Pt() << ", eta=" << k1P4.Eta() << ", phi=" << k1P4.Phi() << ", px=" << k1P4.Px() << ", py=" << k1P4.Py() << ", pz=" << k1P4.Pz() << std::endl;
+ 
+        //  k1P4.SetXYZT(k1P4.Px() * f_k1, 
+        //               k1P4.Py() * f_k1, 
+        //               k1P4.Pz() * f_k1, 
+        //               std::sqrt(std::pow(k1P4.Px() * f_k1, 2) + std::pow(k1P4.Py() * f_k1, 2) + std::pow(k1P4.Pz() * f_k1, 2) + K_MASS * K_MASS));
+
+        //  k2P4.SetXYZT(k2P4.Px() * f_k2, 
+        //               k2P4.Py() * f_k2, 
+        //               k2P4.Pz() * f_k2, 
+        //               std::sqrt(std::pow(k2P4.Px() * f_k2, 2) + std::pow(k2P4.Py() * f_k2, 2) + std::pow(k2P4.Pz() * f_k2, 2) + K_MASS * K_MASS));
+
+        //  piP4.SetXYZT(piP4.Px() * f_pi, 
+        //               piP4.Py() * f_pi, 
+        //               piP4.Pz() * f_pi, 
+        //               std::sqrt(std::pow(piP4.Px() * f_pi, 2) + std::pow(piP4.Py() * f_pi, 2) + std::pow(piP4.Pz() * f_pi, 2) + K_MASS * K_MASS));
+
+        //  //std::cout << "After: pt=" << k1P4.Pt() << ", eta=" << k1P4.Eta() << ", phi=" << k1P4.Phi() << ", px=" << k1P4.Px() << ", py=" << k1P4.Py() << ", pz=" << k1P4.Pz() << std::endl;
+
+        //  // corrected momentum: (c.px() * f, c.py() * f, c.pz() * f); energy from the mass hypothesis
+        //  // optional: trkCalib_->factor(c.p(), c.pt(), c.eta(), c.charge(), z, "eig0_up"), ...
+        //  std::cout << "f1 and f2 are: " << f_k1 << " " << f_k2 << std::endl;
+
+        //}
+
 
         //////////////////////////////////////////////////
         // Build Phi resonance                          //
@@ -555,11 +629,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //define a composite candidate pair 
         pat::CompositeCandidate kk;
 
-        //PF canidates are always assigned with the pi mass, we have to force the kaon mass
-        math::PtEtaPhiMLorentzVector k1P4(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), K_MASS);
-        math::PtEtaPhiMLorentzVector k2P4(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), K_MASS);
-        math::PtEtaPhiMLorentzVector piP4(piPtr->pt(), piPtr->eta(), piPtr->phi(), PI_MASS); //just to be sure lets also force the pi mass
- 
+
         kk.setP4(k1P4 + k2P4);
 
         //only continue when they build a phi resonance (see cfg for mass window):
@@ -567,6 +637,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         kk.setCharge(k1Ptr->charge() + k2Ptr->charge());
         nPhiMassCut++;
+
+
 
         //////////////////////////////////////////////////
         // Build Ds resonance                           //
@@ -576,7 +648,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         phiPi.setP4(kk.p4() + piP4); 
         
         //only continue when they build a ds resonance, (see cfg for mass window):
-        if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
+
+        // CHANGE ME BACK!!
+        //if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
+        if (phiPi.mass() - dsMass_ < -0.12) continue;
+        if (phiPi.mass() - dsMass_ >  0.08) continue;
+
 
         phiPi.setCharge(kk.charge() + piPtr->charge());
         nDsMassCut++;
@@ -1277,9 +1354,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(35)); // 
 
 
-        //AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
-        //AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
-        //AlgebraicMatrix77 bsErr = bsParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
+        AlgebraicMatrix77 bsErr = bsParticle->currentState().kinematicParametersError().matrix();
+        
         //check if vertex position is truly at 0,1,2: result: Yes it is!
         //double xdecay = phiDecayVertex->position().x();
 
@@ -1325,6 +1403,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_y_wout_bs",  pv_general.y()); 
 
         // The first definition using minimal dz between pv and muon
+       
+
+
         bs.addUserFloat("pv_dz_x",  pv_dz.x()); 
         bs.addUserFloat("pv_dz_y",  pv_dz.y()); 
         bs.addUserFloat("pv_dz_z",  pv_dz.z()); 
@@ -1459,12 +1540,37 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float dxyMuErr_pv_dz     = muPtr->bestTrack()->dxyError(pv_dz.position(),pv_dz.covariance());  
         float dxyMuSig_pv_dz     = dxyMu_pv_dz/dxyMuErr_pv_dz;
 
+        float dxyMu_pv_dz_w_bs        = muPtr->bestTrack()->dxy(pv_dz_w_bs.position());  
+        float dxyMuErr_pv_dz_w_bs     = muPtr->bestTrack()->dxyError(pv_dz_w_bs.position(),pv_dz_w_bs.covariance());  
+        float dxyMuSig_pv_dz_w_bs     = dxyMu_pv_dz_w_bs/dxyMuErr_pv_dz_w_bs;
+
         //std::cout << "pv general position x is: " << pv_general.position().x() << std::endl;
         //std::cout << "pv general _x is: : " << pv_general_x << std::endl;
 
         float dxyMu_pv_general        = muPtr->bestTrack()->dxy(pv_general.position());  
         float dxyMuErr_pv_general     = muPtr->bestTrack()->dxyError(pv_general.position(),pv_general.covariance());  
         float dxyMuSig_pv_general     = dxyMu_pv_general/dxyMuErr_pv_general;
+
+
+        reco::Vertex::CovarianceMatrix bsCovFixed;
+        
+        auto bsCov = beamSpot.covariance();
+        
+        bsCovFixed(0,0) = bsCov(0,0);
+        bsCovFixed(0,1) = bsCov(0,1);
+        bsCovFixed(0,2) = bsCov(0,2);
+        bsCovFixed(1,0) = bsCov(1,0);
+        bsCovFixed(1,1) = bsCov(1,1);
+        bsCovFixed(1,2) = bsCov(1,2);
+        bsCovFixed(2,0) = bsCov(2,0);
+        bsCovFixed(2,1) = bsCov(2,1);
+        bsCovFixed(2,2) = bsCov(2,2);
+
+
+        float dxyMu_beamSpot        = muPtr->bestTrack()->dxy(beamSpot.position());  
+        float dxyMuErr_beamSpot     = muPtr->bestTrack()->dxyError(beamSpot.position(),bsCovFixed);  
+        float dxyMuSig_beamSpot     = dxyMu_beamSpot/dxyMuErr_beamSpot;
+
 
         float dzMu_pv            = muPtr->bestTrack()->dz(pv.position());  
         float dzMuErr_pv         = muPtr->bestTrack()->dzError();  
@@ -1532,9 +1638,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dxy_mu_err_pv", dxyMuErr_pv);
         bs.addUserFloat("dxy_mu_sig_pv", dxyMuSig_pv);
 
+        bs.addUserFloat("dxy_mu_beamSpot",     dxyMu_beamSpot);
+        bs.addUserFloat("dxy_mu_err_beamSpot", dxyMuErr_beamSpot);
+        bs.addUserFloat("dxy_mu_sig_beamSpot", dxyMuSig_beamSpot);
+
         bs.addUserFloat("dxy_mu_pv_dz",     dxyMu_pv_dz);
         bs.addUserFloat("dxy_mu_err_pv_dz", dxyMuErr_pv_dz);
         bs.addUserFloat("dxy_mu_sig_pv_dz", dxyMuSig_pv_dz);
+
+        bs.addUserFloat("dxy_mu_pv_dz_w_bs",     dxyMu_pv_dz_w_bs);
+        bs.addUserFloat("dxy_mu_err_pv_dz_w_bs", dxyMuErr_pv_dz_w_bs);
+        bs.addUserFloat("dxy_mu_sig_pv_dz_w_bs", dxyMuSig_pv_dz_w_bs);
+
 
         bs.addUserFloat("dxy_mu_pv_general",     dxyMu_pv_general);
         bs.addUserFloat("dxy_mu_err_pv_general", dxyMuErr_pv_general);
@@ -1784,6 +1899,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("phi_fitted_eta",   fittedPhi.Eta()); 
         bs.addUserFloat("phi_fitted_phi",   fittedPhi.Phi()); 
         bs.addUserFloat("phi_fitted_m",     fittedPhi.M()); 
+        bs.addUserFloat("phi_fitted_m_err",  phiErr.At(6,6)); 
 
         // Ds fit
         bs.addUserFloat("pi_refitted_px",   refittedPi.Px()); 
@@ -1809,6 +1925,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_eta",    fittedDs.Eta()); 
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
+        bs.addUserFloat("ds_fitted_m_err",  dsErr.At(6,6)); 
         bs.addUserFloat("ds_fitted_boost",  fittedDs.BoostVector().Mag()); 
 
         bs.addUserFloat("phiPi_refitted_px",     refittedPhiPi.Px()); 
@@ -1845,6 +1962,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_fitted_eta",    fittedBs.Eta()); 
         bs.addUserFloat("bs_fitted_phi",    fittedBs.Phi()); 
         bs.addUserFloat("bs_fitted_m",      fittedBs.M()); 
+        bs.addUserFloat("bs_fitted_m_err",  bsErr.At(6,6)); 
 
         /////////////////////// helicity angles in all possibe variations /////////////////////////
 

@@ -13,10 +13,12 @@
 
 // for the fit
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
+#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
 #include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
 #include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
 
@@ -43,6 +45,7 @@
 
 typedef std::vector<reco::TransientTrack> TransientTrackCollection;
 
+constexpr float MU_MASS     = 0.1056583745;
 constexpr float K_MASS      = 0.493677;
 constexpr float PI_MASS     = 0.139571;
 constexpr float DS_MASS     = 1.96834;
@@ -773,11 +776,11 @@ inline reco::Track correctCovMat(const reco::Track *tk, double delta){
     }
 
     // Debug: check if it worked!
-    //for (i = 0; i < cov.kRows; i++) {
-    //    for (j = 0; j < cov.kRows; j++) {
-    //      std::cout << cov(i,j) << std::endl;
-    //    }
-    //}
+    for (i = 0; i < cov.kRows; i++) {
+        for (j = 0; j < cov.kRows; j++) {
+          std::cout << cov(i,j) << std::endl;
+        }
+    }
 
     return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
     }
@@ -796,33 +799,55 @@ inline reco::Track fixTrack(const reco::TrackRef& tk)
 inline RefCountedKinematicTree vertexFit(std::vector<RefCountedKinematicParticle> toFit, ParticleMass massConstr, bool applyConstr)
 {
 
-  //define fitter
-  KinematicConstrainedVertexFitter fitter;
-  //KinematicParticleVertexFitter fitter; // test
+  ///////////////
+  // OLD LOGIC // 
+  ///////////////
 
-  //define constraint
-  MultiTrackKinematicConstraint* constr = new TwoTrackMassKinematicConstraint(massConstr);
+  ////define fitter
+  //KinematicConstrainedVertexFitter fitter;
+  ////KinematicParticleVertexFitter fitter; // test
 
-  RefCountedKinematicTree fitTree;
+  ////define constraint
+  //MultiTrackKinematicConstraint* constr = new TwoTrackMassKinematicConstraint(massConstr);
 
-  // fitTree = fitter.fit(toFit); //test
+  //RefCountedKinematicTree fitTree;
+
+  //if(applyConstr) {
+  //// perform the fit
+  //fitTree = fitter.fit(toFit, constr);
+  //}
+  //else{
+  //fitTree = fitter.fit(toFit);
+  //}
+
+  //return fitTree;
+
+  ///////////////
+  // NEW LOGIC // 
+  ///////////////
+
+  static constexpr float MASS_CONSTRAINT_SIGMA = 1e-5; 
+
+  KinematicParticleVertexFitter vtxFitter;
+  RefCountedKinematicTree fitTree = vtxFitter.fit(toFit);
 
   if(applyConstr) {
-  // perform the fit
-  fitTree = fitter.fit(toFit, constr);
-  }
-  else{
-  fitTree = fitter.fit(toFit);
+
+    MassKinematicConstraint constr(massConstr, MASS_CONSTRAINT_SIGMA);
+    KinematicParticleFitter constrFitter;
+    fitTree = constrFitter.fit(&constr, fitTree);
   }
 
   return fitTree;
 
 }
 
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Calculates impact parameter between PV and  Ds + mu flight direction
 //
-inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, double sv_z, TLorentzVector fittedDs, TLorentzVector refittedMu){
+inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, double sv_z, math::PtEtaPhiMLorentzVector fittedDs, math::PtEtaPhiMLorentzVector refittedMu){
 
   // define direction between SV and PV
   double dx = sv_x - vtxPtr->position().x();
@@ -830,7 +855,7 @@ inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, d
   double dz = sv_z - vtxPtr->position().z();
 
   // define Ds + mu four momentum
-  TLorentzVector dsMu = fittedDs + refittedMu;
+  math::PtEtaPhiMLorentzVector dsMu = fittedDs + refittedMu;
  
   //get spacial dsmu components
   double dsMu_x = dsMu.Vect().x();
@@ -856,7 +881,7 @@ inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, d
 ///////////////////////////////////////////////////////////////////////////////////
 // Calculates impact parameter between PV and  Ds + mu flight direction (overloaded for reco::Vertex*
 //
-inline double getIP3D(reco::Vertex* vtxPtr, double sv_x, double sv_y, double sv_z, TLorentzVector fittedDs, TLorentzVector refittedMu){
+inline double getIP3D(reco::Vertex* vtxPtr, double sv_x, double sv_y, double sv_z, math::PtEtaPhiMLorentzVector fittedDs, math::PtEtaPhiMLorentzVector refittedMu){
 
   // define direction between SV and PV
   double dx = sv_x - vtxPtr->position().x();
@@ -864,7 +889,7 @@ inline double getIP3D(reco::Vertex* vtxPtr, double sv_x, double sv_y, double sv_
   double dz = sv_z - vtxPtr->position().z();
 
   // define Ds + mu four momentum
-  TLorentzVector dsMu = fittedDs + refittedMu;
+  math::PtEtaPhiMLorentzVector dsMu = fittedDs + refittedMu;
  
   //get spacial dsmu components
   double dsMu_x = dsMu.Vect().x();

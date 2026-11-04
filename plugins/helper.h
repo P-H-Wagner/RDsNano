@@ -407,13 +407,14 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   TLorentzVector w;
   w.SetVectM(-d.Vect(),std::sqrt(q2));           
 
+  std::cout << "q2 is: " << std::sqrt(q2) << std::endl;
 
   // boost it back into lab frame
   w.Boost(bBoost);
 
   // now take the boost vector of w
   TVector3 wBoost = w.BoostVector();
-  //std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
+  std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
   if (wBoost.Mag() >=1) wBoost.SetMag(0.99999999999999);
   //std::cout << "wBoost vector now: " << wBoost.Mag() << std::endl;
 
@@ -458,7 +459,7 @@ inline float angMuW (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVecto
   auto mu_in_w = ROOT::Math::VectorUtil::boost(mu, wBoost);
 
   //now take the angle
-  double cosAngle = w_in_lab.Vect().Dot(mu_in_w.Vect()) / (w_in_lab.P() * mu_in_w.P());
+  double cosAngle = w_in_b.Vect().Dot(mu_in_w.Vect()) / (w_in_b.P() * mu_in_w.P());
   // clip it at -1 and 1 (prevent nans in acos)
   cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
   return std::acos(cosAngle);
@@ -832,7 +833,7 @@ inline math::PtEtaPhiMLorentzVector lhcbAltMethod(math::PtEtaPhiMLorentzVector d
   lhcbAltBs = bsFlightDir.Unit();  
   lhcbAltBs *= dMu.Vect().R() * bMass_ / dMu.M(); 
 
-  math::PtEtaPhiMLorentzVector lhcbAltBsTlv(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bMass_);      
+  math::PtEtaPhiMLorentzVector lhcbAltBsTlv(lhcbAltBs.Pt(),lhcbAltBs.Eta(),lhcbAltBs.Phi(), bMass_);      
   
   return lhcbAltBsTlv;
 
@@ -1006,8 +1007,8 @@ inline std::tuple<std::vector<math::PtEtaPhiMLorentzVector>, float> recoMethod(m
   recoBs_1 *= recoBsAbs_1; 
   recoBs_2 *= recoBsAbs_2; 
  
-  math::PtEtaPhiMLorentzVector recoBsTlv1(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
-  math::PtEtaPhiMLorentzVector recoBsTlv2(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+  math::PtEtaPhiMLorentzVector recoBsTlv1(recoBs_1.Pt(),recoBs_1.Eta(),recoBs_1.Phi(),bMass_);
+  math::PtEtaPhiMLorentzVector recoBsTlv2(recoBs_2.Pt(),recoBs_2.Eta(),recoBs_2.Phi(),bMass_);
 
   std::vector<math::PtEtaPhiMLorentzVector> recos;
   recos.push_back(recoBsTlv1);

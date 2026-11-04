@@ -392,6 +392,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     ///////////////////////////////////////////
 
     std::vector<bool> passTrigger_Vec          ;
+    std::vector<bool> failsSelection_Vec       ;
     std::vector<bool> filterLabelMu7_4_Vec     ;
     std::vector<bool> filterLabelMu8_3_Vec     ;
     std::vector<bool> filterLabelMu8p5_3p5_Vec ;
@@ -406,9 +407,21 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
     for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
 
-
       // get object
       pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
+
+      //check pt, eta, and if trigger object is of type muon
+      if (
+          (std::fabs(trgObj.eta()) > 1.6) || 
+          (trgObj.pt() < 6.0)             || 
+          (!trgObj.hasTriggerObjectType(trigger::TriggerMuon)) 
+         ) {
+        failsSelection_Vec.push_back(1);
+      } 
+
+      else failsSelection_Vec.push_back(0);
+
+      //std::cout << std::fabs(trgObj.pt()) << std::endl;
 
       //unpack trigger labels
       trgObj.unpackFilterLabels(iEvent, *triggerBits);
@@ -495,8 +508,12 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
 
         if (!passTrigger_Vec.at(objIdx)) continue;
+        if (failsSelection_Vec.at(objIdx)) continue;
 
         pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];
+
+        if (trgObj.charge() * muon.charge() < 0) continue; // exclude opposite charge
+
  
         float dr = reco::deltaR(trgObj, muon);
 
@@ -504,6 +521,8 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
               //modify dR and the reco and triggering muon index
   	      drMuonTrgObj = dr;
   	      trgObjIdx    = objIdx;
+              //std::cout << "pt: " << trgObj.pt() << "eta: " << trgObj.eta() << std::endl;
+              //std::cout << "ID: " << trgObj.hasTriggerObjectType(trigger::TriggerMuon) << std::endl;
         }
   
       } // closing loop over trg muons

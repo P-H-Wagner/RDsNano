@@ -256,6 +256,12 @@ private:
   const edm::InputTag vtxWithBsTag;
   const edm::EDGetTokenT<reco::VertexCollection> vtxWithBs_;
 
+  std::unique_ptr<const rdscalib::TrackCalib> trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
+
+  std::unique_ptr<const rdscalib::TrackCalib> muCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath()); //CHANGE JSON
+
+
+
 
 };
 
@@ -380,12 +386,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   // for printing
   std::cout << std::fixed << std::setprecision(10);
-
-  std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
-  trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
-
-  std::unique_ptr<const rdscalib::TrackCalib> muCalib;
-  muCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath()); //CHANGE JSON
 
 
   //////////////////////////////////////////////////////
@@ -2097,7 +2097,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
           const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
 
-          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+          pfVec = math::PtEtaPhiMLorentzVector(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi(), pfVec.M());
 
           }
 
@@ -2151,14 +2151,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
-
-          if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
             iso04_ch_sv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
-          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+          else if (( ip3DSv.first && (std::fabs(ip3DSv.second.value()) >= 0.01)) && (pfVec.Pt() > 0.5)) {
             iso04_pu_sv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_pu_sv += pfVec.Pt();
           }
@@ -2192,32 +2191,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           else nPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
 
-          //////////////////////////////////////////////////////////////
-          // Correct the momentum scale and smear of the PF candidate //
-          //////////////////////////////////////////////////////////////
-
-          //charged PF candidates have the pion mass per default
-          math::PtEtaPhiMLorentzVector pfVec(nPtr->pt(), nPtr->eta(), nPtr->phi(), nPtr->mass());
-
-
-          if (!iEvent.isRealData()) {
-
-          const auto& id    = iEvent.id();
-          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
-          const double f_PF = trkCalib->factor(nPtr->p(), nPtr->pt(), nPtr->eta(), nPtr->charge(), z_PF);
-
-          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
-
-          }
-
-
-          if  (nPtr -> pdgId() == 22) iso04_np_pv += pfVec.Pt();
-          else                        iso04_nh_pv += pfVec.Pt(); 
+          if  (nPtr -> pdgId() == 22) iso04_np_pv += nPtr->pt();
+          else                        iso04_nh_pv += nPtr->pt(); 
 
           float deltaR_mu_nTrk = reco::deltaR(*muPtr, *nPtr);
 
-          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_np_pv += pfVec.Pt();
-          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_nh_pv += pfVec.Pt();
+          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_np_pv += nPtr->pt();
+          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_nh_pv += nPtr->pt();
 
         } 
 
@@ -2341,7 +2321,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
           const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
 
-          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+          pfVec = math::PtEtaPhiMLorentzVector(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi(), pfVec.M());
 
           }
 
@@ -2375,13 +2355,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
-          if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
             iso04_ds_ch_sv += pfVec.Pt();
             if (deltaR_ds_chTrk < 0.3) iso03_ds_ch_sv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_ds_chTrk > 0.01 here ? )
-          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+          else if (( ip3DSv.first && (std::fabs(ip3DSv.second.value()) >= 0.01)) && (pfVec.Pt() > 0.5)) {
             iso04_ds_pu_sv += pfVec.Pt();
             if (deltaR_ds_chTrk < 0.3) iso03_ds_pu_sv += pfVec.Pt();
           }
@@ -2396,34 +2376,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (idx < pcand->size()) nPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx); //normal tracks
           else nPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
-
-          //////////////////////////////////////////////////////////////
-          // Correct the momentum scale and smear of the PF candidate //
-          //////////////////////////////////////////////////////////////
-
-          //charged PF candidates have the pion mass per default
-          math::PtEtaPhiMLorentzVector pfVec(nPtr->pt(), nPtr->eta(), nPtr->phi(), nPtr->mass());
-
-
-          if (!iEvent.isRealData()) {
-
-          const auto& id    = iEvent.id();
-          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
-          const double f_PF = trkCalib->factor(nPtr->p(), nPtr->pt(), nPtr->eta(), nPtr->charge(), z_PF);
-
-          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
-
-          }
-
-
-          if  (nPtr -> pdgId() == 22) iso04_ds_np_sv += pfVec.Pt();
-          else                        iso04_ds_nh_sv += pfVec.Pt(); 
+          if  (nPtr -> pdgId() == 22) iso04_ds_np_sv += nPtr->pt();
+          else                        iso04_ds_nh_sv += nPtr->pt(); 
 
           //float deltaR_mu_nTrk = reco::deltaR(phiPi, *nPtr);
           float deltaR_mu_nTrk = reco::deltaR(ds, *nPtr);
 
-          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_ds_np_sv += pfVec.Pt();
-          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_ds_nh_sv += pfVec.Pt();
+          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_ds_np_sv += nPtr->pt();
+          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_ds_nh_sv += nPtr->pt();
 
         } 
 
@@ -2592,10 +2552,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           dsMuPerpPhoton = dsMuVecPhoton .Vect().Cross(bFlightDir).R() / bFlightDir.Mag();//dsMuVecPhoton.Vect().Perp(bFlightDir);
           bsMassCorrPhoton = std::sqrt(std::pow(dsMuVecPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
   
-          bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
-          bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
-          bs.addUserFloat("ds_mu_perp_photon", dsMuPerpPhoton);
-
           /////////////////////////////
           // Collinear approximation //
           /////////////////////////////
@@ -2632,8 +2588,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           math::PtEtaPhiMLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(dsMuVecPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
   
-          math::PtEtaPhiMLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - dsMuVecPhoton; // bs - ds+mu
-          math::PtEtaPhiMLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - phiPiVecPhoton;   // bs - ds 
+          math::PtEtaPhiMLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlvPhoton - dsMuVecPhoton; // bs - ds+mu
+          math::PtEtaPhiMLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlvPhoton - phiPiVecPhoton;   // bs - ds 
   
           m2_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.M2();
           pt_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.Pt();

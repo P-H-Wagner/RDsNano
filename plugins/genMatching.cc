@@ -312,7 +312,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
         //select only useful kaons -> check this selection!
         if((fabs(k1PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k1PtrGen) || (k1Bs->charge() * k1PtrGen->charge() < 0)) continue; 
+        //if ((fabs(k1PtrGen->pdgId()) != 321)&&(fabs(k1PtrGen->pdgId()) != 211)) continue; // CHANGE ME BACK
+        //if( !hadSelectionGen_(*k1PtrGen) || (k1Bs->charge() * k1PtrGen->charge() < 0)) continue; // CHANGE ME BACK 
         k1Sel1CounterGen++;
+
 
         //std::cout << k1PtrGen->pt() << std::endl;
         //std::cout << "passed selection for k1!" << std::endl;
@@ -322,7 +325,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
         //TODO:define as variable
         if(drK1Match > drMatchGen_) continue;
         k1Sel2CounterGen++;
-        //std::cout << "found a gen matched k1!" << std::endl;
 
         //lastCopy = k1PtrGen->isLastCopy();
         //std::cout << "this kaon is last copy?" << lastCopy << std::endl;
@@ -342,6 +344,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
      
              //select only useful kaons -> check this selection!
              if((fabs(k2PtrGen->pdgId()) != 321) || !hadSelectionGen_(*k2PtrGen) || (k2Bs->charge() * k2PtrGen->charge() < 0 )) continue; 
+             //if (fabs(k1PtrGen->pdgId()) == fabs(k2PtrGen->pdgId())) continue; // CHANGE ME BACK
+             //if ((fabs(k2PtrGen->pdgId()) != 321)&&(fabs(k2PtrGen->pdgId()) != 211)) continue; // CHANGE ME BACK
+             //if( !hadSelectionGen_(*k2PtrGen) || (k2Bs->charge() * k2PtrGen->charge() < 0 )) continue; // CHANGE ME BACK  
+
              //std::cout << "reco  pt " << k2Bs->pt() << "reco eta " << k2Bs->eta() << std::endl;
              //std::cout << "gen pt " << k2PtrGen->pt() << "gen eta " << k2PtrGen->eta() << std::endl;
              k2Sel1CounterGen++;
@@ -353,7 +359,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
              if(drK2Match > drMatchGen_ ) continue;
              k2Sel2CounterGen++;
 
-             //std::cout << "found a gen matched k2!\n" << std::endl;
              //lastCopy = k2PtrGen->isLastCopy();
              //std::cout << "this kaon is last copy?" << lastCopy << std::endl;
 
@@ -371,6 +376,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
      
                //select only useful kaons -> check this selection!
                if((fabs(piPtrGen->pdgId()) != 211) || !hadSelectionGen_(*piPtrGen) || (piBs->charge() * piPtrGen->charge() < 0 )) continue; 
+               //if ((fabs(piPtrGen->pdgId()) != 321)&&(fabs(piPtrGen->pdgId()) != 211)) continue; // CHANGE ME BACK
+               //if(!hadSelectionGen_(*piPtrGen) || (piBs->charge() * piPtrGen->charge() < 0 )) continue; // CHANGE ME BACK  
                piSel1CounterGen++;
      
                //std::cout << "gen pt " << piPtrGen->pt() << "gen eta " << piPtrGen->eta() << std::endl;
@@ -379,14 +386,16 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //std::cout << drPiMatch << std::endl; 
                //TODO:define as variable
                if(drPiMatch > drMatchGen_) continue;
-               //std::cout << "found a gen matched pion!" << std::endl;
+
+
+               //std::cout << "found a gen matched k1 with ID: " << k1PtrGen->pdgId() << std::endl;
+               //std::cout << "found a gen matched k2 with ID: " << k2PtrGen->pdgId() << std::endl;
+               //std::cout << "found a gen matched pion with ID: " << piPtrGen->pdgId() << std::endl;
                piSel2CounterGen++;
 
-
+               //std::cout << " ------ Event: " << iEvent.id().event() << " ------ "<< std::endl;
                //lastCopy = piPtrGen->isLastCopy();
                //std::cout << "this pion is last copy?" << lastCopy << std::endl;
-
-
 
 
                //////////////////////////////////////////////////
@@ -402,6 +411,71 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                const reco::Candidate* piReco = piPtrGen.get(); 
                const reco::Candidate* muReco = muPtrGen.get(); 
 
+               //// REMOVE ME LATER
+
+               ////avoid cases where the KKpi track is already a Ds
+               //if ((abs(k1PtrGen->pdgId()) == 411)||(abs(k2PtrGen->pdgId()) == 411)||(abs(piPtrGen->pdgId()) == 411)) continue;
+
+               //// dummy to fill in Phi From K1:
+               //auto phiFromK1 = k1Reco;
+               //// searching for d+  resonance 
+               //auto dsFromK1 = getAncestor(k1Reco,411);
+               //auto dsFromK2 = getAncestor(k2Reco,411);
+               //auto dsFromPi = getAncestor(piReco,411);
+               //if( (dsFromK1 != dsFromK2) || (dsFromK1 != dsFromPi) || (dsFromK1 == nullptr) || (dsFromK2 == nullptr) || (dsFromPi == nullptr)) continue; 
+               ////nFoundDs++;               
+               //std::cout << "Found a gen matched D+- candiate!" << std::endl;
+
+               //////lastCopy = dsFromPi ->isLastCopy();
+               //////std::cout << "this ds is last copy?" << lastCopy << std::endl;
+
+               //// we dont know what b mother we have
+               //int bMotherId = 0;
+
+               //// first search for b baryon (isAncestor also checks neg. Ids)
+               //for(int bIdx = 5000; bIdx < 6000; bIdx++){
+               //  if (isAncestor(dsFromPi, bIdx)){
+               //    bMotherId = bIdx;
+               //    break;
+               //  }
+               //}
+
+               //// Then search for possible B meson coming from B-baryon
+               //for(int bIdx = 500; bIdx < 600; bIdx++){
+               //  if (isAncestor(dsFromPi, bIdx)){
+               //    bMotherId = bIdx;
+               //    break;
+               //  }
+               //}
+
+               //std::cout << "found b mom id: " << bMotherId << std::endl; 
+               //if (abs(bMotherId) != 511) continue;
+ 
+               //auto bsFromDs = getAncestor(dsFromPi, bMotherId);
+               //auto bsFromMu = getAncestor(muReco  , bMotherId);
+               //if (bsFromDs == nullptr)  continue; 
+
+               //int sameMother = 0;
+               //if (bsFromDs == bsFromMu) sameMother = 1;
+               //if (sameMother == 0 ) {
+               //  // std::cout << " --> not the same mom!!" << std::endl;
+               //  continue;
+               //}
+               ////look for neutrino
+               //auto nuFromBs     = getDaughter(bsFromDs, 14); //look for the muon neutrino 
+               //if (nuFromBs == nullptr) continue;
+               //if (nuFromBs->charge() * muReco->charge() > 0) continue; 
+ 
+               //std::cout << " ------------------------------- " << std::endl;
+               //printDaughters(bsFromDs); //-> for debugging
+
+               //std::cout << "found a gen matched k1 with ID: " << k1PtrGen->pdgId() << std::endl;
+               //std::cout << "found a gen matched k2 with ID: " << k2PtrGen->pdgId() << std::endl;
+               //std::cout << "found a gen matched pion with ID: " << piPtrGen->pdgId() << std::endl;
+ 
+
+               // -----------------------------------------
+               // COMMENT ME BACK!!
                // searching for phi resonance 
                auto phiFromK1 = getAncestor(k1Reco,333);
                auto phiFromK2 = getAncestor(k2Reco,333);
@@ -443,12 +517,14 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
               
                //std::cout << "Before the break statement!!!" << std::endl;
                if (bMotherId == 0) continue; // no b mother found
-               //std::cout << "found a b mom!" << std::endl;
+               //std::cout << "Found a b mom with ID: " << bMotherId << std::endl;
 
                // Even if the mu is not required to come brom the b mother directly (would be signal case)
                // if it comes from another D meson (double charm background case), we still want
                // that this D meson is coming from the b mother. So the muon should share
                // the same ancestor as the Ds.
+
+               // COMMENT ME BACK!!
                auto bsFromDs = getAncestor(dsFromPhi,bMotherId);
                auto bsFromMu = getAncestor(muReco,   bMotherId);
 
@@ -456,16 +532,15 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                // is not coming from the same b-mom ! We only need to require that the ds is coming
                // from a B mom. 
                
-              
                if (bsFromDs == nullptr)  continue; 
  
-               //printDaughters(bsFromDs); //-> for debugging
                //std::cout << "Bs from Mu has daughters" << std::endl;
-
+               //printDaughters(bsFromDs); //-> for debugging
  
                int sameMother = 0;
                if (bsFromDs == bsFromMu) sameMother = 1;
                if (sameMother == 0 ) std::cout << " --> not the same mom!!" << std::endl;
+               // -----------------------------------------
  
                //std::cout << "found a b mom!" << std::endl;
                nFoundB++;
@@ -493,6 +568,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                genMatchSuccess = 1;
                nGenMatched++;
                gen.addUserInt("gen_match_success",genMatchSuccess);
+
+               std::cout << "Found a GEN match!" << std::endl;
                
                //if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
 
@@ -739,8 +816,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                if ((abs(bMotherId) == 531) and (sameMother == 1)) checkSignal = isSignal(bsFromDs);
                if ((abs(bMotherId) == 521) and (sameMother == 1)) checkKNuMu  = isKNuMu(bsFromDs);
   
-               //if (checkSignal==-1){
-               //std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
+               //if (checkSignal==-1 and sameMother == 1){
+               ////std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
                //printDaughters(bsFromDs);
                //}
   
@@ -757,7 +834,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    case 423:   sigId += 4; break;  // D0*
                    case 433:   sigId += 5; break;  // Ds+*
                    case 4122:  sigId += 6; break;  // Lambda c
-  
+                   case 0:
+                     if (sameMother==1) {sigId +=7;} // feed downs
+                     else {sigId = 500;} //anything else 
+                     break; 
                    default:    sigId = 500; break; // anything else
                  }
                }
@@ -770,10 +850,10 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                std::set<int> bplus_channels   = { 107, 108, 101, 104, 117, 118, 121, 124, 131, 134, 111, 114};
                std::set<int> lambdab_channels = {406, 416};
   
-               if      ((abs(bMotherId) == 531) && (bs_channels.find(sigId)       == bs_channels.end() ))      sigId = 500;
-               else if ((abs(bMotherId) == 521) && (bplus_channels.find(sigId)    == bplus_channels.end() ))   sigId = 500;
-               else if ((abs(bMotherId) == 511) && (b0_channels.find(sigId)       == b0_channels.end() ))      sigId = 500;
-               else if ((abs(bMotherId) == 5122) && (lambdab_channels.find(sigId) == lambdab_channels.end() )) sigId = 500;
+               //if      ((abs(bMotherId) == 531) && (bs_channels.find(sigId)       == bs_channels.end() ))      sigId = 500;
+               //else if ((abs(bMotherId) == 521) && (bplus_channels.find(sigId)    == bplus_channels.end() ))   sigId = 500;
+               //else if ((abs(bMotherId) == 511) && (b0_channels.find(sigId)       == b0_channels.end() ))      sigId = 500;
+               //else if ((abs(bMotherId) == 5122) && (lambdab_channels.find(sigId) == lambdab_channels.end() )) sigId = 500;
   
                //double photonEnergy;
                //if (photonPtr != nullptr) photonEnergy =photonPtr->energy();

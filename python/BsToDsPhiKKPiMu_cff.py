@@ -28,7 +28,8 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'abs(pdgId) != 11',
 'abs(pdgId) != 13',
 'charge != 0',
-'pt > 0.7', 
+#'pt > 0.7', 
+'pt > 1.3', 
 'eta > -2.4',
 'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
@@ -40,12 +41,13 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'charge != 0',
 ])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
-mindRHadMuon     = cms.double( 0.005),     # min dR "
+mindRHadMuon     = cms.double( 0.005),    # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds
-maxdzDiffHadMuon = cms.double( 1.0),       # difference in dz between muon/pv and had/pv
+maxdzDiffHadMuon = cms.double( 1.0),       # max difference in dz between muon/pv and had/pv
 maxdxyHadPv      = cms.double( 0.6),
 phiMassAllowance = cms.double( 0.02),    # allow 20 MeV when collecting candidates for phi 
-dsMassAllowance  = cms.double( 0.06),    # allow 60 MeV when collecting candidates for ds
+#dsMassAllowance  = cms.double( 0.06),    # allow 60 MeV when collecting candidates for ds
+dsMassAllowance  = cms.double( 0.12),    # allow 120 MeV when collecting candidates for ds
 dsStarMassAllowance  = cms.double( 0.1), # allow 100 MeV when collecting candidates for dsstar
 drMatchGen       = cms.double( 0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
 maxBsMass        = cms.double( 8.0 ),  
@@ -63,7 +65,8 @@ dsStarMass       = cms.double( 2.112204),    # ds star mass
 muMass           = cms.double( 0.105658),        # mu ma
 muMassSigma      = cms.double( 0.0000000023),        # mu mass
 bsMass           = cms.double( 5.36688),         # bs mass
-isoCone          = cms.double( 0.5)             # cut on dR for the mu isolation cone
+isoCone          = cms.double( 0.5),             # cut on dR for the mu isolation cone
+trkCalibFile     = cms.string("")             # cut on dR for the mu isolation cone
 )
 
 print( " ========> Parameters used:")

@@ -21,6 +21,7 @@
 #include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
+#include "Math/VectorUtil.h"
 
 // 4 vectors
 #include "TLorentzVector.h"
@@ -255,7 +256,7 @@ inline auto getAncestor(const auto dau, const int id){
 
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
 
-    const reco::GenParticle* test = dynamic_cast<const reco::GenParticle*>(dau->mother(momIdx));
+    //const reco::GenParticle* test = dynamic_cast<const reco::GenParticle*>(dau->mother(momIdx));
     //std::cout << "is last copy?" << test->isLastCopy() << std::endl; 
     //std::cout << "Now I access mom Nr " << momIdx << std::endl;
     if (isAncestor(dau->mother(momIdx), id)) {
@@ -429,6 +430,41 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   return w.Angle(mu.Vect());
 
 }
+
+inline float angMuW (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVector b, math::PtEtaPhiMLorentzVector mu){       
+
+  //get q2
+  math::PtEtaPhiMLorentzVector q = b - d;
+  double q2 = q.M2();
+
+  //boost Ds into Bs rest frame
+  auto bBoost = b.BoostToCM();
+  auto d_in_b = ROOT::Math::VectorUtil::boost(d, bBoost);
+
+  //get W via Ds 
+  auto pW = -d_in_b.Vect();
+  math::PtEtaPhiMLorentzVector w_in_b(pW.Rho(), pW.Eta(), pW.Phi(), std::sqrt(q2));
+
+  // boost w back into lab frame
+  auto w_in_lab = ROOT::Math::VectorUtil::boost(w_in_b, -bBoost);
+
+  // now take the boost vector of w
+  auto wBoost = w_in_lab.BoostToCM();
+  //std::cout << "wBoost vector: " << wBoost.R() << std::endl;
+  if (wBoost.R() >= 1.0) wBoost *= (0.99999999999 / wBoost.R());
+  //std::cout << "wBoost vector now: " << wBoost.R() << std::endl;
+
+  //boost the muon into the w rest frame
+  auto mu_in_w = ROOT::Math::VectorUtil::boost(mu, wBoost);
+
+  //now take the angle
+  double cosAngle = w_in_lab.Vect().Dot(mu_in_w.Vect()) / (w_in_lab.P() * mu_in_w.P());
+  // clip it at -1 and 1 (prevent nans in acos)
+  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  return std::acos(cosAngle);
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
 
@@ -439,6 +475,14 @@ inline float angDoubleDecay (TLorentzVector restFrame, TLorentzVector dau1, TLor
   return dau1.Angle(dau2.Vect());
 }
 
+inline float angDoubleDecay (math::PtEtaPhiMLorentzVector restFrame, math::PtEtaPhiMLorentzVector dau1, math::PtEtaPhiMLorentzVector dau2) {
+  auto restBoost = restFrame.BoostToCM();
+  auto dau1_in_rest = ROOT::Math::VectorUtil::boost (dau1, restBoost);
+  auto dau2_in_rest = ROOT::Math::VectorUtil::boost (dau2, restBoost);
+  double cosAngle = dau1_in_rest.Vect().Dot(dau2_in_rest.Vect()) / (dau1_in_rest.P() * dau2_in_rest.P());
+  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  return std::acos(cosAngle);
+}
 ///////////////////////////////////////////////////////////////////////////////////
 //function which gets the hel angle between dau1 and dau2 in the rest frame of the restFrame particle
 
@@ -451,6 +495,22 @@ inline float angDsPi (TLorentzVector d, TLorentzVector dau, TLorentzVector b) {
 
   return d.Angle(dau.Vect());
 }
+
+inline float angDsPi (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVector dau, math::PtEtaPhiMLorentzVector b) {
+
+  auto bBoost = b.BoostToCM();
+  auto dBoost = d.BoostToCM();
+
+  auto dau_in_d = ROOT::Math::VectorUtil::boost (dau, dBoost);
+  auto d_in_b   = ROOT::Math::VectorUtil::boost (d  , bBoost);
+ 
+  double cosAngle = dau_in_d.Vect().Dot(d_in_b.Vect()) / (dau_in_d.P() * d_in_b.P());
+  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  return std::acos(cosAngle);
+
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which gets angle between decay planes
 
@@ -490,6 +550,43 @@ inline float angPlane (TLorentzVector d, TLorentzVector b, TLorentzVector mu, TL
   return n1.Angle(n2);
 }
 
+
+inline float angPlane (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVector b, math::PtEtaPhiMLorentzVector mu, math::PtEtaPhiMLorentzVector pi) {
+
+  //get q2
+  math::PtEtaPhiMLorentzVector q = b - d;
+  double q2 = q.M2();
+
+  //get Ds boost vector in the lab frame (to boost pi)
+  auto dBoost = d.BoostToCM();
+
+  //boost Ds into Bs rest frame
+  auto bBoost = b.BoostToCM();
+  auto d_in_b = ROOT::Math::VectorUtil::boost(d, bBoost);
+
+  //get W via Ds (no SetVectM, so build it from components: p = -p_d, mass = sqrt(q2))
+  auto pW = -d_in_b.Vect();
+  math::PtEtaPhiMLorentzVector w_in_b(pW.Rho(), pW.Eta(), pW.Phi(), std::sqrt(q2));
+
+  // boost it back into lab frame (opposite of bBoost)
+  auto w_in_lab = ROOT::Math::VectorUtil::boost(w_in_b, -bBoost);
+  // now take the boost vector of w
+  auto wBoost = w_in_lab.BoostToCM();
+  //boost the muon into the w rest frame
+  auto mu_in_w = ROOT::Math::VectorUtil::boost(mu, wBoost);
+
+  //now boost the pi into the ds rest frame, ds is already in Bs rest frame
+  auto pi_in_d = ROOT::Math::VectorUtil::boost(pi, dBoost);
+
+  // normal vector on lepton-W plane
+  auto n1 = mu_in_w.Vect().Cross(w_in_b.Vect());
+  // normal vector on ds-pi plane
+  auto n2 = d_in_b.Vect().Cross(pi_in_d.Vect());
+
+  return ROOT::Math::VectorUtil::Angle(n1, n2);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which gets angle of kaon in DsPi plane 
 
@@ -514,6 +611,29 @@ inline float angPlane2 (TLorentzVector d, TLorentzVector b, TLorentzVector k, TL
   return n1.Angle(n2);
 }
 
+inline float angPlane2 (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVector b, math::PtEtaPhiMLorentzVector k, math::PtEtaPhiMLorentzVector pi) {
+
+  //boost vectors (BoostToCM = -BoostVector), taken in the lab frame
+  auto dBoost = d.BoostToCM();
+  auto bBoost = b.BoostToCM();
+
+  //boost the pi and k into the Ds rest frame
+  auto pi_in_d = ROOT::Math::VectorUtil::boost(pi, dBoost);
+  auto k_in_d  = ROOT::Math::VectorUtil::boost(k, dBoost);
+
+  //boost Ds into Bs rest frame
+  auto d_in_b = ROOT::Math::VectorUtil::boost(d, bBoost);
+
+  // normal vector on Ds - pi plane (Ds in B frame, pi in Ds frame)
+  auto n1 = d_in_b.Vect().Cross(pi_in_d.Vect());
+  // normal vector on k - pi plane (both in Ds frame)
+  auto n2 = k_in_d.Vect().Cross(pi_in_d.Vect());
+
+  return ROOT::Math::VectorUtil::Angle(n1, n2);
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns E*, the momentum of mu in b rest frame
 
@@ -526,7 +646,16 @@ inline float getEStar(TLorentzVector b, TLorentzVector mu){
   return mu.E();
 
 }
+inline float getEStar(math::PtEtaPhiMLorentzVector b, math::PtEtaPhiMLorentzVector mu){
 
+  //get b boost vector
+  auto bBoost = b.BoostToCM();
+  // boosted (confirmed, need to boost opposite as with BoostVector()!
+  auto mu_in_b = ROOT::Math::VectorUtil::boost(mu, bBoost);
+ 
+  return mu_in_b.E();
+
+}
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns Egamma, the energy of the photon (Ds* artificially created) 
 
@@ -542,6 +671,18 @@ inline float getEGamma(TLorentzVector ds, const double dsMass_, const double dsS
 
 }
 
+
+inline float getEGamma(math::PtEtaPhiMLorentzVector ds, const double dsMass_, const double dsStarMass_ ){
+
+  // collinear approx to get Ds star
+  math::PtEtaPhiMLorentzVector dsStar(ds.Pt() * dsStarMass_ / dsMass_, ds.Eta(), ds.Phi(), dsStarMass_);
+
+  float eGamma = std::sqrt( std::pow(dsStarMass_,2) * (1 + std::pow(ds.P() / dsMass_ ,2) )) - ds.E();
+
+  return eGamma;
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 //function which returns the angle between the Ds and mu 
 
@@ -549,6 +690,14 @@ inline double getKappa(TLorentzVector ds, TLorentzVector mu){
 
   double kappa = ds.Vect().Angle(mu.Vect());
  
+  return kappa;
+
+}
+
+inline double getKappa(math::PtEtaPhiMLorentzVector ds, math::PtEtaPhiMLorentzVector mu){
+
+  double kappa = ROOT::Math::VectorUtil::Angle(ds.Vect(), mu.Vect());
+
   return kappa;
 
 }
@@ -579,6 +728,17 @@ inline TLorentzVector collMethod(TLorentzVector dMu, const double bMass_){
         return b;
 
 }
+inline math::PtEtaPhiMLorentzVector collMethod(math::PtEtaPhiMLorentzVector dMu, const double bMass_){
+
+        math::PtEtaPhiMLorentzVector b = dMu;
+
+        double dMuMass = dMu.M();
+        b *= bMass_ / dMuMass; //scale it
+
+        return b;
+
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 // LHCb method for bs reconstruction
@@ -613,6 +773,37 @@ inline TLorentzVector lhcbMethod(TLorentzVector dMu, float v1_x, float v1_y, flo
 
 } 
 
+
+inline math::PtEtaPhiMLorentzVector lhcbMethod(math::PtEtaPhiMLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  TVector3 beamAxis;
+  TVector3 radialAxis;
+           
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  beamAxis  .SetXYZ(0.0,0.0,1.0); // in z direction
+  radialAxis.SetXYZ(1.0,0.0,0.0); //in x direction
+   
+  float theta  = bsFlightDir.Theta(); //angle between beam axis and bs flight dir
+  float lhcbPz = dMu.Pz() *bMass_ / dMu.M();
+  float lhcbPt = lhcbPz * std::tan(theta); //angle is in radians! std::tan also takes radians :)
+  
+  bsFlightDir.SetZ(0.0); //project on xy plane for phi calculation
+  float lhcbPhi;
+
+  // give attention that the phi component is correct
+  if (bsFlightDir.Py() > 0) lhcbPhi = bsFlightDir.Angle(radialAxis); //get the phi angle
+  else lhcbPhi = - bsFlightDir.Angle(radialAxis); //get the phi angle
+ 
+  float eta = - std::log(std::tan(theta/2));
+  math::PtEtaPhiMLorentzVector b(lhcbPt,eta,lhcbPhi,bMass_); 
+     
+  return b;
+
+} 
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Alternative LHCb method for bs reconstruction
 
@@ -632,6 +823,23 @@ inline TLorentzVector lhcbAltMethod(TLorentzVector dMu, float v1_x, float v1_y, 
 
 }
 
+inline math::PtEtaPhiMLorentzVector lhcbAltMethod(math::PtEtaPhiMLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+  
+  TVector3 lhcbAltBs;
+  lhcbAltBs = bsFlightDir.Unit();  
+  lhcbAltBs *= dMu.Vect().R() * bMass_ / dMu.M(); 
+
+  math::PtEtaPhiMLorentzVector lhcbAltBsTlv(lhcbAltBs.Px(),lhcbAltBs.Py(),lhcbAltBs.Pz(), bMass_);      
+  
+  return lhcbAltBsTlv;
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+// reco methods
 inline std::tuple<std::vector<TLorentzVector>, float> recoMethod(TLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
 
   TLorentzVector recoBsTlv1;
@@ -720,6 +928,95 @@ inline std::tuple<std::vector<TLorentzVector>, float> recoMethod(TLorentzVector 
   
 }
 
+inline std::tuple<std::vector<math::PtEtaPhiMLorentzVector>, float> recoMethod(math::PtEtaPhiMLorentzVector dMu, float v1_x, float v1_y, float v1_z, float v2_x, float v2_y ,float v2_z, const double bMass_){
+
+ 
+  double recoNeutPll_1; // neutrino momentum parallel to bs direction
+  double recoNeutPll_2; // "
+  
+  double recoBsAbs_1; // absolute 3 momentum of bs
+  double recoBsAbs_2; // "
+  
+  // bs flight direction
+  TVector3 bsFlightDir;
+  bsFlightDir.SetXYZ(v2_x - v1_x, v2_y - v1_y , v2_z - v1_z);
+   
+  // angle between the bs flight direction and the Dsmu system (visible)
+
+  double cosAngle  = dMu.Vect().Dot(bsFlightDir) / (dMu.P() * bsFlightDir.Mag());
+  cosAngle         = std::max(-1.0, std::min(1.0, cosAngle));
+  double recoAngle = std::acos(cosAngle); 
+                      
+  //define parameters 
+
+  // momentum of DsMu system parallel to the bs
+  double recoDsMuPll = std::cos(recoAngle) * dMu.Vect().R();
+  // momentum of DsMu system orthogonal to the bs
+  double recoDsMuT = std::sin(recoAngle) * dMu.Vect().R();
+  // energy of Dsmu system
+  double recoDsMuE = dMu.E(); 
+  // cocktail, drops out of equation
+  double recoMix = std::pow(bMass_,2) + std::pow(recoDsMuPll,2) - std::pow(recoDsMuT,2) - std::pow(recoDsMuE,2);
+  
+  // define a,b,c, to give to mitternachtsformel
+  double a = 4*(std::pow(recoDsMuPll,2) - std::pow(recoDsMuE,2));
+  double b = 4*recoDsMuPll*recoMix;
+  double c = std::pow(recoMix,2) - 4*std::pow(recoDsMuE,2)*std::pow(recoDsMuT,2);
+
+  // discriminant
+  double disc = std::pow(b,2) - 4*a*c;      
+  float discNegativity;
+  /*
+  std::cout << "v1_x   = " << v1_x << std::endl;
+  std::cout << "v1_y   = " << v1_y << std::endl;
+  std::cout << "v1_z   = " << v1_z << std::endl;
+
+  std::cout << "v2_x   = " << v2_x << std::endl;
+  std::cout << "v2_y   = " << v2_y << std::endl;
+  std::cout << "v2_z   = " << v2_z << std::endl;
+  std::cout << "dMu Pt = " << dMu.Pt() << std::endl;
+  */
+ 
+  if( disc >= 0) {
+  
+    //non complex root -> nice! 
+    recoNeutPll_1 = (-b + std::sqrt(disc)) / (2*a);
+    recoNeutPll_2 = (-b - std::sqrt(disc)) / (2*a);
+    //std::cout << "---- disc is positive!!" << std::endl;
+    //std::cout << "disc = " << disc << std::endl;
+    discNegativity = 0;
+ 
+  }
+  else{
+    // complex root, only save -b / 2a (i.e. set disc to zero!)
+
+    recoNeutPll_1 = -b / (2*a);
+    recoNeutPll_2 = -b / (2*a);
+    //std::cout << "---- disc is negative!!" << std::endl;
+    //std::cout << "disc = " << disc << std::endl;
+    discNegativity = std::sqrt(abs(disc)) / abs(b);
+  }
+ 
+  recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
+  recoBsAbs_2 = recoDsMuPll + recoNeutPll_2; 
+  
+  TVector3 recoBs_1 = bsFlightDir.Unit();
+  TVector3 recoBs_2 = bsFlightDir.Unit();
+  
+  recoBs_1 *= recoBsAbs_1; 
+  recoBs_2 *= recoBsAbs_2; 
+ 
+  math::PtEtaPhiMLorentzVector recoBsTlv1(recoBs_1.Px(),recoBs_1.Py(),recoBs_1.Pz(),bMass_);
+  math::PtEtaPhiMLorentzVector recoBsTlv2(recoBs_2.Px(),recoBs_2.Py(),recoBs_2.Pz(),bMass_);
+
+  std::vector<math::PtEtaPhiMLorentzVector> recos;
+  recos.push_back(recoBsTlv1);
+  recos.push_back(recoBsTlv2);
+  
+  return std::make_tuple(recos,discNegativity); 
+  
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Fix the track covariance matrix to be pos. def.
@@ -776,11 +1073,11 @@ inline reco::Track correctCovMat(const reco::Track *tk, double delta){
     }
 
     // Debug: check if it worked!
-    for (i = 0; i < cov.kRows; i++) {
-        for (j = 0; j < cov.kRows; j++) {
-          std::cout << cov(i,j) << std::endl;
-        }
-    }
+    //for (i = 0; i < cov.kRows; i++) {
+    //    for (j = 0; j < cov.kRows; j++) {
+    //      std::cout << cov(i,j) << std::endl;
+    //    }
+    //}
 
     return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
     }

@@ -381,28 +381,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   // for printing
   std::cout << std::fixed << std::setprecision(10);
 
-  //append lost tracks to packed tracks
-  //pat::PackedCandidateCollection mergedTracks;
-  auto mergedTracks = std::vector<reco::Track>();
+  std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
+  trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
 
-  //for (auto& normCand : *pcand) {
-  //  if (normCand.hasTrackDetails() && normCand.charge() != 0 && normCand.numberOfHits() > 0 ){
-  //  mergedTracks.push_back(normCand.pseudoTrack());}
-  //}
-  //for (auto& lostCand : *tracksLost) {
-  //  if (lostCand.hasTrackDetails()) mergedTracks.push_back(lostCand.pseudoTrack());
-  //}
-
-  //if (mergedTracks.size() != unpackedTracks->size()) {
-  //std::cout << "Track collections have different sizes!" << std::endl;
-  //}
-
-  //std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
-  //trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
+  std::unique_ptr<const rdscalib::TrackCalib> muCalib;
+  muCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath()); //CHANGE JSON
 
 
   //////////////////////////////////////////////////////
-  // Match the trigger muon with a muon from the      //
+  // Acces the trigger muon inside the                //
   // packed pat collection. Reminder, we often have   //
   // only one trigger muon, but sometimes two! :)     //
   // --> checked, and its valid to have more than one //
@@ -474,7 +461,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPfIdx.push_back(pfIdx); 
       else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) {chargedPfIdx.push_back(pfIdx); 
       
-      //std::cout << "collecting: " << pfPtr->pt() << std::endl; 
       }    
     }
 
@@ -491,9 +477,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       if (k1Idx < pcand->size()) k1Ptr = edm::Ptr<pat::PackedCandidate>(pcand, k1Idx); //normal tracks
       else k1Ptr = edm::Ptr<pat::PackedCandidate>(tracksLost, k1Idx - pcand->size());  //lost tracks
 
-
       //apply track selection (see cfg)
-
       if (!hadSelection_(*k1Ptr)) continue; 
       k1Sel1Counter++;
 
@@ -523,7 +507,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       else k2Ptr = edm::Ptr<pat::PackedCandidate>(tracksLost, k2Idx - pcand->size());  //lost tracks
  
       //apply track selection (see cfg)
-   
       if(!hadSelection_(*k2Ptr)) continue;
       k2Sel1Counter++;
 
@@ -534,7 +517,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       (abs(k2Ptr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
       (abs(k2Ptr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
 
-      int kkCharge = k1Ptr->charge() * k2Ptr->charge();
 
       //if (kkCharge > 0) continue; //To be commented out 
 
@@ -557,7 +539,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         else piPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, piIdx - pcand->size());  //lost tracks
 
         //apply track selection (see cfg)
-
         if(!hadSelection_(*piPtr)) continue;
         piSel1Counter++;
 
@@ -576,48 +557,58 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         piSel2Counter++;
 
 
-        //////////////////////////////////////////////////
-        // Correct the track                            //
-        //////////////////////////////////////////////////
+        //////////////////////////////////////
+        // Correct momentum scale and smear //
+        //////////////////////////////////////
 
-        //PF canidates are always assigned with the pi mass, we have to force the kaon mass
-        math::PtEtaPhiMLorentzVector k1P4(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), K_MASS);
-        math::PtEtaPhiMLorentzVector k2P4(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), K_MASS);
-        math::PtEtaPhiMLorentzVector piP4(piPtr->pt(), piPtr->eta(), piPtr->phi(), PI_MASS); //just to be sure lets also force the pi mass
+        math::PtEtaPhiMLorentzVector muVec(muPtr->pt(), muPtr->eta(), muPtr->phi(), muMass_);
+        math::PtEtaPhiMLorentzVector k1Vec(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), kMass_ );
+        math::PtEtaPhiMLorentzVector k2Vec(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), kMass_ );
+        math::PtEtaPhiMLorentzVector piVec(piPtr->pt(), piPtr->eta(), piPtr->phi(), piMass_); //just to be sure lets also force the pi mass
  
-        //if (!iEvent.isRealData()) {
-        //  const auto& id = iEvent.id();
-        //  const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k1Idx);
-        //  const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k2Idx);
-        //  const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), piIdx);
-        //  const double f_k1 = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
-        //  const double f_k2 = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
-        //  const double f_pi = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
+        if (!iEvent.isRealData()) {
+          const auto& id    = iEvent.id();
+          const double z_mu = muCalib ->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), muPtr->userInt("muIdx")); //take the index in the reco::muon collection
+          const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k1Idx);
+          const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k2Idx);
+          const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), piIdx);
 
-        //  //std::cout << "Before: pt=" << k1P4.Pt() << ", eta=" << k1P4.Eta() << ", phi=" << k1P4.Phi() << ", px=" << k1P4.Px() << ", py=" << k1P4.Py() << ", pz=" << k1P4.Pz() << std::endl;
+          const double f_mu = muCalib ->factor(muPtr->p(), muPtr->pt(), muPtr->eta(), muPtr->charge(), z_mu);
+          const double f_k1 = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
+          const double f_k2 = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
+          const double f_pi = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
+
+          //std::cout << "Before k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
+          //std::cout << "Before mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
  
-        //  k1P4.SetXYZT(k1P4.Px() * f_k1, 
-        //               k1P4.Py() * f_k1, 
-        //               k1P4.Pz() * f_k1, 
-        //               std::sqrt(std::pow(k1P4.Px() * f_k1, 2) + std::pow(k1P4.Py() * f_k1, 2) + std::pow(k1P4.Pz() * f_k1, 2) + K_MASS * K_MASS));
+          muVec.SetXYZT(muVec.Px() * f_mu, 
+                       muVec.Py() * f_mu, 
+                       muVec.Pz() * f_mu, 
+                       std::sqrt(std::pow(muVec.Px() * f_mu, 2) + std::pow(muVec.Py() * f_mu, 2) + std::pow(muVec.Pz() * f_mu, 2) + muMass_ * muMass_));
 
-        //  k2P4.SetXYZT(k2P4.Px() * f_k2, 
-        //               k2P4.Py() * f_k2, 
-        //               k2P4.Pz() * f_k2, 
-        //               std::sqrt(std::pow(k2P4.Px() * f_k2, 2) + std::pow(k2P4.Py() * f_k2, 2) + std::pow(k2P4.Pz() * f_k2, 2) + K_MASS * K_MASS));
+          k1Vec.SetXYZT(k1Vec.Px() * f_k1, 
+                       k1Vec.Py() * f_k1, 
+                       k1Vec.Pz() * f_k1, 
+                       std::sqrt(std::pow(k1Vec.Px() * f_k1, 2) + std::pow(k1Vec.Py() * f_k1, 2) + std::pow(k1Vec.Pz() * f_k1, 2) + kMass_ * kMass_ ));
 
-        //  piP4.SetXYZT(piP4.Px() * f_pi, 
-        //               piP4.Py() * f_pi, 
-        //               piP4.Pz() * f_pi, 
-        //               std::sqrt(std::pow(piP4.Px() * f_pi, 2) + std::pow(piP4.Py() * f_pi, 2) + std::pow(piP4.Pz() * f_pi, 2) + K_MASS * K_MASS));
+          k2Vec.SetXYZT(k2Vec.Px() * f_k2, 
+                       k2Vec.Py() * f_k2, 
+                       k2Vec.Pz() * f_k2, 
+                       std::sqrt(std::pow(k2Vec.Px() * f_k2, 2) + std::pow(k2Vec.Py() * f_k2, 2) + std::pow(k2Vec.Pz() * f_k2, 2) + kMass_ * kMass_ ));
 
-        //  //std::cout << "After: pt=" << k1P4.Pt() << ", eta=" << k1P4.Eta() << ", phi=" << k1P4.Phi() << ", px=" << k1P4.Px() << ", py=" << k1P4.Py() << ", pz=" << k1P4.Pz() << std::endl;
+          piVec.SetXYZT(piVec.Px() * f_pi, 
+                       piVec.Py() * f_pi, 
+                       piVec.Pz() * f_pi, 
+                       std::sqrt(std::pow(piVec.Px() * f_pi, 2) + std::pow(piVec.Py() * f_pi, 2) + std::pow(piVec.Pz() * f_pi, 2) + piMass_ * piMass_ ));
 
-        //  // corrected momentum: (c.px() * f, c.py() * f, c.pz() * f); energy from the mass hypothesis
-        //  // optional: trkCalib_->factor(c.p(), c.pt(), c.eta(), c.charge(), z, "eig0_up"), ...
-        //  std::cout << "f1 and f2 are: " << f_k1 << " " << f_k2 << std::endl;
+          //std::cout << "After k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
+          //std::cout << "After mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
 
-        //}
+          // corrected momentum: (c.px() * f, c.py() * f, c.pz() * f); energy from the mass hypothesis
+          // optional: trkCalib_->factor(c.p(), c.pt(), c.eta(), c.charge(), z, "eig0_up"), ...
+          //std::cout << "f1 and f2 are: " << f_k1 << " " << f_k2 << std::endl;
+
+        }
 
 
         //////////////////////////////////////////////////
@@ -627,53 +618,49 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         nKKPiMu++; // found candidate
 
         //define a composite candidate pair 
-        pat::CompositeCandidate kk;
-
-
-        kk.setP4(k1P4 + k2P4);
+        math::PtEtaPhiMLorentzVector kkVec = k1Vec + k2Vec;
 
         //only continue when they build a phi resonance (see cfg for mass window):
-        if (fabs(kk.mass() - phiMass_) > phiMassAllowance_) continue;     
+        if (fabs(kkVec.M() - phiMass_) > phiMassAllowance_) continue;     
 
-        kk.setCharge(k1Ptr->charge() + k2Ptr->charge());
+       
+        int kkCharge = k1Ptr->charge() + k2Ptr->charge();
         nPhiMassCut++;
-
 
 
         //////////////////////////////////////////////////
         // Build Ds resonance                           //
         // ///////////////////////////////////////////////
 
-        pat::CompositeCandidate phiPi;
-        phiPi.setP4(kk.p4() + piP4); 
+        math::PtEtaPhiMLorentzVector phiPiVec = kkVec + piVec;
         
         //only continue when they build a ds resonance, (see cfg for mass window):
 
         // CHANGE ME BACK!!
         //if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
-        if (phiPi.mass() - dsMass_ < -0.12) continue;
-        if (phiPi.mass() - dsMass_ >  0.08) continue;
+        if (phiPiVec.M() - dsMass_ < -0.12) continue;
+        if (phiPiVec.M() - dsMass_ >  0.08) continue;
 
-
-        phiPi.setCharge(kk.charge() + piPtr->charge());
+        //phiPi.setCharge(kk.charge() + piPtr->charge());
+        int phiPiCharge = k1Ptr->charge() + k2Ptr->charge() + piPtr->charge();
         nDsMassCut++;
 
         //////////////////////////////////////////////////
         // Build Bs resonance                           //
         //////////////////////////////////////////////////
 
-        pat::CompositeCandidate dsMu;
-        dsMu.setP4(phiPi.p4() + muPtr->p4()); 
-        dsMu.setCharge(phiPi.charge() + muPtr->charge()); //sanity check:shoould be 0
+        math::PtEtaPhiMLorentzVector dsMuVec = phiPiVec + muVec;
 
-        if(dsMu.mass() > maxBsMass_) continue;
+        if(dsMuVec.M() > maxBsMass_) continue;
         nBsMassCut++;
+
+        int dsMuCharge = k1Ptr->charge() + k2Ptr->charge() + piPtr->charge() + muPtr->charge();
 
         //build bs with collinear approximation
         pat::CompositeCandidate bs;
 
-        bs.setP4(dsMu.p4() * bsMass_ / dsMu.mass()); //the bs_mass will thus be fixed at 5.36688 GeV (peak in the histo)
-        bs.setCharge(dsMu.charge());
+        bs.setP4(dsMuVec * bsMass_ / dsMuVec.M()); //the bs_mass will thus be fixed at 5.36688 GeV (peak in the histo)
+        bs.setCharge(dsMuCharge);
 
         ///////////////////////////////////////////////////
         // Check if we have a valid beamspot             //
@@ -695,42 +682,71 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         std::vector<RefCountedKinematicParticle> bsToFit;
 
         // add masses
-        ParticleMass piMass  = piMass_;
-        ParticleMass kMass   = kMass_;
+        ParticleMass piMass  = piMass_ ;
+        ParticleMass kMass   = kMass_  ;
         ParticleMass phiMass = phiMass_;
-        ParticleMass dsMass  = dsMass_;
-        ParticleMass muMass  = muMass_;
+        ParticleMass dsMass  = dsMass_ ;
+        ParticleMass muMass  = muMass_ ;
 
         
         float ndf = 0.0;
         float chi = 0.0;
-        float kMassSigma = kMassSigma_ ;
+        float kMassSigma  = kMassSigma_ ;
         float piMassSigma = piMassSigma_;
         float muMassSigma = muMassSigma_;
 
         // fix the tracks to have pos def covariance matrix, taken from:
         // https://github.com/CMSKStarMuMu/miniB0KstarMuMu/blob/master/miniKstarMuMu/plugins/miniKstarMuMu.cc#L1611-L1678
 
+        const reco::Track muTrack = *muPtr->bestTrack();
         const reco::Track k1Track = *k1Ptr->bestTrack();
         const reco::Track k2Track = *k2Ptr->bestTrack();
         const reco::Track piTrack = *piPtr->bestTrack();
-        const reco::Track muTrack = *muPtr->bestTrack();
 
-        reco::Track k1TrackCorr   = correctCovMat(&k1Track, 1e-8);
-        reco::Track k2TrackCorr   = correctCovMat(&k2Track, 1e-8);
-        reco::Track piTrackCorr   = correctCovMat(&piTrack, 1e-8);
-        reco::Track muTrackCorr   = correctCovMat(&muTrack, 1e-8);
+        //////////////////////////////////////////////////////
+        // Build track for corrected momentum scale & smear //
+        //////////////////////////////////////////////////////
+
+        reco::Track::Vector trackVectorMu(muVec.Px(), muVec.Py(), muVec.Pz());
+        reco::Track::Vector trackVectorK1(k1Vec.Px(), k1Vec.Py(), k1Vec.Pz());
+        reco::Track::Vector trackVectorK2(k2Vec.Px(), k2Vec.Py(), k2Vec.Pz());
+        reco::Track::Vector trackVectorPi(piVec.Px(), piVec.Py(), piVec.Pz());
+
+        reco::Track newTrackMu ( muTrack.chi2(), muTrack.ndof(), muTrack.referencePoint(),
+                                 trackVectorMu, //thats the only thing that changed!
+                                 muTrack.charge(), muTrack.covariance() , muTrack.algo());
+
+        reco::Track newTrackK1 ( k1Track.chi2(), k1Track.ndof(), k1Track.referencePoint(),
+                                 trackVectorK1, //thats the only thing that changed!
+                                 k1Track.charge(), k1Track.covariance() , k1Track.algo());
+
+        reco::Track newTrackK2 ( k2Track.chi2(), k2Track.ndof(), k2Track.referencePoint(),
+                                 trackVectorK2, //thats the only thing that changed!
+                                 k2Track.charge(), k2Track.covariance() , k2Track.algo());
+
+        reco::Track newTrackPi ( piTrack.chi2(), piTrack.ndof(), piTrack.referencePoint(),
+                                 trackVectorPi, //thats the only thing that changed!
+                                 piTrack.charge(), piTrack.covariance() , piTrack.algo());
+
+
+        //////////////////////////////////////////////////////
+        // Fix covariane matrix to be positive definite     //
+        //////////////////////////////////////////////////////
+
+        reco::Track muTrackCorr   = correctCovMat(&newTrackMu, 1e-8);
+        reco::Track k1TrackCorr   = correctCovMat(&newTrackK1, 1e-8);
+        reco::Track k2TrackCorr   = correctCovMat(&newTrackK2, 1e-8);
+        reco::Track piTrackCorr   = correctCovMat(&newTrackPi, 1e-8);
 
         reco::TransientTrack ttMu = ttBuilder->build(muTrackCorr);
-        reco::TransientTrack ttPi = ttBuilder->build(piTrackCorr);
         reco::TransientTrack ttK1 = ttBuilder->build(k1TrackCorr);
         reco::TransientTrack ttK2 = ttBuilder->build(k2TrackCorr);
+        reco::TransientTrack ttPi = ttBuilder->build(piTrackCorr);
 
         phiToFit.push_back(  pFactory.particle(ttK1, kMass,  chi, ndf, kMassSigma ));
         phiToFit.push_back(  pFactory.particle(ttK2, kMass,  chi, ndf, kMassSigma ));
         dsToFit.push_back (  pFactory.particle(ttPi, piMass, chi, ndf, piMassSigma));
         bsToFit.push_back (  pFactory.particle(ttMu, muMass, chi, ndf, muMassSigma));
-
 
         /////////////////////////////// global fitter /////////////////////////////////////////////////////////
         // some remarks: With movePointerToTheFirstChild(), movePointerToTheNextChild() one can
@@ -763,12 +779,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         RefCountedKinematicParticle phiParticle = phiTree->currentParticle();
 
         //get vtx chi2 and ndof
-
         auto phiVtx = phiTree->currentDecayVertex();
         if (!phiVtx->vertexIsValid() || !phiParticle->currentState().isValid() ) continue; //check if fit result is valid
 
         float phiVtxChi2    = phiVtx->chiSquared();
-        if (phiVtxChi2 < 0)    continue;
+        if (phiVtxChi2 < 0) continue;
 
         float phiVtxNDof    = phiVtx->degreesOfFreedom();
         float phiVtxRedChi2 = phiVtxChi2 / phiVtxNDof; 
@@ -787,8 +802,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get the vectors full of fit information (vertex and momenta and mass)
         AlgebraicVector7 phiParams     = phiParticle->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 phiDau1Params = phiDau1->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 phiDau2Params = phiDau2->currentState().kinematicParameters().vector();
+        //AlgebraicVector7 phiDau1Params = phiDau1->currentState().kinematicParameters().vector();     
+        //AlgebraicVector7 phiDau2Params = phiDau2->currentState().kinematicParameters().vector();
      
         // add the phi to the list of particles (pi) to fit the ds 
         dsToFit.push_back(phiParticle);
@@ -828,8 +843,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get the vectors full of fit information (vertex and momenta and mass)
         AlgebraicVector7 dsParams     = dsParticle->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 dsDau1Params = dsDau1->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 dsDau2Params = dsDau2->currentState().kinematicParameters().vector();
+        //AlgebraicVector7 dsDau1Params = dsDau1->currentState().kinematicParameters().vector();     
+        //AlgebraicVector7 dsDau2Params = dsDau2->currentState().kinematicParameters().vector();
 
         // add the ds to the list of particles to fit the bs
         bsToFit.push_back(dsParticle);
@@ -868,19 +883,28 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get the vectors full of fit information (vertex and momenta and mass)
         AlgebraicVector7 bsParams = bsParticle->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
-        AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
+        //AlgebraicVector7 bsDau1Params = bsDau1->currentState().kinematicParameters().vector();     
+        //AlgebraicVector7 bsDau2Params = bsDau2->currentState().kinematicParameters().vector();
 
         //std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of fitter /////////////////////////////////////
+
+        // save the fitted resonances        
+        TLorentzVector fittedPhi;
+        TLorentzVector fittedDs;
+        TLorentzVector fittedBs;
+
+        fittedPhi.SetXYZM(   phiParams(3),     phiParams(4),     phiParams(5),      phiParams(6));
+        fittedDs.SetXYZM(    dsParams(3),      dsParams(4),      dsParams(5),       dsParams(6));
+        fittedBs.SetXYZM(    bsParams(3),      bsParams(4),      bsParams(5),       bsParams(6));
+
 
         ///////////////////////////////////////////////////
         // Match final state track with AOD tracks       //
         // We do this to perform a PV refit. The latter  //
         // requires more general tracks than in miniAOD  //
         ///////////////////////////////////////////////////
-  
         
         int trkIdxMu        = -1;
         int trkIdxK1        = -1;
@@ -935,29 +959,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         trkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
 
                 
-        //std::cout << "mu x,y,z momentum is: " << (*aodTrkMu).pt() << ", " << std::endl;
-        //<< (*aodTrkMu).momentum().y() << ", "
-        //<< (*aodTrkMu).momentum().z() << ", "  
-        //<< std::endl;
-
-        //std::cout << "k1 x,y,z momentum is: " << (*aodTrkK1).pt() << ", " << std::endl;
-        //<< (*aodTrkK1).momentum().y() << ", "
-        //<< (*aodTrkK1).momentum().z() << ", "  
-        //<< std::endl;
-
-        //std::cout << "k2 x,y,z momentum is: " << (*aodTrkK2).pt() << ", " << std::endl;
-        //<< (*aodTrkK2).momentum().y() << ", "
-        //<< (*aodTrkK2).momentum().z() << ", "  
-        //<< std::endl;
-
-        //std::cout << "pi x,y,z momentum is: " << (*aodTrkPi).pt() << ", " << std::endl;
-        //<< (*aodTrkPi).momentum().y() << ", "
-        //<< (*aodTrkPi).momentum().z() << ", "  
-        //<< std::endl;
-
         // now fill a vector of aod tracks, except for the signal tracks
         // want to remove signal tracks from vtx fit
-
         std::vector<reco::Vertex> refitVtx;
  
         bool matchedMu = false;
@@ -978,11 +981,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             edm::RefToBase<reco::Track> test = vtxPtr->trackRefAt(trkIdx2);
             edm::Ptr<reco::Track> refitTrack = test.castTo<edm::Ptr<reco::Track>>();           
 
-            //std::cout << "associated x,y,z momentum is: " << (*refitTrack).pt() << ", " << std::endl;
-            //<< (*refitTrack).momentum().y() << ", "
-            //<< (*refitTrack).momentum().z() << ", "  
-            //<< std::endl;
- 
             if(refitTrack == trkMu) { matchedMu = true; continue;} //std::cout <<"found mu"<< std::endl; continue; }
             if(refitTrack == trkK1) { matchedK1 = true; continue;} //std::cout <<"found k1"<< std::endl; continue; }
             if(refitTrack == trkK2) { matchedK2 = true; continue;} //std::cout <<"found K2"<< std::endl; continue; }
@@ -990,16 +988,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           
             toFit.push_back(*refitTrack);
           }
-          //std::cout << "fitting " << toFit.size() << " vertices" << std::endl;
+
           PVRefitter fitter;
           auto newVtx = fitter.fit(toFit, beamSpot);
-          //std::cout << "new position is: " << newVtx.position().z() << std::endl;
 
           refitVtx.push_back(fitter.fit(toFit, beamSpot));
 
         }
-
-       
 
         //////////////////////////////////////////////////
         // Look for possible photons (g for gamma)      //
@@ -1017,7 +1012,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float photon_phi   = 0.0; 
         int   photon_pdgid = 0.0; 
 
-        TLorentzVector photonTlv(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
+        math::PtEtaPhiMLorentzVector photonVec(std::nan(""),std::nan(""),std::nan(""),std::nan(""));
         edm::Ptr<pat::PackedCandidate> phtPtr;
 
 
@@ -1036,14 +1031,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           gSelCounter++;
           
           // define photon momentum
-          //math::PtEtaPhiMLorentzVector photonP4(gPtr->pt(), gPtr->eta(), gPtr->phi(), 0.0);
-          pat::CompositeCandidate dsStar;
+          math::PtEtaPhiMLorentzVector gVec(gPtr->pt(), gPtr->eta(), gPtr->phi(), 0.0);
+          // define Ds* Momentum
+          math::PtEtaPhiMLorentzVector dsStarVec   = phiPiVec + gVec;
 
-          dsStar.setP4(gPtr->p4() + phiPi.p4());
- 
-          float dr           = reco::deltaR(*gPtr, phiPi);
-          float mDsStar      = dsStar.mass();
-          float deltaDsStar  = abs(mDsStar - DSSTAR_MASS); 
+          float mDsStar      = dsStarVec  .M();
+          float dr           = reco::deltaR(gVec, phiPiVec);
+          float deltaDsStar  = abs(mDsStar - dsStarMass_); 
  
           if (((dr < minDeltaDsStar) || (foundPhoton == 0))  && ( deltaDsStar < dsStarMassAllowance_)){
 
@@ -1064,49 +1058,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           photon_phi   = phtPtr->phi();     
           photon_pdgid = phtPtr->pdgId();     
 
-          pat::CompositeCandidate dsStarMu;
-          dsStarMu.setP4(phtPtr->p4() + phiPi.p4() + muPtr->p4());
-          dsPhotonMu_m   = dsStarMu.mass();
+          // define photon Momentum
+          photonVec = math::PtEtaPhiMLorentzVector(phtPtr->pt(), phtPtr->eta(), phtPtr->phi(), 0.0); 
 
-          photonTlv.SetXYZM(phtPtr->px(), phtPtr->py(), phtPtr->pz(), 0.0);
+          // define Ds* + Mu Momentum
+          math::PtEtaPhiMLorentzVector dsStarMuVec = dsMuVec + photonVec;
+
+          dsPhotonMu_m   = dsStarMuVec.M();
 
         }
-
-        //Define 4 vectors of fitted and refitted resonances
-        TLorentzVector fittedPhi;
-        TLorentzVector fittedDs;
-        TLorentzVector fittedBs;
-
-        TLorentzVector refittedPhi;
-        TLorentzVector refittedDs;
-        // bs does not have a refitted state :)
-
-        fittedPhi.SetXYZM(   phiParams(3),     phiParams(4),     phiParams(5),      phiParams(6));
-        fittedDs.SetXYZM(    dsParams(3),      dsParams(4),      dsParams(5),       dsParams(6));
-        fittedBs.SetXYZM(    bsParams(3),      bsParams(4),      bsParams(5),       bsParams(6));
-
-        refittedPhi.SetXYZM( dsDau2Params(3),  dsDau2Params(4),  dsDau2Params(5),   dsDau2Params(6));
-        refittedDs.SetXYZM(  bsDau2Params(3),  bsDau2Params(4),  bsDau2Params(5),   bsDau2Params(6));
-
-        //Define 4 vectors of refitted final states
-        TLorentzVector refittedK1;
-        TLorentzVector refittedK2;
-        TLorentzVector refittedPi;
-        TLorentzVector refittedMu;
-
-        refittedK1.SetXYZM(  phiDau1Params(3), phiDau1Params(4), phiDau1Params(5),  phiDau1Params(6));
-        refittedK2.SetXYZM(  phiDau2Params(3), phiDau2Params(4), phiDau2Params(5),  phiDau2Params(6));
-        refittedPi.SetXYZM(  dsDau1Params(3),  dsDau1Params(4),  dsDau1Params(5),   dsDau1Params(6));
-        refittedMu.SetXYZM(  bsDau1Params(3),  bsDau1Params(4),  bsDau1Params(5),   bsDau1Params(6));
-
-        // refitted ds+mu 
-        TLorentzVector refittedDsMu = refittedDs + refittedMu ;
 
         //get reco::Vertices from fit
         reco::Vertex recoSv = getRecoVertex(bsVtx );
         reco::Vertex recoTv = getRecoVertex(dsVtx );
         reco::Vertex recoFv = getRecoVertex(phiVtx);
- 
 
         // set sv,tv, and fv from fit
         float sv_x = recoSv.position().x(); //bsParams(0);
@@ -1121,13 +1086,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float fv_y = recoFv.position().y(); //phiParams(1);
         float fv_z = recoFv.position().z(); //phiParams(2);
 
-        // compare covariances of the two methods --> they are the same :)!
-        //std::cout << "vertexState covariance matrix:\n";
-        //std::cout << bsVtx->vertexState().error().matrix() << std::endl;
-
-        //std::cout << "reco::Vertex covariance matrix:\n";
-        //std::cout << recoSv.covariance() << std::endl;
-
         ///////////////////////////////////////////////////////////////
         // Redefinition of PV, this with ip3d is more excact!        //
         // (Around 5%). Use refitted Vtx without signal tracks       //
@@ -1141,7 +1099,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
           edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
 
-          float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, refittedDs, refittedMu);
+          float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, phiPiVec, muVec);
 
           if((ip3d < minIp3d_general) || (pvIdx_general < 0)){
             minIp3d_general = ip3d;
@@ -1164,7 +1122,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float pv_general_y = beamSpot.y(pv_general_z);
 
        
-
         //now use refitted vertices!
 
         float minIp3d= 0.0;
@@ -1174,7 +1131,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         for(size_t vtxIdx = 0; vtxIdx < refitVtx.size(); ++vtxIdx){
           reco::Vertex* vtx = &refitVtx.at(vtxIdx);
 
-          float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, refittedDs, refittedMu);
+          float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, phiPiVec, muVec);
 
           if((ip3d < minIp3d) || (pvIdx < 0)){
             minIp3d= ip3d;
@@ -1209,8 +1166,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xyz;
         ROOT::Math::DisplacementVector3D<ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag> ds_xyz_pv;
 
-        kkPi_xy   .SetXYZ(phiPi.px()  , phiPi.py()  , 0.0);
-        kkPi_xyz  .SetXYZ(phiPi.px()  , phiPi.py()  , phiPi.pz());
+        kkPi_xy   .SetXYZ(phiPiVec.px()  , phiPiVec.py()  , 0.0);
+        kkPi_xyz  .SetXYZ(phiPiVec.px()  , phiPiVec.py()  , phiPiVec.pz());
 
         ds_xy     .SetXYZ(tv_x - sv_x , tv_y - sv_y , 0.0);
         ds_xy_pv  .SetXYZ(tv_x - pv_x , tv_y - pv_y , 0.0);
@@ -1255,9 +1212,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserCand("mu",muPtr); //muon mass is correct -> check
         bs.addUserFloat("mu_m",muMass_);
 
-        TLorentzVector muTlv;
-        muTlv.SetXYZM(muPtr->px(), muPtr->py(), muPtr->pz(), muMass_);
-
         // add information about trg muon
         bs.addUserInt("mu_is_tracker",     muPtr->isTrackerMuon());
         bs.addUserInt("mu_is_pf",          muPtr->isPFMuon());
@@ -1277,30 +1231,29 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //add prefit resonances --> are not part of collection and can thus not be
         //automatically access the pt(), .. as I can for k1,k2,pi,mu in the variables_cff.py
 
-        bs.addUserFloat("kk_pt", kk.pt());
-        bs.addUserFloat("kk_eta", kk.eta());
-        bs.addUserFloat("kk_phi", kk.phi());
-        bs.addUserFloat("kk_m", kk.mass());
-        bs.addUserFloat("kk_charge", kk.charge());
-        bs.addUserFloat("kk_deltaR", reco::deltaR(*k1Ptr, *k2Ptr));
+        bs.addUserFloat("kk_pt"    , kkVec.pt()  );
+        bs.addUserFloat("kk_eta"   , kkVec.eta() );
+        bs.addUserFloat("kk_phi"   , kkVec.phi() );
+        bs.addUserFloat("kk_m"     , kkVec.mass());
+        bs.addUserFloat("kk_charge", kkCharge    );
+        bs.addUserFloat("kk_deltaR", reco::deltaR(k1Vec, k2Vec));
 
-        bs.addUserFloat("phiPi_pt", phiPi.pt());
-        bs.addUserFloat("phiPi_eta", phiPi.eta());
-        bs.addUserFloat("phiPi_phi", phiPi.phi());
-        bs.addUserFloat("phiPi_m", phiPi.mass());
-        bs.addUserFloat("phiPi_charge", phiPi.charge());
-        bs.addUserFloat("phiPi_deltaR", reco::deltaR(kk, *piPtr));
+        bs.addUserFloat("phiPi_pt"    , phiPiVec.pt()  );
+        bs.addUserFloat("phiPi_eta"   , phiPiVec.eta() );
+        bs.addUserFloat("phiPi_phi"   , phiPiVec.phi() );
+        bs.addUserFloat("phiPi_m"     , phiPiVec.mass());
+        bs.addUserFloat("phiPi_charge", phiPiCharge    );
+        bs.addUserFloat("phiPi_deltaR", reco::deltaR(kkVec, piVec));
 
-        bs.addUserFloat("dsMu_pt", dsMu.pt());
-        bs.addUserFloat("dsMu_eta", dsMu.eta());
-        bs.addUserFloat("dsMu_phi", dsMu.phi());
-        bs.addUserFloat("dsMu_m", dsMu.mass()); //we miss the neutrino contribution
-        bs.addUserFloat("dsMu_charge", dsMu.charge());
-        bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPi, *muPtr));
+        bs.addUserFloat("dsMu_pt"    , dsMuVec.pt()  );
+        bs.addUserFloat("dsMu_eta"   , dsMuVec.eta() );
+        bs.addUserFloat("dsMu_phi"   , dsMuVec.phi() );
+        bs.addUserFloat("dsMu_m"     , dsMuVec.mass()); //we miss the neutrino contribution
+        bs.addUserFloat("dsMu_charge", dsMuCharge    );
+        bs.addUserFloat("dsMu_deltaR", reco::deltaR(phiPiVec, muVec));
 
         //rel charges (not additive!)
         bs.addUserFloat("pi_mu_charge",piMuCharge); 
-        bs.addUserFloat("k_k_charge"  ,kkCharge); 
 
         bs.addUserInt("matchedMu",matchedMu); 
         bs.addUserInt("matchedK1",matchedK1); 
@@ -1492,7 +1445,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // TODO: bestTrack() is not refitted -> bad? #can be changed but i think its good! bc the refitted track
         // may be wrongly crorected when its coming from a tau, nbc we fit it with the ds directly to the bs
 
-        auto direction_ds        =  GlobalVector(phiPi.px(),  phiPi.py(),  phiPi.pz()  ).unit();
+        auto direction_ds        =  GlobalVector(phiPiVec.px(),  phiPiVec.py(),  phiPiVec.pz()  ).unit();
         auto direction_bs        =  GlobalVector(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z ).unit();
 
         // First use signedDecayLength3D
@@ -1690,9 +1643,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         TVector3 bFlightDir;
         bFlightDir.SetXYZ(pv_x - sv_x, pv_y - sv_y, pv_z - sv_z);
 
-        double dsPerp     = refittedDs.  Vect().Perp(bFlightDir);
-        double dsMuPerp   = refittedDsMu.Vect().Perp(bFlightDir);
-        double bsMassCorr = std::sqrt(std::pow(refittedDsMu.M(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
+        double dsPerp      = phiPiVec.Vect().Cross(bFlightDir).R() / bFlightDir.Mag(); //phiPiVec.Vect().Perp(bFlightDir);
+        double dsMuPerp    = dsMuVec .Vect().Cross(bFlightDir).R() / bFlightDir.Mag(); //dsMuVec .Vect().Perp(bFlightDir);
+        double bsMassCorr  = std::sqrt(std::pow(dsMuVec.M(),2) + std::pow(dsMuPerp,2)) + dsMuPerp;
 
         bs.addUserFloat("bs_m_corr",  bsMassCorr);
         bs.addUserFloat("ds_perp",    dsPerp);
@@ -1701,27 +1654,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         ///////////////////////// reconstruct the B momentum with different methods ///////////////////////////////
 
-
-        // For the ds mass
-        TLorentzVector refittedPhiPi;
-        refittedPhiPi = refittedPhi + refittedPi; 
-
         /////////////////////////
         // Collinear approx.   //
         ///////////////////////// 
 
-        TLorentzVector collBsTlv = collMethod(refittedDsMu, bsMass_);
+        math::PtEtaPhiMLorentzVector collBsTlv = collMethod(dsMuVec, bsMass_);
 
-        TLorentzVector collMissTlv; // for m2 miss
-        TLorentzVector collQTlv;    // for q2 miss
-
-        collMissTlv = collBsTlv - refittedDsMu; // bs - ds+mu
-        collQTlv    = collBsTlv - refittedDs;   // bs - ds
+        math::PtEtaPhiMLorentzVector collMissTlv = collBsTlv - dsMuVec ; // bs - ds+mu
+        math::PtEtaPhiMLorentzVector collQTlv    = collBsTlv - phiPiVec; // bs - ds
 
         double m2_miss_coll = collMissTlv.M2();
         double pt_miss_coll = collMissTlv.Pt();
         double q2_coll      = collQTlv.M2();
-        float  e_star_coll  = getEStar(collBsTlv,refittedMu); 
+        float  e_star_coll  = getEStar(collBsTlv, muVec); 
 
         bs.addUserFloat("bs_px_coll" ,collBsTlv.Px());
         bs.addUserFloat("bs_py_coll" ,collBsTlv.Py());
@@ -1732,55 +1677,56 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bs.addUserFloat("m2_miss_coll",m2_miss_coll);
         bs.addUserFloat("pt_miss_coll",pt_miss_coll);
-        bs.addUserFloat("q2_coll",q2_coll);
-        bs.addUserFloat("e_star_coll",e_star_coll);
+        bs.addUserFloat("q2_coll"     ,q2_coll);
+        bs.addUserFloat("e_star_coll" ,e_star_coll);
 
-        bs.addUserFloat("b_boost_coll"    ,collBsTlv.BoostVector().Mag());
-        bs.addUserFloat("b_boost_coll_pt" ,collBsTlv.BoostVector().Pt());
-        bs.addUserFloat("b_boost_coll_eta",collBsTlv.BoostVector().Eta());
-        bs.addUserFloat("b_boost_coll_phi",collBsTlv.BoostVector().Phi());
+        bs.addUserFloat("b_boost_coll"    ,-collBsTlv.BoostToCM().R());
+        bs.addUserFloat("b_boost_coll_x"  ,-collBsTlv.BoostToCM().X());
+        bs.addUserFloat("b_boost_coll_y"  ,-collBsTlv.BoostToCM().Y());
+        bs.addUserFloat("b_boost_coll_z"  ,-collBsTlv.BoostToCM().Z());
 
         //////////////////////////
         // LHCb method          //
         //////////////////////////
 
-        TLorentzVector lhcbBsTlv = lhcbMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
-        TLorentzVector lhcbMissTlv = lhcbBsTlv - refittedDsMu;
-        TLorentzVector lhcbQTlv = lhcbBsTlv - fittedDs;
+        math::PtEtaPhiMLorentzVector lhcbBsTlv   = lhcbMethod(dsMuVec, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
+
+        math::PtEtaPhiMLorentzVector lhcbMissTlv = lhcbBsTlv - dsMuVec ;
+        math::PtEtaPhiMLorentzVector lhcbQTlv    = lhcbBsTlv - phiPiVec;
 
         float m2_miss_lhcb = lhcbMissTlv.M2();
         float pt_miss_lhcb = lhcbMissTlv.Pt();
         float q2_lhcb      = lhcbQTlv.M2();
-        float e_star_lhcb  = getEStar(lhcbBsTlv,refittedMu); 
+        float e_star_lhcb  = getEStar(lhcbBsTlv, muVec); 
 
-        bs.addUserFloat("bs_px_lhcb",lhcbBsTlv.Px());
-        bs.addUserFloat("bs_py_lhcb",lhcbBsTlv.Py());
-        bs.addUserFloat("bs_pz_lhcb",lhcbBsTlv.Pz());
-        bs.addUserFloat("bs_pt_lhcb",lhcbBsTlv.Pt());
+        bs.addUserFloat("bs_px_lhcb" ,lhcbBsTlv.Px());
+        bs.addUserFloat("bs_py_lhcb" ,lhcbBsTlv.Py());
+        bs.addUserFloat("bs_pz_lhcb" ,lhcbBsTlv.Pz());
+        bs.addUserFloat("bs_pt_lhcb" ,lhcbBsTlv.Pt());
         bs.addUserFloat("bs_eta_lhcb",lhcbBsTlv.Eta());
         bs.addUserFloat("bs_phi_lhcb",lhcbBsTlv.Phi());
 
         bs.addUserFloat("m2_miss_lhcb",m2_miss_lhcb);
         bs.addUserFloat("pt_miss_lhcb",pt_miss_lhcb);
-        bs.addUserFloat("q2_lhcb",q2_lhcb);
-        bs.addUserFloat("e_star_lhcb",e_star_lhcb);
+        bs.addUserFloat("q2_lhcb"     ,q2_lhcb     );
+        bs.addUserFloat("e_star_lhcb" ,e_star_lhcb );
 
-        bs.addUserFloat("b_boost_lhcb",lhcbBsTlv.BoostVector().Mag());
-        bs.addUserFloat("b_boost_lhcb_pt",lhcbBsTlv.BoostVector().Pt());
-        bs.addUserFloat("b_boost_lhcb_eta",lhcbBsTlv.BoostVector().Eta());
-        bs.addUserFloat("b_boost_lhcb_phi",lhcbBsTlv.BoostVector().Phi());
+        bs.addUserFloat("b_boost_lhcb"    ,-lhcbBsTlv.BoostToCM().R());
+        bs.addUserFloat("b_boost_lhcb_x"  ,-lhcbBsTlv.BoostToCM().X());
+        bs.addUserFloat("b_boost_lhcb_y"  ,-lhcbBsTlv.BoostToCM().Y());
+        bs.addUserFloat("b_boost_lhcb_z"  ,-lhcbBsTlv.BoostToCM().Z());
 
 
         ///////////////////////////////////////////
         // Another Lhcb method                   //
         ///////////////////////////////////////////
 
-        TLorentzVector lhcbAltBsTlv = lhcbAltMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
+        math::PtEtaPhiMLorentzVector lhcbAltBsTlv   = lhcbAltMethod(dsMuVec, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
 
-        TLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - refittedDsMu; // bs - ds+mu
-        TLorentzVector lhcbAltQTlv = lhcbAltBsTlv - fittedDs; // bs - ds 
+        math::PtEtaPhiMLorentzVector lhcbAltMissTlv = lhcbAltBsTlv - dsMuVec ; // bs - ds+mu
+        math::PtEtaPhiMLorentzVector lhcbAltQTlv    = lhcbAltBsTlv - phiPiVec; // bs - ds 
 
-        float e_star_lhcb_alt  = getEStar(lhcbAltBsTlv,refittedMu); 
+        float e_star_lhcb_alt  = getEStar(lhcbAltBsTlv, muVec); 
 
         bs.addUserFloat("bs_px_lhcb_alt", lhcbAltBsTlv.Px());
         bs.addUserFloat("bs_py_lhcb_alt", lhcbAltBsTlv.Py());
@@ -1794,33 +1740,31 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("q2_lhcb_alt"     ,lhcbAltQTlv.M2())   ;
         bs.addUserFloat("e_star_lhcb_alt" ,e_star_lhcb_alt)    ;
 
-        bs.addUserFloat("b_boost_lhcb_alt"    ,lhcbAltBsTlv.BoostVector().Mag());
-        bs.addUserFloat("b_boost_lhcb_alt_pt" ,lhcbAltBsTlv.BoostVector().Pt() );
-        bs.addUserFloat("b_boost_lhcb_alt_eta",lhcbAltBsTlv.BoostVector().Eta());
-        bs.addUserFloat("b_boost_lhcb_alt_phi",lhcbAltBsTlv.BoostVector().Phi());
+        bs.addUserFloat("b_boost_lhcb_alt"    , -lhcbAltBsTlv.BoostToCM().R());
+        bs.addUserFloat("b_boost_lhcb_alt_x"  , -lhcbAltBsTlv.BoostToCM().X());
+        bs.addUserFloat("b_boost_lhcb_alt_y"  , -lhcbAltBsTlv.BoostToCM().Y());
+        bs.addUserFloat("b_boost_lhcb_alt_z"  , -lhcbAltBsTlv.BoostToCM().Z());
 
         ///////////////////////////////////////////////////////////
         // RECO METHOD -> 2 Solutions                            //
         // This method is exact in the 1-neutrino final state :) //
         ///////////////////////////////////////////////////////////
         //std::cout << "now i calc the reco method:" << std::endl;
-        std::tuple<std::vector<TLorentzVector>,float> recoResult = recoMethod(refittedDsMu, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
+        std::tuple<std::vector<math::PtEtaPhiMLorentzVector>,float> recoResult = recoMethod(dsMuVec, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
 
-        //std::tuple<std::vector<TLorentzVector>,bool> recoResult = recoMethod(fittedDs + muTlv, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);
-
-        std::vector<TLorentzVector> recosBs = std::get<0>(recoResult);
-        float discNegativity               = std::get<1>(recoResult);
+        std::vector<math::PtEtaPhiMLorentzVector> recosBs = std::get<0>(recoResult);
+        float discNegativity                              = std::get<1>(recoResult);
 
         int discIsNegative = 0;
         if (discNegativity > 0) discIsNegative = 1;
 
-        TLorentzVector recoBsTlv1 = recosBs.at(0);
-        TLorentzVector recoBsTlv2 = recosBs.at(1);
+        math::PtEtaPhiMLorentzVector recoBsTlv1 = recosBs.at(0);
+        math::PtEtaPhiMLorentzVector recoBsTlv2 = recosBs.at(1);
 
-        TLorentzVector miss_1 = recoBsTlv1 - refittedDsMu;  
-        TLorentzVector miss_2 = recoBsTlv2 - refittedDsMu;  
-        TLorentzVector Q_1 = recoBsTlv1 - fittedDs;  
-        TLorentzVector Q_2 = recoBsTlv2 - fittedDs;  
+        math::PtEtaPhiMLorentzVector miss_1 = recoBsTlv1 - dsMuVec;  
+        math::PtEtaPhiMLorentzVector miss_2 = recoBsTlv2 - dsMuVec;  
+        math::PtEtaPhiMLorentzVector Q_1    = recoBsTlv1 - phiPiVec;  
+        math::PtEtaPhiMLorentzVector Q_2    = recoBsTlv2 - phiPiVec;  
 
         float m2_miss_reco_1 = miss_1.M2();
         float m2_miss_reco_2 = miss_2.M2();
@@ -1829,11 +1773,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         float q2_reco_1 = Q_1.M2();
         float q2_reco_2 = Q_2.M2();
-        float e_star_reco_1  = getEStar(recoBsTlv1,refittedMu); 
-        float e_star_reco_2  = getEStar(recoBsTlv2,refittedMu); 
+        float e_star_reco_1  = getEStar(recoBsTlv1, muVec); 
+        float e_star_reco_2  = getEStar(recoBsTlv2, muVec); 
 
-
-        bs.addUserInt("disc_is_negative",discIsNegative);
+        bs.addUserInt("disc_is_negative" ,discIsNegative);
         bs.addUserFloat("disc_negativity",discNegativity);
 
         bs.addUserFloat("bs_px_reco_1" ,recoBsTlv1.Px());
@@ -1861,37 +1804,21 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_reco_1",e_star_reco_1);
         bs.addUserFloat("e_star_reco_2",e_star_reco_2);
 
-        bs.addUserFloat("b_boost_reco_1"    ,recoBsTlv1.BoostVector().Mag());
-        bs.addUserFloat("b_boost_reco_1_pt" ,recoBsTlv1.BoostVector().Pt());
-        bs.addUserFloat("b_boost_reco_1_eta",recoBsTlv1.BoostVector().Eta());
-        bs.addUserFloat("b_boost_reco_1_phi",recoBsTlv1.BoostVector().Phi());
+        bs.addUserFloat("b_boost_reco_1"    ,-recoBsTlv1.BoostToCM().R());
+        bs.addUserFloat("b_boost_reco_1_x"  ,-recoBsTlv1.BoostToCM().X());
+        bs.addUserFloat("b_boost_reco_1_y"  ,-recoBsTlv1.BoostToCM().Y());
+        bs.addUserFloat("b_boost_reco_1_z"  ,-recoBsTlv1.BoostToCM().Z());
 
 
-        bs.addUserFloat("b_boost_reco_2"    ,recoBsTlv2.BoostVector().Mag());
-        bs.addUserFloat("b_boost_reco_2_pt" ,recoBsTlv2.BoostVector().Pt());
-        bs.addUserFloat("b_boost_reco_2_eta",recoBsTlv2.BoostVector().Eta());
-        bs.addUserFloat("b_boost_reco_2_phi",recoBsTlv2.BoostVector().Phi());
+        bs.addUserFloat("b_boost_reco_2"    ,-recoBsTlv2.BoostToCM().R());
+        bs.addUserFloat("b_boost_reco_2_x"  ,-recoBsTlv2.BoostToCM().X());
+        bs.addUserFloat("b_boost_reco_2_y"  ,-recoBsTlv2.BoostToCM().Y());
+        bs.addUserFloat("b_boost_reco_2_z"  ,-recoBsTlv2.BoostToCM().Z());
 
 
         ////////////////// Save momenta (and masses for consistency, even if constrained /////////////////////////
 
         // Phi fit
-        bs.addUserFloat("k1_refitted_px",   refittedK1.Px()); 
-        bs.addUserFloat("k1_refitted_py",   refittedK1.Py()); 
-        bs.addUserFloat("k1_refitted_pz",   refittedK1.Pz()); 
-        bs.addUserFloat("k1_refitted_pt",   refittedK1.Pt()); 
-        bs.addUserFloat("k1_refitted_eta",  refittedK1.Eta()); 
-        bs.addUserFloat("k1_refitted_phi",  refittedK1.Phi()); 
-        bs.addUserFloat("k1_refitted_m",    refittedK1.M()); 
-
-        bs.addUserFloat("k2_refitted_px",   refittedK2.Px()); 
-        bs.addUserFloat("k2_refitted_py",   refittedK2.Py()); 
-        bs.addUserFloat("k2_refitted_pz",   refittedK2.Pz()); 
-        bs.addUserFloat("k2_refitted_pt",   refittedK2.Pt()); 
-        bs.addUserFloat("k2_refitted_eta",  refittedK2.Eta()); 
-        bs.addUserFloat("k2_refitted_phi",  refittedK2.Phi()); 
-        bs.addUserFloat("k2_refitted_m",    refittedK2.M()); 
- 
         bs.addUserFloat("phi_fitted_px",    fittedPhi.Px()); 
         bs.addUserFloat("phi_fitted_py",    fittedPhi.Py()); 
         bs.addUserFloat("phi_fitted_pz",    fittedPhi.Pz()); 
@@ -1899,25 +1826,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("phi_fitted_eta",   fittedPhi.Eta()); 
         bs.addUserFloat("phi_fitted_phi",   fittedPhi.Phi()); 
         bs.addUserFloat("phi_fitted_m",     fittedPhi.M()); 
-        bs.addUserFloat("phi_fitted_m_err",  phiErr.At(6,6)); 
+        bs.addUserFloat("phi_fitted_m_err", phiErr.At(6,6)); 
 
-        // Ds fit
-        bs.addUserFloat("pi_refitted_px",   refittedPi.Px()); 
-        bs.addUserFloat("pi_refitted_py",   refittedPi.Py()); 
-        bs.addUserFloat("pi_refitted_pz",   refittedPi.Pz()); 
-        bs.addUserFloat("pi_refitted_pt",   refittedPi.Pt()); 
-        bs.addUserFloat("pi_refitted_eta",  refittedPi.Eta()); 
-        bs.addUserFloat("pi_refitted_phi",  refittedPi.Phi()); 
-        bs.addUserFloat("pi_refitted_m",    refittedPi.M()); 
-
-        bs.addUserFloat("phi_refitted_px",  refittedPhi.Px()); 
-        bs.addUserFloat("phi_refitted_py",  refittedPhi.Py()); 
-        bs.addUserFloat("phi_refitted_pz",  refittedPhi.Pz()); 
-        bs.addUserFloat("phi_refitted_pt",  refittedPhi.Pt()); 
-        bs.addUserFloat("phi_refitted_eta", refittedPhi.Eta()); 
-        bs.addUserFloat("phi_refitted_phi", refittedPhi.Phi()); 
-        bs.addUserFloat("phi_refitted_m",   refittedPhi.M()); 
-
+        // bs fit
         bs.addUserFloat("ds_fitted_px",     fittedDs.Px()); 
         bs.addUserFloat("ds_fitted_py",     fittedDs.Py()); 
         bs.addUserFloat("ds_fitted_pz",     fittedDs.Pz()); 
@@ -1926,35 +1837,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
         bs.addUserFloat("ds_fitted_m_err",  dsErr.At(6,6)); 
-        bs.addUserFloat("ds_fitted_boost",  fittedDs.BoostVector().Mag()); 
-
-        bs.addUserFloat("phiPi_refitted_px",     refittedPhiPi.Px()); 
-        bs.addUserFloat("phiPi_refitted_py",     refittedPhiPi.Py()); 
-        bs.addUserFloat("phiPi_refitted_pz",     refittedPhiPi.Pz()); 
-        bs.addUserFloat("phiPi_refitted_pt",     refittedPhiPi.Pt()); 
-        bs.addUserFloat("phiPi_refitted_eta",    refittedPhiPi.Eta()); 
-        bs.addUserFloat("phiPi_refitted_phi",    refittedPhiPi.Phi()); 
-        bs.addUserFloat("phiPi_refitted_m",      refittedPhiPi.M()); 
-        bs.addUserFloat("phiPi_refitted_boost",  refittedPhiPi.BoostVector().Mag()); 
 
         // bs fit
-        bs.addUserFloat("mu_refitted_px",   refittedMu.Px()); 
-        bs.addUserFloat("mu_refitted_py",   refittedMu.Py()); 
-        bs.addUserFloat("mu_refitted_pz",   refittedMu.Pz()); 
-        bs.addUserFloat("mu_refitted_pt",   refittedMu.Pt()); 
-        bs.addUserFloat("mu_refitted_eta",  refittedMu.Eta()); 
-        bs.addUserFloat("mu_refitted_phi",  refittedMu.Phi()); 
-        bs.addUserFloat("mu_refitted_m",    refittedMu.M()); 
-
-        bs.addUserFloat("ds_refitted_px",   refittedDs.Px()); 
-        bs.addUserFloat("ds_refitted_py",   refittedDs.Py()); 
-        bs.addUserFloat("ds_refitted_pz",   refittedDs.Pz()); 
-        bs.addUserFloat("ds_refitted_pt",   refittedDs.Pt()); 
-        bs.addUserFloat("ds_refitted_eta",  refittedDs.Eta()); 
-        bs.addUserFloat("ds_refitted_phi",  refittedDs.Phi()); 
-        bs.addUserFloat("ds_refitted_m",    refittedDs.M()); 
-        bs.addUserFloat("ds_refitted_boost",refittedDs.BoostVector().Mag()); 
-
         bs.addUserFloat("bs_fitted_px",     fittedBs.Px()); 
         bs.addUserFloat("bs_fitted_py",     fittedBs.Py()); 
         bs.addUserFloat("bs_fitted_pz",     fittedBs.Pz()); 
@@ -1967,24 +1851,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         /////////////////////// helicity angles in all possibe variations /////////////////////////
 
         //angle between Mu and W
-        float angMuWColl    = angMuW(refittedDs,collBsTlv,   refittedMu);
-        float angMuWLhcb    = angMuW(refittedDs,lhcbBsTlv,   refittedMu);
-        float angMuWLhcbAlt = angMuW(refittedDs,lhcbAltBsTlv,refittedMu);
-        float angMuWReco1   = angMuW(refittedDs,recoBsTlv1,  refittedMu);
-        float angMuWReco2   = angMuW(refittedDs,recoBsTlv2,  refittedMu);
-
-        //std::cout << "coll ang: "     << angMuWColl << std::endl;
-        //std::cout << "lhcb ang: "     << angMuWLhcb << std::endl;
-        //std::cout << "lhcb alt ang: " << angMuWLhcbAlt << std::endl;
-        //std::cout << "reco1 ang: "    << angMuWReco1 << std::endl;
-        //std::cout << "reco2 ang: "    << angMuWReco2 << std::endl;
-
-        //std::cout << "coll cos: "     << cos(angMuWColl) << std::endl;
-        //std::cout << "lhcb cos: "     << cos(angMuWLhcb) << std::endl;
-        //std::cout << "lhcb alt cos: " << cos(angMuWLhcbAlt) << std::endl;
-        //std::cout << "reco1 cos: "    << cos(angMuWReco1) << std::endl;
-        //std::cout << "reco2 cos: "    << cos(angMuWReco2) << std::endl;
-
+        float angMuWColl    = angMuW(phiPiVec, collBsTlv,   muVec);
+        float angMuWLhcb    = angMuW(phiPiVec, lhcbBsTlv,   muVec);
+        float angMuWLhcbAlt = angMuW(phiPiVec, lhcbAltBsTlv,muVec);
+        float angMuWReco1   = angMuW(phiPiVec, recoBsTlv1,  muVec);
+        float angMuWReco2   = angMuW(phiPiVec, recoBsTlv2,  muVec);
 
         bs.addUserFloat("cosMuWColl",       cos(angMuWColl)); 
         bs.addUserFloat("cosMuWLhcb",       cos(angMuWLhcb)); 
@@ -1994,20 +1865,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         //angle between k1(k2) and pion in phi rest frame
-        float angPiK1  = angDoubleDecay(refittedPhi,refittedK1, refittedPi);
-        float angPiK2  = angDoubleDecay(refittedPhi,refittedK2, refittedPi);
+        float angPiK1  = angDoubleDecay(kkVec, k1Vec, piVec);
+        float angPiK2  = angDoubleDecay(kkVec, k2Vec, piVec);
         // equivalently, angle between phi(pi) and bs in ds rest frame
-        float angPhiDsColl    = angDsPi(refittedDs, refittedPhi,  collBsTlv);
-        float angPhiDsLhcb    = angDsPi(refittedDs, refittedPhi,  lhcbBsTlv);
-        float angPhiDsLhcbAlt = angDsPi(refittedDs, refittedPhi,  lhcbAltBsTlv);
-        float angPhiDsReco1   = angDsPi(refittedDs, refittedPhi,  recoBsTlv1);
-        float angPhiDsReco2   = angDsPi(refittedDs, refittedPhi,  recoBsTlv2);
+        float angPhiDsColl    = angDsPi( phiPiVec, kkVec,  collBsTlv);
+        float angPhiDsLhcb    = angDsPi( phiPiVec, kkVec,  lhcbBsTlv);
+        float angPhiDsLhcbAlt = angDsPi( phiPiVec, kkVec,  lhcbAltBsTlv);
+        float angPhiDsReco1   = angDsPi( phiPiVec, kkVec,  recoBsTlv1);
+        float angPhiDsReco2   = angDsPi( phiPiVec, kkVec,  recoBsTlv2);
 
-        float angPiDsColl    = angDsPi(refittedDs, refittedPi,  collBsTlv);
-        float angPiDsLhcb    = angDsPi(refittedDs, refittedPi,  lhcbBsTlv);
-        float angPiDsLhcbAlt = angDsPi(refittedDs, refittedPi,  lhcbAltBsTlv);
-        float angPiDsReco1   = angDsPi(refittedDs, refittedPi,  recoBsTlv1);
-        float angPiDsReco2   = angDsPi(refittedDs, refittedPi,  recoBsTlv2);
+        float angPiDsColl    = angDsPi ( phiPiVec, piVec,  collBsTlv);
+        float angPiDsLhcb    = angDsPi ( phiPiVec, piVec,  lhcbBsTlv);
+        float angPiDsLhcbAlt = angDsPi ( phiPiVec, piVec,  lhcbAltBsTlv);
+        float angPiDsReco1   = angDsPi ( phiPiVec, piVec,  recoBsTlv1);
+        float angPiDsReco2   = angDsPi ( phiPiVec, piVec,  recoBsTlv2);
         
 
         bs.addUserFloat("cosPiK1",         cos(angPiK1)); 
@@ -2026,11 +1897,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPiDsReco2",    cos(angPiDsReco2)); 
 
         // helicity plane angle
-        float angPlaneBsColl    = angPlane(refittedDs, collBsTlv,    refittedMu, refittedPi);
-        float angPlaneBsLhcb    = angPlane(refittedDs, lhcbBsTlv,    refittedMu, refittedPi);
-        float angPlaneBsLhcbAlt = angPlane(refittedDs, lhcbAltBsTlv, refittedMu, refittedPi);
-        float angPlaneBsReco1   = angPlane(refittedDs, recoBsTlv1,   refittedMu, refittedPi);
-        float angPlaneBsReco2   = angPlane(refittedDs, recoBsTlv2,   refittedMu, refittedPi);
+        float angPlaneBsColl    = angPlane( phiPiVec, collBsTlv,    muVec, piVec);
+        float angPlaneBsLhcb    = angPlane( phiPiVec, lhcbBsTlv,    muVec, piVec);
+        float angPlaneBsLhcbAlt = angPlane( phiPiVec, lhcbAltBsTlv, muVec, piVec);
+        float angPlaneBsReco1   = angPlane( phiPiVec, recoBsTlv1,   muVec, piVec);
+        float angPlaneBsReco2   = angPlane( phiPiVec, recoBsTlv2,   muVec, piVec);
 
         bs.addUserFloat("cosPlaneBsColl",    cos(angPlaneBsColl));
         bs.addUserFloat("cosPlaneBsLhcb",    cos(angPlaneBsLhcb));
@@ -2038,11 +1909,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPlaneBsReco1",   cos(angPlaneBsReco1));
         bs.addUserFloat("cosPlaneBsReco2",   cos(angPlaneBsReco2));
 
-        float angPlaneDsColl    = angPlane2(refittedDs, collBsTlv,    refittedK1, refittedPi);
-        float angPlaneDsLhcb    = angPlane2(refittedDs, lhcbBsTlv,    refittedK1, refittedPi);
-        float angPlaneDsLhcbAlt = angPlane2(refittedDs, lhcbAltBsTlv, refittedK1, refittedPi);
-        float angPlaneDsReco1   = angPlane2(refittedDs, recoBsTlv1,   refittedK1, refittedPi);
-        float angPlaneDsReco2   = angPlane2(refittedDs, recoBsTlv2,   refittedK1, refittedPi);
+        float angPlaneDsColl    = angPlane2(phiPiVec, collBsTlv,    k1Vec, piVec);
+        float angPlaneDsLhcb    = angPlane2(phiPiVec, lhcbBsTlv,    k1Vec, piVec);
+        float angPlaneDsLhcbAlt = angPlane2(phiPiVec, lhcbAltBsTlv, k1Vec, piVec);
+        float angPlaneDsReco1   = angPlane2(phiPiVec, recoBsTlv1,   k1Vec, piVec);
+        float angPlaneDsReco2   = angPlane2(phiPiVec, recoBsTlv2,   k1Vec, piVec);
 
         bs.addUserFloat("cosPlaneDsColl",    cos(angPlaneDsColl));
         bs.addUserFloat("cosPlaneDsLhcb",    cos(angPlaneDsLhcb));
@@ -2111,23 +1982,25 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float pu03KKPi = 0; 
         float pu04KKPi = 0;
 
-        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 == 0 ))  iso03KKPi += k1Ptr->pt();
-        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 != 0 ))  pu03KKPi  += k1Ptr->pt();
+        // add KKPi to isolation or to pileup, depending if they come from the first vertex or not.
+ 
+        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 == 0 ))  iso03KKPi += k1Vec.Pt();
+        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k1 != 0 ))  pu03KKPi  += k1Vec.Pt();
 
-        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 == 0 ))  iso03KKPi += k2Ptr->pt();
-        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 != 0 ))  pu03KKPi  += k2Ptr->pt();
+        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 == 0 ))  iso03KKPi += k2Vec.Pt();
+        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.3) && (idxMinVtxDz_k2 != 0 ))  pu03KKPi  += k2Vec.Pt();
 
-        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi == 0 ))  iso03KKPi += piPtr->pt();
-        else if( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi != 0 ))  pu03KKPi  += piPtr->pt();
+        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi == 0 ))  iso03KKPi += piVec.Pt();
+        else if( (reco::deltaR(*piPtr,*muPtr) < 0.3) && (idxMinVtxDz_pi != 0 ))  pu03KKPi  += piVec.Pt();
 
-        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 == 0 ))  iso04KKPi += k1Ptr->pt();
-        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 != 0 ))  pu04KKPi  += k1Ptr->pt();
+        if     ( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 == 0 ))  iso04KKPi += k1Vec.Pt();
+        else if( (reco::deltaR(*k1Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k1 != 0 ))  pu04KKPi  += k1Vec.Pt();
 
-        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 == 0 ))  iso04KKPi += k2Ptr->pt();
-        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 != 0 ))  pu04KKPi  += k2Ptr->pt();
+        if     ( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 == 0 ))  iso04KKPi += k2Vec.Pt();
+        else if( (reco::deltaR(*k2Ptr,*muPtr) < 0.4) && (idxMinVtxDz_k2 != 0 ))  pu04KKPi  += k2Vec.Pt();
 
-        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi == 0 ))  iso04KKPi += piPtr->pt();
-        else if( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi != 0 ))  pu04KKPi  += piPtr->pt();
+        if     ( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi == 0 ))  iso04KKPi += piVec.Pt();
+        else if( (reco::deltaR(*piPtr,*muPtr) < 0.4) && (idxMinVtxDz_pi != 0 ))  pu04KKPi  += piVec.Pt();
 
 
         // factor 0.5 from https://cms.cern.ch/iCMS/analysisadmin/cadilines?line=MUO-16-001&tp=an&id=1779&ancode=MUO-16-001
@@ -2145,30 +2018,21 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03 = iso03charged + iso03neutral;
         float iso04 = iso04charged + iso04neutral;
 
-        //std::cout << "iso04 charged: "     << muIso04.sumChargedHadronPt << std::endl;
-        //std::cout << "iso04 charged and cleaned: "     << iso04charged << std::endl;
-        //std::cout << "iso04 neutral ph: "  << muIso04.sumPhotonEt << std::endl;
-        //std::cout << "iso04 neutral had: " << muIso04.sumNeutralHadronEt << std::endl;
-        //std::cout << "iso04 sum pup pt: "  << muIso04.sumPUPt<< std::endl;
-        //std::cout << "iso04 sum cleaned pup pt: "  << iso04pileup << std::endl;
-
-        float relIso03 = iso03 / muPtr->pt();
-        float relIso04 = iso04 / muPtr->pt();
-        float refittedRelIso03 = iso03 / refittedMu.Pt();
-        float refittedRelIso04 = iso04 / refittedMu.Pt();
+        float relIso03 = iso03 / muVec.Pt();
+        float relIso04 = iso04 / muVec.Pt();
 
         bs.addUserFloat("iso_03", iso03);
         bs.addUserFloat("iso_04", iso04);
         bs.addUserFloat("rel_iso_03", relIso03);
         bs.addUserFloat("rel_iso_04", relIso04);
-        bs.addUserFloat("rel_iso_03_refitted", refittedRelIso03);
-        bs.addUserFloat("rel_iso_04_refitted", refittedRelIso04);
 
-        // ADVANCED: Calculate isolation using tracks corresponding to our custom vertices, not  the default
-        // ( default is the 1st vtx in offlineSlimmedPrimaryVertices, the latter corresponds to highest 
-        // sumPT, not the use-case for B-Physics :)
-        
-        // Implemented for our custom PV, SV and TV
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        // ADVANCED: Calculate isolation using tracks corresponding to our custom vertices, not  the default //
+        // ( default is the 1st vtx in offlineSlimmedPrimaryVertices, the latter corresponds to highest      //
+        // sumPT, not the use-case for B-Physics :)                                                          //
+        //                                                                                                   // 
+        // Implemented for our custom PV, SV and TV                                                          //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // holds charged tracks 
         float iso03_ch_pv = 0.; 
@@ -2202,7 +2066,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso03_pu_tv = 0.; 
         float iso04_pu_tv = 0.; 
 
-        //std::cout << "-------" << std::endl; 
         // Fill charged isolations
         for (size_t idx: chargedPfIdx){
           // Why sorting out pf muons from the isolation? -> bc it is defined like this in cmssw
@@ -2219,7 +2082,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           // skip if no track
           if (!chPtr->hasTrackDetails())  continue;
 
-          // for each charged particle, check if the assigned vertex is the one we pick up
+
+          //////////////////////////////////////////////////////////////
+          // Correct the momentum scale and smear of the PF candidate //
+          //////////////////////////////////////////////////////////////
+
+          //charged PF candidates have the pion mass per default
+          math::PtEtaPhiMLorentzVector pfVec(chPtr->pt(), chPtr->eta(), chPtr->phi(), chPtr->mass());
+
+
+          if (!iEvent.isRealData()) {
+
+          const auto& id    = iEvent.id();
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
+
+          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+
+          }
+
+
+          ////////////////////////////////////////////////////////
+          // For each charged particle, get the assigned vertex // 
+          ////////////////////////////////////////////////////////
+
           float minVtxDz    = 0.0;
           int   idxMinVtxDz = -1;
             
@@ -2248,16 +2134,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           // if closest refit vtx is our custom pv, count it to isolation!
           // remove electrons and muons (11 and 13) as in cmssw isolation definition
           if  ((idxMinVtxDz == pvIdx) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13)) {
-            //std::cout << "adding pt " << chPtr->pt() << std::endl;
-
-            iso04_ch_pv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_ch_pv += chPtr->pt();
+            iso04_ch_pv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_ch_pv += pfVec.Pt();
           } 
 
           // displaced track, count it to pile up
-          else if ((idxMinVtxDz != pvIdx) && ( deltaR_mu_chTrk > 0.01 ) && (chPtr->pt() > 0.5)) {
-            iso04_pu_pv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_pu_pv += chPtr->pt();
+          else if ((idxMinVtxDz != pvIdx) && ( deltaR_mu_chTrk > 0.01 ) && (pfVec.Pt() > 0.5)) {
+            iso04_pu_pv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_pu_pv += pfVec.Pt();
           }
 
           ///////////////////////////////////////
@@ -2269,31 +2153,31 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
           if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
-            iso04_ch_sv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += chPtr->pt();
+            iso04_ch_sv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
-          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
-            iso04_pu_sv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_pu_sv += chPtr->pt();
+          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+            iso04_pu_sv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_pu_sv += pfVec.Pt();
           }
 
           ///////////////////////////////////////
-          // Fill for tv as reference vertex   // TODO: Take cone around ds particle!
+          // Fill for tv as reference vertex   // 
           ///////////////////////////////////////
 
           reco::TransientTrack ttTv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DTv = IPTools::signedDecayLength3D(ttTv, direction_ds, recoTv);
           if ( ip3DTv.first && (ip3DTv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
-            iso04_ch_tv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_ch_tv += chPtr->pt();
+            iso04_ch_tv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_ch_tv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
-          else if (( ip3DTv.first && (ip3DTv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
-            iso04_pu_tv += chPtr->pt();
-            if (deltaR_mu_chTrk < 0.3) iso03_pu_tv += chPtr->pt();
+          else if (( ip3DTv.first && (ip3DTv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+            iso04_pu_tv += pfVec.Pt();
+            if (deltaR_mu_chTrk < 0.3) iso03_pu_tv += pfVec.Pt();
           }
 
 
@@ -2307,13 +2191,33 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (idx < pcand->size()) nPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx); //normal tracks
           else nPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
-          if  (nPtr -> pdgId() == 22) iso04_np_pv += nPtr->pt();
-          else                        iso04_nh_pv += nPtr->pt(); 
+
+          //////////////////////////////////////////////////////////////
+          // Correct the momentum scale and smear of the PF candidate //
+          //////////////////////////////////////////////////////////////
+
+          //charged PF candidates have the pion mass per default
+          math::PtEtaPhiMLorentzVector pfVec(nPtr->pt(), nPtr->eta(), nPtr->phi(), nPtr->mass());
+
+
+          if (!iEvent.isRealData()) {
+
+          const auto& id    = iEvent.id();
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double f_PF = trkCalib->factor(nPtr->p(), nPtr->pt(), nPtr->eta(), nPtr->charge(), z_PF);
+
+          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+
+          }
+
+
+          if  (nPtr -> pdgId() == 22) iso04_np_pv += pfVec.Pt();
+          else                        iso04_nh_pv += pfVec.Pt(); 
 
           float deltaR_mu_nTrk = reco::deltaR(*muPtr, *nPtr);
 
-          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_np_pv += nPtr->pt();
-          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_nh_pv += nPtr->pt();
+          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_np_pv += pfVec.Pt();
+          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_nh_pv += pfVec.Pt();
 
         } 
 
@@ -2326,12 +2230,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         iso04_np_tv = iso04_np_pv;
         iso03_nh_tv = iso03_nh_pv;
         iso04_nh_tv = iso04_nh_pv;
-
-        //std::cout << "custom iso04 charged: "     << iso04_ch_pv << std::endl;
-        //std::cout << "custom iso04 neutral ph: "  << iso04_np_pv << std::endl;
-        //std::cout << "custom iso04 neutral had: " << iso04_nh_pv << std::endl;
-        //std::cout << "custom iso04 sum pup pt: "  << iso04_pu_pv << std::endl;
-
 
 
         // 0.5 is an empirical factor. 50 % of the charged pile up can be mapepd to neutral pile up
@@ -2354,19 +2252,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("iso_03_tv", iso03_tv);
         bs.addUserFloat("iso_04_tv", iso04_tv);
 
-        bs.addUserFloat("rel_iso_03_pv", iso03_pv / muPtr->pt());
-        bs.addUserFloat("rel_iso_04_pv", iso04_pv / muPtr->pt());
-        bs.addUserFloat("rel_iso_03_sv", iso03_sv / muPtr->pt());
-        bs.addUserFloat("rel_iso_04_sv", iso04_sv / muPtr->pt());
-        bs.addUserFloat("rel_iso_03_tv", iso03_tv / muPtr->pt());
-        bs.addUserFloat("rel_iso_04_tv", iso04_tv / muPtr->pt());
-
-        bs.addUserFloat("rel_iso_03_pv_refitted", iso03_pv / refittedMu.Pt());
-        bs.addUserFloat("rel_iso_04_pv_refitted", iso04_pv / refittedMu.Pt());
-        bs.addUserFloat("rel_iso_03_sv_refitted", iso03_sv / refittedMu.Pt());
-        bs.addUserFloat("rel_iso_04_sv_refitted", iso04_sv / refittedMu.Pt());
-        bs.addUserFloat("rel_iso_03_tv_refitted", iso03_tv / refittedMu.Pt());
-        bs.addUserFloat("rel_iso_04_tv_refitted", iso04_tv / refittedMu.Pt());
+        bs.addUserFloat("rel_iso_03_pv", iso03_pv / muVec.Pt());
+        bs.addUserFloat("rel_iso_04_pv", iso04_pv / muVec.Pt());
+        bs.addUserFloat("rel_iso_03_sv", iso03_sv / muVec.Pt());
+        bs.addUserFloat("rel_iso_04_sv", iso04_sv / muVec.Pt());
+        bs.addUserFloat("rel_iso_03_tv", iso03_tv / muVec.Pt());
+        bs.addUserFloat("rel_iso_04_tv", iso04_tv / muVec.Pt());
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         // Calculate Ds ISOLATION                                                                //
@@ -2381,7 +2272,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         pat::CompositeCandidate ds;
-        math::PtEtaPhiMLorentzVector dsP4(refittedDs.Pt(), refittedDs.Eta(), refittedDs.Phi(), DS_MASS);
+        math::PtEtaPhiMLorentzVector dsP4(phiPiVec.Pt(), phiPiVec.Eta(), phiPiVec.Phi(), dsMass_);
         ds.setP4(dsP4);
         // select particles in cone 
       
@@ -2395,7 +2286,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (pfIdx < pcand->size()) pfPtr = edm::Ptr<pat::PackedCandidate>(pcand, pfIdx); //normal tracks
           else pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size()); //lost tracks
          
-          float deltaRDsTrk = reco::deltaR(*pfPtr, phiPi);
+          float deltaRDsTrk = reco::deltaR(*pfPtr, phiPiVec);
           if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPf_Ds_Idx.push_back(pfIdx); 
           else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.0001)                        ) {chargedPf_Ds_Idx.push_back(pfIdx); 
           
@@ -2435,6 +2326,26 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           // skip if no track
           if (!chPtr->hasTrackDetails())  continue;
 
+
+          //////////////////////////////////////////////////////////////
+          // Correct the momentum scale and smear of the PF candidate //
+          //////////////////////////////////////////////////////////////
+
+          //charged PF candidates have the pion mass per default
+          math::PtEtaPhiMLorentzVector pfVec(chPtr->pt(), chPtr->eta(), chPtr->phi(), chPtr->mass());
+
+
+          if (!iEvent.isRealData()) {
+
+          const auto& id    = iEvent.id();
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
+
+          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+
+          }
+
+
           // for each charged particle, check if the assigned vertex is the one we pick up
           float minVtxDz    = 0.0;
           int   idxMinVtxDz = -1;
@@ -2459,20 +2370,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           // Fill for sv as reference vertex   //
           ///////////////////////////////////////
 
-          float deltaR_ds_chTrk = reco::deltaR(phiPi, *chPtr);
+          float deltaR_ds_chTrk = reco::deltaR(phiPiVec, *chPtr);
 
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
           if ( ip3DSv.first && (ip3DSv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
-            iso04_ds_ch_sv += chPtr->pt();
-            if (deltaR_ds_chTrk < 0.3) iso03_ds_ch_sv += chPtr->pt();
+            iso04_ds_ch_sv += pfVec.Pt();
+            if (deltaR_ds_chTrk < 0.3) iso03_ds_ch_sv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_ds_chTrk > 0.01 here ? )
-          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (chPtr->pt() > 0.5)) {
-            iso04_ds_pu_sv += chPtr->pt();
-            if (deltaR_ds_chTrk < 0.3) iso03_ds_pu_sv += chPtr->pt();
+          else if (( ip3DSv.first && (ip3DSv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+            iso04_ds_pu_sv += pfVec.Pt();
+            if (deltaR_ds_chTrk < 0.3) iso03_ds_pu_sv += pfVec.Pt();
           }
 
         } 
@@ -2485,14 +2396,34 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (idx < pcand->size()) nPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx); //normal tracks
           else nPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
-          if  (nPtr -> pdgId() == 22) iso04_ds_np_sv += nPtr->pt();
-          else                        iso04_ds_nh_sv += nPtr->pt(); 
+
+          //////////////////////////////////////////////////////////////
+          // Correct the momentum scale and smear of the PF candidate //
+          //////////////////////////////////////////////////////////////
+
+          //charged PF candidates have the pion mass per default
+          math::PtEtaPhiMLorentzVector pfVec(nPtr->pt(), nPtr->eta(), nPtr->phi(), nPtr->mass());
+
+
+          if (!iEvent.isRealData()) {
+
+          const auto& id    = iEvent.id();
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double f_PF = trkCalib->factor(nPtr->p(), nPtr->pt(), nPtr->eta(), nPtr->charge(), z_PF);
+
+          math::PtEtaPhiMLorentzVector pfVec(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi() , pfVec.M());
+
+          }
+
+
+          if  (nPtr -> pdgId() == 22) iso04_ds_np_sv += pfVec.Pt();
+          else                        iso04_ds_nh_sv += pfVec.Pt(); 
 
           //float deltaR_mu_nTrk = reco::deltaR(phiPi, *nPtr);
           float deltaR_mu_nTrk = reco::deltaR(ds, *nPtr);
 
-          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_ds_np_sv += nPtr->pt();
-          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_ds_nh_sv += nPtr->pt();
+          if      ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() == 22)) iso03_ds_np_sv += pfVec.Pt();
+          else if ((deltaR_mu_nTrk < 0.3) && (nPtr->pdgId() != 22)) iso03_ds_nh_sv += pfVec.Pt();
 
         } 
 
@@ -2502,18 +2433,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("iso_03_ds_sv", iso03_ds_sv);
         bs.addUserFloat("iso_04_ds_sv", iso04_ds_sv);
 
-        bs.addUserFloat("rel_iso_03_ds_sv", iso03_ds_sv / phiPi.pt());
-        bs.addUserFloat("rel_iso_04_ds_sv", iso04_ds_sv / phiPi.pt());
-
-        bs.addUserFloat("rel_iso_03_ds_sv_refitted", iso03_ds_sv / refittedDs.Pt());
-        bs.addUserFloat("rel_iso_04_ds_sv_refitted", iso04_ds_sv / refittedDs.Pt());
+        bs.addUserFloat("rel_iso_03_ds_sv", iso03_ds_sv / phiPiVec.Pt());
+        bs.addUserFloat("rel_iso_04_ds_sv", iso04_ds_sv / phiPiVec.Pt());
 
         // e gamma
-        float e_gamma = getEGamma(refittedDs, dsMass_,dsStarMass_);
+        float e_gamma = getEGamma(phiPiVec, dsMass_,dsStarMass_);
         bs.addUserFloat("e_gamma", e_gamma);
 
         // add kappa
-        float kappa = getKappa(refittedDs, muTlv);
+        float kappa = getKappa(phiPiVec, muVec);
         bs.addUserFloat("kappa", kappa);
 
 
@@ -2537,10 +2465,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_coll_photon           = collBsTlv.Eta();
         double bs_phi_coll_photon           = collBsTlv.Phi();
                                                                      
-        double b_boost_coll_photon          = collBsTlv.BoostVector().Mag();
-        double b_boost_coll_pt_photon       = collBsTlv.BoostVector().Pt() ;
-        double b_boost_coll_eta_photon      = collBsTlv.BoostVector().Eta();
-        double b_boost_coll_phi_photon      = collBsTlv.BoostVector().Phi();
+        double b_boost_coll_photon          = -collBsTlv.BoostToCM().R();
+        double b_boost_coll_x_photon        = -collBsTlv.BoostToCM().X();
+        double b_boost_coll_y_photon        = -collBsTlv.BoostToCM().Y();
+        double b_boost_coll_z_photon        = -collBsTlv.BoostToCM().Z();
                                                                      
         double m2_miss_lhcb_alt_photon      = lhcbAltMissTlv.M2();
         double pt_miss_lhcb_alt_photon      = lhcbAltMissTlv.Pt(); 
@@ -2554,10 +2482,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_lhcb_alt_photon       = lhcbAltBsTlv.Eta();
         double bs_phi_lhcb_alt_photon       = lhcbAltBsTlv.Phi();
 
-        double b_boost_lhcb_alt_photon      = lhcbAltBsTlv.BoostVector().Mag();
-        double b_boost_lhcb_alt_pt_photon   = lhcbAltBsTlv.BoostVector().Pt() ;
-        double b_boost_lhcb_alt_eta_photon  = lhcbAltBsTlv.BoostVector().Eta();
-        double b_boost_lhcb_alt_phi_photon  = lhcbAltBsTlv.BoostVector().Phi();
+        double b_boost_lhcb_alt_photon      = -lhcbAltBsTlv.BoostToCM().R();
+        double b_boost_lhcb_alt_x_photon    = -lhcbAltBsTlv.BoostToCM().X();
+        double b_boost_lhcb_alt_y_photon    = -lhcbAltBsTlv.BoostToCM().Y();
+        double b_boost_lhcb_alt_z_photon    = -lhcbAltBsTlv.BoostToCM().Z();
 
         double m2_miss_reco_1_photon        = m2_miss_reco_1        ;
         double pt_miss_reco_1_photon        = pt_miss_reco_1        ; 
@@ -2571,10 +2499,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_eta_reco_1_photon         = recoBsTlv1.Eta();
         double bs_phi_reco_1_photon         = recoBsTlv1.Phi();
 
-        double b_boost_reco_1_photon        = recoBsTlv1.BoostVector().Mag();
-        double b_boost_reco_1_pt_photon     = recoBsTlv1.BoostVector().Pt();
-        double b_boost_reco_1_eta_photon    = recoBsTlv1.BoostVector().Eta();
-        double b_boost_reco_1_phi_photon    = recoBsTlv1.BoostVector().Phi();
+        double b_boost_reco_1_photon        = -recoBsTlv1.BoostToCM().R();
+        double b_boost_reco_1_x_photon      = -recoBsTlv1.BoostToCM().X();
+        double b_boost_reco_1_y_photon      = -recoBsTlv1.BoostToCM().Y();
+        double b_boost_reco_1_z_photon      = -recoBsTlv1.BoostToCM().Z();
 
         double m2_miss_reco_2_photon        = m2_miss_reco_2      ;
         double pt_miss_reco_2_photon        = pt_miss_reco_2      ; 
@@ -2587,11 +2515,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         double bs_pt_reco_2_photon          = recoBsTlv2.Pt() ;
         double bs_eta_reco_2_photon         = recoBsTlv2.Eta();
         double bs_phi_reco_2_photon         = recoBsTlv2.Phi();
-                                                                   
-        double b_boost_reco_2_photon        = recoBsTlv2.BoostVector().Mag();
-        double b_boost_reco_2_pt_photon     = recoBsTlv2.BoostVector().Pt(); 
-        double b_boost_reco_2_eta_photon    = recoBsTlv2.BoostVector().Eta();
-        double b_boost_reco_2_phi_photon    = recoBsTlv2.BoostVector().Phi();
+ 
+        double b_boost_reco_2_photon        = -recoBsTlv2.BoostToCM().R();
+        double b_boost_reco_2_x_photon      = -recoBsTlv2.BoostToCM().X();
+        double b_boost_reco_2_y_photon      = -recoBsTlv2.BoostToCM().Y();
+        double b_boost_reco_2_z_photon      = -recoBsTlv2.BoostToCM().Z();
 
         double discNegativityPhoton         = discNegativity         ;
         double discIsNegativePhoton         = discIsNegative         ;
@@ -2629,50 +2557,40 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float iso04Photon                   =  iso04                  ;
         float relIso03Photon                =  relIso03               ;
         float relIso04Photon                =  relIso04               ;
-        float relIso03PhotonRefitted        =  refittedRelIso03 ;
-        float relIso04PhotonRefitted        =  refittedRelIso04 ;
                                                                             
         float iso03PhotonPv                 =  iso03_pv;
         float iso04PhotonPv                 =  iso04_pv;
-        float relIso03PhotonPv              =  iso03_pv / muPtr->pt()    ;
-        float relIso04PhotonPv              =  iso04_pv / muPtr->pt()    ;
-        float relIso03PhotonRefittedPv      =  iso03_pv / refittedMu.Pt();
-        float relIso04PhotonRefittedPv      =  iso04_pv / refittedMu.Pt(); 
+        float relIso03PhotonPv              =  iso03_pv / muVec.Pt()    ;
+        float relIso04PhotonPv              =  iso04_pv / muVec.Pt()    ;
                                                                             
         float iso03PhotonSv                 =  iso03_sv;
         float iso04PhotonSv                 =  iso04_sv;
-        float relIso03PhotonSv              =  iso03_sv / muPtr->pt()    ;
-        float relIso04PhotonSv              =  iso04_sv / muPtr->pt()    ;
-        float relIso03PhotonRefittedSv      =  iso03_sv / refittedMu.Pt();
-        float relIso04PhotonRefittedSv      =  iso04_sv / refittedMu.Pt(); 
+        float relIso03PhotonSv              =  iso03_sv / muVec.Pt()    ;
+        float relIso04PhotonSv              =  iso04_sv / muVec.Pt()    ;
                                                
         float iso03PhotonTv                 =  iso03_tv;
         float iso04PhotonTv                 =  iso04_tv;
-        float relIso03PhotonTv              =  iso03_tv / muPtr->pt()    ;
-        float relIso04PhotonTv              =  iso04_tv / muPtr->pt()    ;
-        float relIso03PhotonRefittedTv      =  iso03_tv / refittedMu.Pt();
-        float relIso04PhotonRefittedTv      =  iso04_tv / refittedMu.Pt(); 
+        float relIso03PhotonTv              =  iso03_tv / muVec.Pt()    ;
+        float relIso04PhotonTv              =  iso04_tv / muVec.Pt()    ;
                                                                             
         float iso03DsPhotonSv               = iso03_ds_sv ;
         float iso04DsPhotonSv               = iso04_ds_sv ;
-        float relIso03DsPhotonSv            = iso03_ds_sv / phiPi.pt() ;
-        float relIso04DsPhotonSv            = iso04_ds_sv / phiPi.pt() ;
-        float relIso03DsPhotonRefittedSv    = iso03_ds_sv / refittedDs.Pt();
-        float relIso04DsPhotonRefittedSv    = iso04_ds_sv / refittedDs.Pt();
+        float relIso03DsPhotonSv            = iso03_ds_sv / phiPiVec.pt() ;
+        float relIso04DsPhotonSv            = iso04_ds_sv / phiPiVec.pt() ;
 
         if (foundPhoton){
 
-          TLorentzVector refittedDsMuPhoton = refittedDsMu + photonTlv;
-          TLorentzVector refittedDsPhoton   = refittedDs   + photonTlv;
+          math::PtEtaPhiMLorentzVector dsMuVecPhoton = dsMuVec + photonVec;
+          math::PtEtaPhiMLorentzVector phiPiVecPhoton   = phiPiVec   + photonVec;
 
           /////////////////////////////
           // Ds + mu perp variable   //
           /////////////////////////////
-         
-          double dsPerpPhoton   = refittedDsPhoton.  Vect().Perp(bFlightDir);
-          double dsMuPerpPhoton = refittedDsMuPhoton.Vect().Perp(bFlightDir);
-  
-          bsMassCorrPhoton = std::sqrt(std::pow(refittedDsMuPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
+
+
+          dsPerpPhoton   = phiPiVecPhoton.Vect().Cross(bFlightDir).R() / bFlightDir.Mag(); //phiPiVecPhoton.  Vect().Perp(bFlightDir);
+          dsMuPerpPhoton = dsMuVecPhoton .Vect().Cross(bFlightDir).R() / bFlightDir.Mag();//dsMuVecPhoton.Vect().Perp(bFlightDir);
+          bsMassCorrPhoton = std::sqrt(std::pow(dsMuVecPhoton.M(),2) + std::pow(dsMuPerpPhoton,2)) + dsMuPerpPhoton;
   
           bs.addUserFloat("bs_m_corr_photon",  bsMassCorrPhoton);
           bs.addUserFloat("ds_perp_photon",    dsPerpPhoton);
@@ -2683,18 +2601,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           /////////////////////////////
 
   
-          TLorentzVector collBsTlvPhoton = collMethod(refittedDsMuPhoton, bsMass_);
+          math::PtEtaPhiMLorentzVector collBsTlvPhoton = collMethod(dsMuVecPhoton, bsMass_);
   
-          TLorentzVector collMissTlvPhoton; // for m2 miss
-          TLorentzVector collQTlvPhoton;    // for q2 miss
+          math::PtEtaPhiMLorentzVector collMissTlvPhoton; // for m2 miss
+          math::PtEtaPhiMLorentzVector collQTlvPhoton;    // for q2 miss
   
-          collMissTlvPhoton = collBsTlvPhoton - refittedDsMuPhoton; // bs - ds+mu
-          collQTlvPhoton    = collBsTlvPhoton - refittedDsPhoton;   // bs - ds
+          collMissTlvPhoton = collBsTlvPhoton - dsMuVecPhoton; // bs - ds+mu
+          collQTlvPhoton    = collBsTlvPhoton - phiPiVecPhoton;   // bs - ds
   
           m2_miss_coll_photon         = collMissTlvPhoton.M2();
           pt_miss_coll_photon         = collMissTlvPhoton.Pt();
           q2_coll_photon              = collQTlvPhoton.M2();
-          e_star_coll_photon          = getEStar(collBsTlvPhoton,refittedMu); 
+          e_star_coll_photon          = getEStar(collBsTlvPhoton,muVec); 
 
           bs_px_coll_photon           = collBsTlvPhoton.Px(); 
           bs_py_coll_photon           = collBsTlvPhoton.Py(); 
@@ -2703,24 +2621,24 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs_eta_coll_photon          = collBsTlvPhoton.Eta(); 
           bs_phi_coll_photon          = collBsTlvPhoton.Phi(); 
 
-          b_boost_coll_photon        = collBsTlvPhoton.BoostVector().Mag(); 
-          b_boost_coll_pt_photon     = collBsTlvPhoton.BoostVector().Pt(); 
-          b_boost_coll_eta_photon    = collBsTlvPhoton.BoostVector().Eta(); 
-          b_boost_coll_phi_photon    = collBsTlvPhoton.BoostVector().Phi(); 
+          b_boost_coll_photon         = -collBsTlvPhoton.BoostToCM().R(); 
+          b_boost_coll_x_photon       = -collBsTlvPhoton.BoostToCM().X(); 
+          b_boost_coll_y_photon       = -collBsTlvPhoton.BoostToCM().Y(); 
+          b_boost_coll_z_photon       = -collBsTlvPhoton.BoostToCM().Z(); 
  
           /////////////////////////////
           // Lhcb method             //
           /////////////////////////////
 
-          TLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
+          math::PtEtaPhiMLorentzVector lhcbAltBsTlvPhoton   = lhcbAltMethod(dsMuVecPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
   
-          TLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - refittedDsMuPhoton; // bs - ds+mu
-          TLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - refittedDsPhoton;   // bs - ds 
+          math::PtEtaPhiMLorentzVector lhcbAltMissTlvPhoton = lhcbAltBsTlv - dsMuVecPhoton; // bs - ds+mu
+          math::PtEtaPhiMLorentzVector lhcbAltQTlvPhoton    = lhcbAltBsTlv - phiPiVecPhoton;   // bs - ds 
   
           m2_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.M2();
           pt_miss_lhcb_alt_photon      = lhcbAltMissTlvPhoton.Pt();
           q2_lhcb_alt_photon           = lhcbAltQTlvPhoton.M2();
-          e_star_lhcb_alt_photon       = getEStar(lhcbAltBsTlvPhoton,refittedMu); 
+          e_star_lhcb_alt_photon       = getEStar(lhcbAltBsTlvPhoton,muVec); 
 
           bs_px_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Px(); 
           bs_py_lhcb_alt_photon        = lhcbAltBsTlvPhoton.Py(); 
@@ -2729,35 +2647,35 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs_eta_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Eta(); 
           bs_phi_lhcb_alt_photon       = lhcbAltBsTlvPhoton.Phi(); 
 
-          b_boost_lhcb_alt_photon     = lhcbAltBsTlvPhoton.BoostVector().Mag(); 
-          b_boost_lhcb_alt_pt_photon  = lhcbAltBsTlvPhoton.BoostVector().Pt(); 
-          b_boost_lhcb_alt_eta_photon = lhcbAltBsTlvPhoton.BoostVector().Eta(); 
-          b_boost_lhcb_alt_phi_photon = lhcbAltBsTlvPhoton.BoostVector().Phi(); 
+          b_boost_lhcb_alt_photon     = -lhcbAltBsTlvPhoton.BoostToCM().R(); 
+          b_boost_lhcb_alt_x_photon   = -lhcbAltBsTlvPhoton.BoostToCM().X(); 
+          b_boost_lhcb_alt_y_photon   = -lhcbAltBsTlvPhoton.BoostToCM().Y(); 
+          b_boost_lhcb_alt_z_photon   = -lhcbAltBsTlvPhoton.BoostToCM().Z(); 
 
           /////////////////////////////
           // Reco method             //
           /////////////////////////////
 
-          std::tuple<std::vector<TLorentzVector>,float> recoResultPhoton = recoMethod(refittedDsMuPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
+          std::tuple<std::vector<math::PtEtaPhiMLorentzVector>,float> recoResultPhoton = recoMethod(dsMuVecPhoton, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_); 
   
-          std::vector<TLorentzVector> recosBsPhoton = std::get<0>(recoResultPhoton);
+          std::vector<math::PtEtaPhiMLorentzVector> recosBsPhoton = std::get<0>(recoResultPhoton);
           discNegativityPhoton                      = std::get<1>(recoResultPhoton);
   
           discIsNegativePhoton = 0;
           if (discNegativityPhoton > 0) discIsNegativePhoton = 1;
   
-          TLorentzVector recoBsTlv1Photon = recosBsPhoton.at(0);
-          TLorentzVector recoBsTlv2Photon = recosBsPhoton.at(1);
+          math::PtEtaPhiMLorentzVector recoBsTlv1Photon = recosBsPhoton.at(0);
+          math::PtEtaPhiMLorentzVector recoBsTlv2Photon = recosBsPhoton.at(1);
   
-          TLorentzVector miss_1Photon     = recoBsTlv1Photon - refittedDsMuPhoton;  
-          TLorentzVector miss_2Photon     = recoBsTlv2Photon - refittedDsMuPhoton;  
-          TLorentzVector Q_1Photon        = recoBsTlv1Photon - refittedDsPhoton;  
-          TLorentzVector Q_2Photon        = recoBsTlv2Photon - refittedDsPhoton;  
+          math::PtEtaPhiMLorentzVector miss_1Photon     = recoBsTlv1Photon - dsMuVecPhoton;  
+          math::PtEtaPhiMLorentzVector miss_2Photon     = recoBsTlv2Photon - dsMuVecPhoton;  
+          math::PtEtaPhiMLorentzVector Q_1Photon        = recoBsTlv1Photon - phiPiVecPhoton;  
+          math::PtEtaPhiMLorentzVector Q_2Photon        = recoBsTlv2Photon - phiPiVecPhoton;  
   
           m2_miss_reco_1_photon           = miss_1Photon.M2();
           pt_miss_reco_1_photon           = miss_1Photon.Pt();
           q2_reco_1_photon                = Q_1Photon.M2();
-          e_star_reco_1_photon            = getEStar(recoBsTlv1Photon,refittedMu); 
+          e_star_reco_1_photon            = getEStar(recoBsTlv1Photon,muVec); 
  
           bs_px_reco_1_photon             = recoBsTlv1Photon.Px(); 
           bs_py_reco_1_photon             = recoBsTlv1Photon.Py(); 
@@ -2766,15 +2684,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs_eta_reco_1_photon            = recoBsTlv1Photon.Eta(); 
           bs_phi_reco_1_photon            = recoBsTlv1Photon.Phi(); 
 
-          b_boost_reco_1_photon          = recoBsTlv1Photon.BoostVector().Mag(); 
-          b_boost_reco_1_pt_photon       = recoBsTlv1Photon.BoostVector().Pt(); 
-          b_boost_reco_1_eta_photon      = recoBsTlv1Photon.BoostVector().Eta(); 
-          b_boost_reco_1_phi_photon      = recoBsTlv1Photon.BoostVector().Phi(); 
+          b_boost_reco_1_photon           = -recoBsTlv1Photon.BoostToCM().R(); 
+          b_boost_reco_1_x_photon         = -recoBsTlv1Photon.BoostToCM().X(); 
+          b_boost_reco_1_y_photon         = -recoBsTlv1Photon.BoostToCM().Y(); 
+          b_boost_reco_1_z_photon         = -recoBsTlv1Photon.BoostToCM().Z(); 
 
           m2_miss_reco_2_photon           = miss_2Photon.M2();
           pt_miss_reco_2_photon           = miss_2Photon.Pt();
           q2_reco_2_photon                = Q_2Photon.M2();
-          e_star_reco_2_photon            = getEStar(recoBsTlv2Photon,refittedMu); 
+          e_star_reco_2_photon            = getEStar(recoBsTlv2Photon,muVec); 
 
           bs_px_reco_2_photon             = recoBsTlv2Photon.Px(); 
           bs_py_reco_2_photon             = recoBsTlv2Photon.Py(); 
@@ -2783,30 +2701,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs_eta_reco_2_photon            = recoBsTlv2Photon.Eta(); 
           bs_phi_reco_2_photon            = recoBsTlv2Photon.Phi(); 
 
-          b_boost_reco_2_photon          = recoBsTlv2Photon.BoostVector().Mag(); 
-          b_boost_reco_2_pt_photon       = recoBsTlv2Photon.BoostVector().Pt(); 
-          b_boost_reco_2_eta_photon      = recoBsTlv2Photon.BoostVector().Eta(); 
-          b_boost_reco_2_phi_photon      = recoBsTlv2Photon.BoostVector().Phi(); 
+          b_boost_reco_2_photon          = -recoBsTlv2Photon.BoostToCM().R(); 
+          b_boost_reco_2_x_photon        = -recoBsTlv2Photon.BoostToCM().X(); 
+          b_boost_reco_2_y_photon        = -recoBsTlv2Photon.BoostToCM().Y(); 
+          b_boost_reco_2_z_photon        = -recoBsTlv2Photon.BoostToCM().Z(); 
 
           /////////////////////////////
           // Hel angles              // 
           /////////////////////////////
 
-          double angMuWCollPhoton         = angMuW(refittedDsPhoton, collBsTlvPhoton,   refittedMu);
-          double angMuWLhcbAltPhoton      = angMuW(refittedDsPhoton, lhcbAltBsTlvPhoton,refittedMu);
-          double angMuWReco1Photon        = angMuW(refittedDsPhoton, recoBsTlv1Photon,  refittedMu);
-          double angMuWReco2Photon        = angMuW(refittedDsPhoton, recoBsTlv2Photon,  refittedMu);
+          double angMuWCollPhoton         = angMuW(phiPiVecPhoton, collBsTlvPhoton,   muVec);
+          double angMuWLhcbAltPhoton      = angMuW(phiPiVecPhoton, lhcbAltBsTlvPhoton,muVec);
+          double angMuWReco1Photon        = angMuW(phiPiVecPhoton, recoBsTlv1Photon,  muVec);
+          double angMuWReco2Photon        = angMuW(phiPiVecPhoton, recoBsTlv2Photon,  muVec);
 
           // equivalently, angle between phi(pi) and bs in ds rest frame
-          double angPhiDsCollPhoton       = angDsPi(refittedDsPhoton, refittedPhi,  collBsTlvPhoton);
-          double angPhiDsLhcbAltPhoton    = angDsPi(refittedDsPhoton, refittedPhi,  lhcbAltBsTlvPhoton);
-          double angPhiDsReco1Photon      = angDsPi(refittedDsPhoton, refittedPhi,  recoBsTlv1Photon);
-          double angPhiDsReco2Photon      = angDsPi(refittedDsPhoton, refittedPhi,  recoBsTlv2Photon);
+          double angPhiDsCollPhoton       = angDsPi(phiPiVecPhoton, kkVec,  collBsTlvPhoton);
+          double angPhiDsLhcbAltPhoton    = angDsPi(phiPiVecPhoton, kkVec,  lhcbAltBsTlvPhoton);
+          double angPhiDsReco1Photon      = angDsPi(phiPiVecPhoton, kkVec,  recoBsTlv1Photon);
+          double angPhiDsReco2Photon      = angDsPi(phiPiVecPhoton, kkVec,  recoBsTlv2Photon);
   
-          double angPiDsCollPhoton        = angDsPi(refittedDsPhoton, refittedPi,  collBsTlvPhoton);
-          double angPiDsLhcbAltPhoton     = angDsPi(refittedDsPhoton, refittedPi,  lhcbAltBsTlvPhoton);
-          double angPiDsReco1Photon       = angDsPi(refittedDsPhoton, refittedPi,  recoBsTlv1Photon);
-          double angPiDsReco2Photon       = angDsPi(refittedDsPhoton, refittedPi,  recoBsTlv2Photon);
+          double angPiDsCollPhoton        = angDsPi(phiPiVecPhoton, piVec,  collBsTlvPhoton);
+          double angPiDsLhcbAltPhoton     = angDsPi(phiPiVecPhoton, piVec,  lhcbAltBsTlvPhoton);
+          double angPiDsReco1Photon       = angDsPi(phiPiVecPhoton, piVec,  recoBsTlv1Photon);
+          double angPiDsReco2Photon       = angDsPi(phiPiVecPhoton, piVec,  recoBsTlv2Photon);
 
 
           cosMuWCollPhoton         =  cos(angMuWCollPhoton        ); 
@@ -2825,15 +2743,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           cosPiDsReco2Photon       =  cos(angPiDsReco2Photon      ); 
           
           // helicity plane angle
-          float angPlaneBsCollPhoton    = angPlane(refittedDsPhoton, collBsTlvPhoton,    refittedMu, refittedPi);
-          float angPlaneBsLhcbAltPhoton = angPlane(refittedDsPhoton, lhcbAltBsTlvPhoton, refittedMu, refittedPi);
-          float angPlaneBsReco1Photon   = angPlane(refittedDsPhoton, recoBsTlv1Photon,   refittedMu, refittedPi);
-          float angPlaneBsReco2Photon   = angPlane(refittedDsPhoton, recoBsTlv2Photon,   refittedMu, refittedPi);
+          float angPlaneBsCollPhoton    = angPlane(phiPiVecPhoton, collBsTlvPhoton,    muVec, piVec);
+          float angPlaneBsLhcbAltPhoton = angPlane(phiPiVecPhoton, lhcbAltBsTlvPhoton, muVec, piVec);
+          float angPlaneBsReco1Photon   = angPlane(phiPiVecPhoton, recoBsTlv1Photon,   muVec, piVec);
+          float angPlaneBsReco2Photon   = angPlane(phiPiVecPhoton, recoBsTlv2Photon,   muVec, piVec);
   
-          float angPlaneDsCollPhoton    = angPlane2(refittedDsPhoton, collBsTlvPhoton,    refittedK1, refittedPi);
-          float angPlaneDsLhcbAltPhoton = angPlane2(refittedDsPhoton, lhcbAltBsTlvPhoton, refittedK1, refittedPi);
-          float angPlaneDsReco1Photon   = angPlane2(refittedDsPhoton, recoBsTlv1Photon,   refittedK1, refittedPi);
-          float angPlaneDsReco2Photon   = angPlane2(refittedDsPhoton, recoBsTlv2Photon,   refittedK1, refittedPi);
+          float angPlaneDsCollPhoton    = angPlane2(phiPiVecPhoton, collBsTlvPhoton,    k1Vec, piVec);
+          float angPlaneDsLhcbAltPhoton = angPlane2(phiPiVecPhoton, lhcbAltBsTlvPhoton, k1Vec, piVec);
+          float angPlaneDsReco1Photon   = angPlane2(phiPiVecPhoton, recoBsTlv1Photon,   k1Vec, piVec);
+          float angPlaneDsReco2Photon   = angPlane2(phiPiVecPhoton, recoBsTlv2Photon,   k1Vec, piVec);
  
           cosPlaneBsCollPhoton    =      cos( angPlaneBsCollPhoton   );  
           cosPlaneBsLhcbAltPhoton =      cos( angPlaneBsLhcbAltPhoton);
@@ -2850,8 +2768,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           /////////////////////////////
 
           //first the classic isolation. Check if photon is in cone 0.3/0.4 around the mu
-          float deltaR_ph_mu = reco::deltaR(*phtPtr, *muPtr);
-          float deltaR_ph_ds = reco::deltaR(*phtPtr,  phiPi);
+          float deltaR_ph_mu = reco::deltaR(*phtPtr, *muPtr  );
+          float deltaR_ph_ds = reco::deltaR(*phtPtr, phiPiVec);
 
           iso03Photon   = iso03   ; 
           iso03PhotonPv = iso03_pv; 
@@ -2902,32 +2820,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           }
 
-          relIso03Photon     = iso03Photon      / muPtr->pt(); 
-          relIso03PhotonPv   = iso03PhotonPv    / muPtr->pt(); 
-          relIso03PhotonSv   = iso03PhotonSv    / muPtr->pt(); 
-          relIso03PhotonTv   = iso03PhotonTv    / muPtr->pt(); 
+          relIso03Photon     = iso03Photon      / muVec.Pt(); 
+          relIso03PhotonPv   = iso03PhotonPv    / muVec.Pt(); 
+          relIso03PhotonSv   = iso03PhotonSv    / muVec.Pt(); 
+          relIso03PhotonTv   = iso03PhotonTv    / muVec.Pt(); 
 
-          relIso04Photon     = iso04Photon      / muPtr->pt(); 
-          relIso04PhotonPv   = iso04PhotonPv    / muPtr->pt(); 
-          relIso04PhotonSv   = iso04PhotonSv    / muPtr->pt(); 
-          relIso04PhotonTv   = iso04PhotonTv    / muPtr->pt(); 
+          relIso04Photon     = iso04Photon      / muVec.Pt(); 
+          relIso04PhotonPv   = iso04PhotonPv    / muVec.Pt(); 
+          relIso04PhotonSv   = iso04PhotonSv    / muVec.Pt(); 
+          relIso04PhotonTv   = iso04PhotonTv    / muVec.Pt(); 
 
-          relIso03DsPhotonSv = iso03DsPhotonSv  / phiPi.pt(); 
-          relIso04DsPhotonSv = iso04DsPhotonSv  / phiPi.pt(); 
+          relIso03DsPhotonSv = iso03DsPhotonSv  / phiPiVec.Pt(); 
+          relIso04DsPhotonSv = iso04DsPhotonSv  / phiPiVec.Pt(); 
  
-          relIso03PhotonRefitted     = iso03Photon      / refittedMu.Pt(); 
-          relIso03PhotonRefittedPv   = iso03PhotonPv    / refittedMu.Pt(); 
-          relIso03PhotonRefittedSv   = iso03PhotonSv    / refittedMu.Pt(); 
-          relIso03PhotonRefittedTv   = iso03PhotonTv    / refittedMu.Pt(); 
-
-          relIso04PhotonRefitted     = iso04Photon      / refittedMu.Pt(); 
-          relIso04PhotonRefittedPv   = iso04PhotonPv    / refittedMu.Pt(); 
-          relIso04PhotonRefittedSv   = iso04PhotonSv    / refittedMu.Pt(); 
-          relIso04PhotonRefittedTv   = iso04PhotonTv    / refittedMu.Pt(); 
-
-          relIso03DsPhotonRefittedSv = iso03DsPhotonSv  / refittedDs.Pt(); 
-          relIso04DsPhotonRefittedSv = iso04DsPhotonSv  / refittedDs.Pt(); 
-         
   
         }
 
@@ -2948,9 +2853,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_coll_photon",       e_star_coll_photon);
 
         bs.addUserFloat("b_boost_coll_photon",      b_boost_coll_photon);
-        bs.addUserFloat("b_boost_coll_pt_photon",   b_boost_coll_pt_photon);
-        bs.addUserFloat("b_boost_coll_eta_photon",  b_boost_coll_eta_photon);
-        bs.addUserFloat("b_boost_coll_phi_photon",  b_boost_coll_phi_photon);
+        bs.addUserFloat("b_boost_coll_x_photon",   b_boost_coll_x_photon);
+        bs.addUserFloat("b_boost_coll_y_photon",  b_boost_coll_y_photon);
+        bs.addUserFloat("b_boost_coll_z_photon",  b_boost_coll_z_photon);
 
         bs.addUserFloat("bs_px_lhcb_alt_photon",        bs_px_lhcb_alt_photon);
         bs.addUserFloat("bs_py_lhcb_alt_photon",        bs_py_lhcb_alt_photon);
@@ -2965,9 +2870,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_lhcb_alt_photon",       e_star_lhcb_alt_photon);
 
         bs.addUserFloat("b_boost_lhcb_alt_photon",      b_boost_lhcb_alt_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_pt_photon",   b_boost_lhcb_alt_pt_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_eta_photon",  b_boost_lhcb_alt_eta_photon);
-        bs.addUserFloat("b_boost_lhcb_alt_phi_photon",  b_boost_lhcb_alt_phi_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_x_photon",   b_boost_lhcb_alt_x_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_y_photon",  b_boost_lhcb_alt_y_photon);
+        bs.addUserFloat("b_boost_lhcb_alt_z_photon",  b_boost_lhcb_alt_z_photon);
 
         bs.addUserFloat("bs_px_reco_1_photon",      bs_px_reco_1_photon);
         bs.addUserFloat("bs_py_reco_1_photon",      bs_py_reco_1_photon);
@@ -2982,9 +2887,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_reco_1_photon",     e_star_reco_1_photon);
 
         bs.addUserFloat("b_boost_reco_1_photon",     b_boost_reco_1_photon);
-        bs.addUserFloat("b_boost_reco_1_pt_photon",  b_boost_reco_1_pt_photon);
-        bs.addUserFloat("b_boost_reco_1_eta_photon", b_boost_reco_1_eta_photon);
-        bs.addUserFloat("b_boost_reco_1_phi_photon", b_boost_reco_1_phi_photon);
+        bs.addUserFloat("b_boost_reco_1_x_photon",  b_boost_reco_1_x_photon);
+        bs.addUserFloat("b_boost_reco_1_y_photon", b_boost_reco_1_y_photon);
+        bs.addUserFloat("b_boost_reco_1_z_photon", b_boost_reco_1_z_photon);
 
         bs.addUserFloat("bs_px_reco_2_photon",      bs_px_reco_2_photon);
         bs.addUserFloat("bs_py_reco_2_photon",      bs_py_reco_2_photon);
@@ -2999,9 +2904,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("e_star_reco_2_photon",     e_star_reco_2_photon);
 
         bs.addUserFloat("b_boost_reco_2_photon",     b_boost_reco_2_photon);
-        bs.addUserFloat("b_boost_reco_2_pt_photon",  b_boost_reco_2_pt_photon);
-        bs.addUserFloat("b_boost_reco_2_eta_photon", b_boost_reco_2_eta_photon);
-        bs.addUserFloat("b_boost_reco_2_phi_photon", b_boost_reco_2_phi_photon);
+        bs.addUserFloat("b_boost_reco_2_x_photon",  b_boost_reco_2_x_photon);
+        bs.addUserFloat("b_boost_reco_2_y_photon", b_boost_reco_2_y_photon);
+        bs.addUserFloat("b_boost_reco_2_z_photon", b_boost_reco_2_z_photon);
 
         bs.addUserInt("disc_is_negative_photon",discIsNegativePhoton);
         bs.addUserFloat("disc_negativity_photon",discNegativityPhoton);
@@ -3035,36 +2940,26 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("iso_04_photon"                ,  iso04Photon                 ) ;
         bs.addUserFloat("rel_iso_03_photon"            ,  relIso03Photon              ) ;
         bs.addUserFloat("rel_iso_04_photon"            ,  relIso04Photon              ) ;
-        bs.addUserFloat("rel_iso_03_refitted_photon"   ,  relIso03PhotonRefitted      ) ;
-        bs.addUserFloat("rel_iso_04_refitted_photon"   ,  relIso04PhotonRefitted      ) ;
 
         bs.addUserFloat("iso_03_pv_photon"             ,  iso03PhotonPv            ) ;
         bs.addUserFloat("iso_04_pv_photon"             ,  iso04PhotonPv            ) ;
         bs.addUserFloat("rel_iso_03_pv_photon"         ,  relIso03PhotonPv         ) ;
         bs.addUserFloat("rel_iso_04_pv_photon"         ,  relIso04PhotonPv         ) ;
-        bs.addUserFloat("rel_iso_03_pv_refitted_photon",  relIso03PhotonRefittedPv ) ;
-        bs.addUserFloat("rel_iso_04_pv_refitted_photon",  relIso04PhotonRefittedPv ) ;
 
         bs.addUserFloat("iso_03_sv_photon"             ,  iso03PhotonSv               ) ;
         bs.addUserFloat("iso_04_sv_photon"             ,  iso04PhotonSv               ) ;
         bs.addUserFloat("rel_iso_03_sv_photon"         ,  relIso03PhotonSv            ) ;
         bs.addUserFloat("rel_iso_04_sv_photon"         ,  relIso04PhotonSv            ) ;
-        bs.addUserFloat("rel_iso_03_sv_refitted_photon",  relIso03PhotonRefittedSv    ) ;
-        bs.addUserFloat("rel_iso_04_sv_refitted_photon",  relIso04PhotonRefittedSv    ) ;
 
         bs.addUserFloat("iso_03_tv_photon"             ,  iso03PhotonTv               ) ;
         bs.addUserFloat("iso_04_tv_photon"             ,  iso04PhotonTv               ) ;
         bs.addUserFloat("rel_iso_03_tv_photon"         ,  relIso03PhotonTv            ) ;
         bs.addUserFloat("rel_iso_04_tv_photon"         ,  relIso04PhotonTv            ) ;
-        bs.addUserFloat("rel_iso_03_tv_refitted_photon",  relIso03PhotonRefittedTv    ) ;
-        bs.addUserFloat("rel_iso_04_tv_refitted_photon",  relIso04PhotonRefittedTv    ) ;
 
         bs.addUserFloat("iso_03_ds_sv_photon"             ,  iso03DsPhotonSv             ) ;
         bs.addUserFloat("iso_04_ds_sv_photon"             ,  iso04DsPhotonSv             ) ;
         bs.addUserFloat("rel_iso_03_ds_sv_photon"         ,  relIso03DsPhotonSv          ) ;
         bs.addUserFloat("rel_iso_04_ds_sv_photon"         ,  relIso04DsPhotonSv          ) ;
-        bs.addUserFloat("rel_iso_03_ds_sv_refitted_photon",  relIso03DsPhotonRefittedSv  ) ;
-        bs.addUserFloat("rel_iso_04_ds_sv_refitted_photon",  relIso04DsPhotonRefittedSv  ) ;
 
   	bs.addUserInt("muIdx",                   muPtr->userInt("muIdx"          ));
    	bs.addUserInt("trgObjIdx",               muPtr->userInt("trgObjIdx"      ));
@@ -3113,15 +3008,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
-        //std::cout << "mu pt is" << muPtr->pt() << std::endl;
         //std::cout << "saving.."<< std::endl; 
-        //arrived = 1;
-        //bs.addUserInt("arrived", arrived);
-        //arrived = -1;
         //append candidate at the end of our return value :)
-        //ret_value can be a vector!!
         bsCandidates->emplace_back(bs);
-        //ret_value_gen->emplace_back(gen);
 
         } //closing pi loop
       } //closing k2 loop

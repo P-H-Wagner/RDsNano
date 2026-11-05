@@ -411,69 +411,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                const reco::Candidate* piReco = piPtrGen.get(); 
                const reco::Candidate* muReco = muPtrGen.get(); 
 
-               //// REMOVE ME LATER
-
-               ////avoid cases where the KKpi track is already a Ds
-               //if ((abs(k1PtrGen->pdgId()) == 411)||(abs(k2PtrGen->pdgId()) == 411)||(abs(piPtrGen->pdgId()) == 411)) continue;
-
-               //// dummy to fill in Phi From K1:
-               //auto phiFromK1 = k1Reco;
-               //// searching for d+  resonance 
-               //auto dsFromK1 = getAncestor(k1Reco,411);
-               //auto dsFromK2 = getAncestor(k2Reco,411);
-               //auto dsFromPi = getAncestor(piReco,411);
-               //if( (dsFromK1 != dsFromK2) || (dsFromK1 != dsFromPi) || (dsFromK1 == nullptr) || (dsFromK2 == nullptr) || (dsFromPi == nullptr)) continue; 
-               ////nFoundDs++;               
-               //std::cout << "Found a gen matched D+- candiate!" << std::endl;
-
-               //////lastCopy = dsFromPi ->isLastCopy();
-               //////std::cout << "this ds is last copy?" << lastCopy << std::endl;
-
-               //// we dont know what b mother we have
-               //int bMotherId = 0;
-
-               //// first search for b baryon (isAncestor also checks neg. Ids)
-               //for(int bIdx = 5000; bIdx < 6000; bIdx++){
-               //  if (isAncestor(dsFromPi, bIdx)){
-               //    bMotherId = bIdx;
-               //    break;
-               //  }
-               //}
-
-               //// Then search for possible B meson coming from B-baryon
-               //for(int bIdx = 500; bIdx < 600; bIdx++){
-               //  if (isAncestor(dsFromPi, bIdx)){
-               //    bMotherId = bIdx;
-               //    break;
-               //  }
-               //}
-
-               //std::cout << "found b mom id: " << bMotherId << std::endl; 
-               //if (abs(bMotherId) != 511) continue;
- 
-               //auto bsFromDs = getAncestor(dsFromPi, bMotherId);
-               //auto bsFromMu = getAncestor(muReco  , bMotherId);
-               //if (bsFromDs == nullptr)  continue; 
-
-               //int sameMother = 0;
-               //if (bsFromDs == bsFromMu) sameMother = 1;
-               //if (sameMother == 0 ) {
-               //  // std::cout << " --> not the same mom!!" << std::endl;
-               //  continue;
-               //}
-               ////look for neutrino
-               //auto nuFromBs     = getDaughter(bsFromDs, 14); //look for the muon neutrino 
-               //if (nuFromBs == nullptr) continue;
-               //if (nuFromBs->charge() * muReco->charge() > 0) continue; 
- 
-               //std::cout << " ------------------------------- " << std::endl;
-               //printDaughters(bsFromDs); //-> for debugging
-
-               //std::cout << "found a gen matched k1 with ID: " << k1PtrGen->pdgId() << std::endl;
-               //std::cout << "found a gen matched k2 with ID: " << k2PtrGen->pdgId() << std::endl;
-               //std::cout << "found a gen matched pion with ID: " << piPtrGen->pdgId() << std::endl;
- 
-
                // -----------------------------------------
                // COMMENT ME BACK!!
                // searching for phi resonance 
@@ -567,9 +504,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                nGenMatches++;
                genMatchSuccess = 1;
                nGenMatched++;
-               gen.addUserInt("gen_match_success",genMatchSuccess);
 
-               std::cout << "Found a GEN match!" << std::endl;
+               //std::cout << "Found a GEN match!" << std::endl;
                
                //if(nGenMatches > 1) continue; //std::cout <<"there is more than one match!!" << std::endl;
 
@@ -653,10 +589,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //std::cout << "on gen:" << fv_x_gen << std::endl; //This is the k1 production vertex!
                //save the gen info by adding gen candidates of final states
 
-               //gen.addUserCand("mu_gen",muPtrGen);
-               //gen.addUserCand("k1_gen",k1PtrGen);
-               //gen.addUserCand("k2_gen",k2PtrGen);
-               //gen.addUserCand("pi_gen",piPtrGen);
 
                // add pileup info
                int numTrueInts = -1;
@@ -790,42 +722,55 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  case 5122: sigId = 400;  break;  // LambdaB
                  default:   sigId = 500;          // anything else
                }
-  
-               //bool isNotDoubleCharm = false;
-               //auto photonPtr = printDirectDaughters(bsFromDs, false);
-  
-               //std::cout << "candidate nr: " << nRecoCandidates << std::endl;
-               int dsID = getDsID(piPtrGen); // get charmed strange ID
-               //std::cout << "ds Id is: " << dsID << std::endl;
-               // if no D found, this is zero
-               int dID  = getSecondCharmID(muPtrGen); // get charmed ID
-               //std::cout << "d Id is: " << dID << std::endl;
-               bool isTau = isAncestor(muPtrGen, 15);
-  
-               switch(dsID){
-                 case 431:   sigId += 0;  break; // Ds+
-                 case 433:   sigId += 10; break; // Ds+*
-                 case 10431: sigId += 20; break; // Ds+(2317)*
-                 case 20433: sigId += 30; break; // Ds+(2457)*
-                 default:    sigId = 500; break; // anything else
-               }
-  
+ 
+               /////////////////////
+               // LOOK FOR SIGNAL //
+               /////////////////////
+               const reco::Candidate* tauFromMu = nullptr;
+               const reco::Candidate* tauFromBs = nullptr;
+
+
                int checkSignal = -1;
-               int checkKNuMu  = -1;
+               if ((abs(bMotherId) == 531) and (sameMother == 1)) {
+                 checkSignal = isSignal(bsFromDs);
+               } 
+
+               // DsMu or Ds*Mu
+               if ((checkSignal == 0)||(checkSignal == 10)){
+                 sigId = checkSignal;
+               }
+               // DsTau or Ds*Tau
+               else if ((checkSignal == 1)||(checkSignal == 11)){
+
+                 //means we found Bs -> Ds Tau Nu, but does NOT guarantee,
+                 //that the gen matched muon is coming from the tau. (Borderline cases)
+                 tauFromMu = getAncestor(muReco  , 15);
+                 tauFromBs = getDaughter(bsFromDs, 15);
+                 if ((tauFromMu != tauFromBs)||(tauFromMu == nullptr)||(tauFromBs == nullptr)) sigId = -9999;
+                 else sigId = checkSignal;
+
+               }
+               else { 
+
+                 //////////////////////////////////////////////
+                 // Double charm, feeddown, or anything else //
+                 //////////////////////////////////////////////
+
+                 int dsID = getDsID(piPtrGen); // get charmed strange ID
+                 //std::cout << "ds Id is: " << dsID << std::endl;
   
-               if ((abs(bMotherId) == 531) and (sameMother == 1)) checkSignal = isSignal(bsFromDs);
-               if ((abs(bMotherId) == 521) and (sameMother == 1)) checkKNuMu  = isKNuMu(bsFromDs);
+                 int dID  = getSecondCharmID(muPtrGen); // get charmed ID
+                 //std::cout << "d Id is: " << dID << std::endl;
   
-               //if (checkSignal==-1 and sameMother == 1){
-               ////std::cout << "ALERT !!!! this is not tagged as signal" << std::endl;
-               //printDaughters(bsFromDs);
-               //}
-  
-               // Signal candidates enter here
-               if (checkSignal != -1)    sigId = checkSignal;
-               else if(checkKNuMu != -1) sigId = checkKNuMu;
-  
-               else {
+                 switch(dsID){
+                   case 431:   sigId += 0;  break; // Ds+
+                   case 433:   sigId += 10; break; // Ds+*
+                   case 10431: sigId += 20; break; // Ds+(2317)*
+                   case 20433: sigId += 30; break; // Ds+(2457)*
+                   default:    sigId = 500; break; // anything else
+                 }
+    
+                 // Signal candidates enter here
                  switch(dID){
                    case 411:   sigId += 0;  break; // D+
                    case 421:   sigId += 1; break;  // D0
@@ -836,31 +781,13 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    case 4122:  sigId += 6; break;  // Lambda c
                    case 0:
                      if (sameMother==1) {sigId +=7;} // feed downs
-                     else {sigId = 500;} //anything else 
+                     else               {sigId = 500;} //anything else 
                      break; 
                    default:    sigId = 500; break; // anything else
+                   }
                  }
-               }
-  
-               // we want to be sure that we dont tag a Hb channel which was not simulated!
-               // since the other b meson can decay freely, this can happen! F.e. we can have stuff like
-               // Bs -> Double charm + additional pions/kaons/gammas
-               std::set<int> bs_channels      = {302, 300, 303, 312, 305, 315, 0, 1, 10 ,11};
-               std::set<int> b0_channels      = {200, 203, 210, 213, 212, 205, 215, 220, 223, 230, 233};
-               std::set<int> bplus_channels   = { 107, 108, 101, 104, 117, 118, 121, 124, 131, 134, 111, 114};
-               std::set<int> lambdab_channels = {406, 416};
-  
-               //if      ((abs(bMotherId) == 531) && (bs_channels.find(sigId)       == bs_channels.end() ))      sigId = 500;
-               //else if ((abs(bMotherId) == 521) && (bplus_channels.find(sigId)    == bplus_channels.end() ))   sigId = 500;
-               //else if ((abs(bMotherId) == 511) && (b0_channels.find(sigId)       == b0_channels.end() ))      sigId = 500;
-               //else if ((abs(bMotherId) == 5122) && (lambdab_channels.find(sigId) == lambdab_channels.end() )) sigId = 500;
-  
-               //double photonEnergy;
-               //if (photonPtr != nullptr) photonEnergy =photonPtr->energy();
-               //else photonEnergy = -9999;
-  
    
-               //std::cout << "found signal id:" << sigId << std::endl;
+               std::cout << "found signal id:" << sigId << std::endl;
                /////////////////////////////////////////////
 
                ////////////////////////////////////
@@ -890,8 +817,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                float photon_gen_phi;
                float photon_gen_pdgid;
                float dr_gen_photon_ds;
-               float gen_dsPhoton_m;
-               float gen_dsPhotonMu_m;
  
 
                if (sigId == 0 and sameMother == 1){
@@ -915,8 +840,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  photon_gen_pdgid  = -9999; 
 
                  dr_gen_photon_ds  = -9999; 
-                 gen_dsPhoton_m    = -9999; 
-                 gen_dsPhotonMu_m  = -9999; 
  
  
                }
@@ -925,9 +848,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                else if (sigId == 1 and sameMother == 1){
   
                  //  Bs -> Ds + tau + nu 
-  
-                 // get the tau (we know its there)
-                 auto tauFromMu   = getAncestor(muReco,15);
   
                  tau_gen_pt       = tauFromMu->pt();
                  tau_gen_eta      = tauFromMu->eta();
@@ -947,8 +867,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  photon_gen_pdgid  = -9999; 
  
                  dr_gen_photon_ds  = -9999; 
-                 gen_dsPhoton_m    = -9999; 
-                 gen_dsPhotonMu_m  = -9999; 
 
                }
   
@@ -983,31 +901,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  dsStar_gen_m     = dsStarMass_; 
                  dsStar_gen_pdgid = dsStarFromDs->pdgId();
 
-                 //std::cout << "nu_gen_pt="    << nu_gen_pt    << " "
-                 //          << "nu_gen_eta="   << nu_gen_eta   << " "
-                 //          << "nu_gen_phi="   << nu_gen_phi   << " "
-                 //          << "nu_gen_m="     << nu_gen_m     << " " << std::endl;
-                 
-
-                 //std::cout << "dsStar_gen_pt="    << dsStar_gen_pt    << " "
-                 //          << "dsStar_gen_eta="   << dsStar_gen_eta   << " "
-                 //          << "dsStar_gen_phi="   << dsStar_gen_phi   << " "
-                 //          << "dsStar_gen_m="     << dsStar_gen_m     << " " << std::endl;
-
-
-                 //std::cout << "mu_gen_pt="    <<  muPtrGen->pt()         << " "
-                 //          << "mu_gen_eta="   <<  muPtrGen->eta()        << " "
-                 //          << "mu_gen_phi="   <<  muPtrGen->phi()        << " "
-                 //          << "mu_gen_m="     <<  muPtrGen->mass()       << " " << std::endl;
-
-
-                 //std::cout << "bs_gen_pt="    << bsFromDs->pt()     << " "
-                 //          << "bs_gen_eta="   << bsFromDs->eta()    << " "
-                 //          << "bs_gen_phi="   << bsFromDs->phi()    << " "
-                 //          << "bs_gen_m="     << bsFromDs->mass()   << " " << std::endl;
-
-
-
 
                  if (gFromDs != nullptr){ 
                    //can be nullptr if f.e. Ds* -> Ds + pi^0
@@ -1018,6 +911,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
  
                    dr_gen_photon_ds  = reco::deltaR(*gFromDs, *dsFromPi); 
 
+
                  }
 
                  else{
@@ -1027,8 +921,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    photon_gen_pdgid  = -9999; 
    
                    dr_gen_photon_ds  = -9999; 
-                   gen_dsPhoton_m    = -9999; 
-                   gen_dsPhotonMu_m  = -9999; 
 
 
                  }
@@ -1068,35 +960,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  dsStar_gen_pdgid  = dsStarFromDs->pdgId();
 
 
-                 //std::cout << "nu_gen_pt="    << nu_gen_pt    << " "
-                 //          << "nu_gen_eta="   << nu_gen_eta   << " "
-                 //          << "nu_gen_phi="   << nu_gen_phi   << " "
-                 //          << "nu_gen_m="     << nu_gen_m     << " " << std::endl;
-                 
-
-                 //std::cout << "dsStar_gen_pt="    << dsStar_gen_pt    << " "
-                 //          << "dsStar_gen_eta="   << dsStar_gen_eta   << " "
-                 //          << "dsStar_gen_phi="   << dsStar_gen_phi   << " "
-                 //          << "dsStar_gen_m="     << dsStar_gen_m     << " " << std::endl;
-
-
-                 //std::cout << "tau_gen_pt="    <<  tau_gen_pt         << " "
-                 //          << "tau_gen_eta="   <<  tau_gen_eta        << " "
-                 //          << "tau_gen_phi="   <<  tau_gen_phi        << " "
-                 //          << "tau_gen_m="     <<  tau_gen_m          << " " << std::endl;
-
-
-                 //std::cout << "bs_gen_pt="    << bsFromDs->pt()     << " "
-                 //          << "bs_gen_eta="   << bsFromDs->eta()    << " "
-                 //          << "bs_gen_phi="   << bsFromDs->phi()    << " "
-                 //          << "bs_gen_m="     << bsFromDs->mass()   << " " << std::endl;
-
-
-
-
-
-
- 
                  if (gFromDs != nullptr){ 
                    //can be nullptr if f.e. Ds* -> Ds + pi^0
                    photon_gen_pt     = gFromDs->pt(); 
@@ -1113,8 +976,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    photon_gen_pdgid  = -9999; 
    
                    dr_gen_photon_ds  = -9999; 
-                   gen_dsPhoton_m    = -9999; 
-                   gen_dsPhotonMu_m  = -9999; 
 
                  }
                }
@@ -1139,8 +1000,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  photon_gen_pdgid  = -9999;
 
                  dr_gen_photon_ds  = -9999;
-                 gen_dsPhoton_m    = -9999; 
-                 gen_dsPhotonMu_m  = -9999; 
 
 
   
@@ -1167,9 +1026,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserInt("photon_gen_pdgid",   photon_gen_pdgid);
 
                gen.addUserFloat("dr_gen_photon_ds",   dr_gen_photon_ds);
-
-               gen.addUserFloat("gen_dsPhoton_m", gen_dsPhoton_m);
-               gen.addUserFloat("gen_dsPhotonMu_m", gen_dsPhotonMu_m );
 
 
                //define helicity angles
@@ -1432,8 +1288,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserInt("photon_gen_pdgid",   -9999);
 
             gen.addUserFloat("dr_gen_photon_ds", std::nan("") );
-            gen.addUserFloat("gen_dsPhoton_m", std::nan("") );
-            gen.addUserFloat("gen_dsPhotonMu_m", std::nan("") );
  
             gen.addUserInt("same_mother",   -9999);
   

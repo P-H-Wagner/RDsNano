@@ -604,7 +604,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //std::cout << "we have n pilue up: " << numTrueInts << std::endl;
 
-
                gen.addUserFloat("mu_gen_px"      ,muPtrGen->px());
                gen.addUserFloat("mu_gen_py"      ,muPtrGen->py());
                gen.addUserFloat("mu_gen_pz"      ,muPtrGen->pz());
@@ -746,11 +745,17 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  //that the gen matched muon is coming from the tau. (Borderline cases)
                  tauFromMu = getAncestor(muReco  , 15);
                  tauFromBs = getDaughter(bsFromDs, 15);
-                 if ((tauFromMu != tauFromBs)||(tauFromMu == nullptr)||(tauFromBs == nullptr)) sigId = -9999;
+
+                 // if the muon is indeed not coming from the tau, reset the sigId to 300, set checkSignal = -1 and 
+                 // treat it as Hb
+                 if (tauFromMu == nullptr || tauFromBs == nullptr ||
+                     !(tauFromMu == tauFromBs || isDescendantOf(tauFromMu, tauFromBs))) {
+                   checkSignal = -1 ;
+                 }
                  else sigId = checkSignal;
 
                }
-               else { 
+               if (checkSignal == -1) { 
 
                  //////////////////////////////////////////////
                  // Double charm, feeddown, or anything else //
@@ -933,8 +938,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                  //  Bs -> Ds* + tau + nu 
   
                  // get the tau (we know its there)
-                 auto tauFromMu = getAncestor(muReco,15);
-  
                  tau_gen_pt       = tauFromMu->pt();
                  tau_gen_eta      = tauFromMu->eta();
                  tau_gen_phi      = tauFromMu->phi();

@@ -102,6 +102,11 @@ process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run onl
 ## put the refit process somewhere in the beginning before all the EDAnalyzer
 process.primaryVertexRefit = process.unsortedOfflinePrimaryVertices.clone()
 process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices")
+# Only the beam-spot-constrained collection is read (BsToDsPhiKKPiMu.vtxWithBsCand = primaryVertexRefit:WithBS).
+# Do not fit the unconstrained "" collection as well: it is computed for every event and never used.
+process.primaryVertexRefit.vertexCollections = cms.VPSet(
+    [pset for pset in process.primaryVertexRefit.vertexCollections if pset.label.value() == 'WithBS']
+)
 
 
 if channel != 'data':

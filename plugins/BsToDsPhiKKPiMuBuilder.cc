@@ -817,7 +817,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // PHI VTX FIT                                   //
         ///////////////////////////////////////////////////
          
-        RefCountedKinematicTree phiTree  = vertexFit(phiToFit, phiMass, constrainPhiMass_);
+        RefCountedKinematicTree phiTree;
+        try { phiTree = vertexFit(phiToFit, phiMass, constrainPhiMass_); }
+        catch (const std::exception&) { continue; } // degenerate input: drop the candidate, not the job
 
         if (!phiTree->isValid() || phiTree->isEmpty() || !phiTree->isConsistent()) continue; //check if fit result is valid
 
@@ -859,7 +861,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // DS VTX FIT                                    //
         ///////////////////////////////////////////////////
 
-        RefCountedKinematicTree dsTree = vertexFit(dsToFit, dsMass, constrainDsMass_);
+        RefCountedKinematicTree dsTree;
+        try { dsTree = vertexFit(dsToFit, dsMass, constrainDsMass_); }
+        catch (const std::exception&) { continue; } // degenerate input: drop the candidate, not the job
         if (!dsTree->isValid() || dsTree->isEmpty() ) continue; //check if fit result is valid
 
         // access the fitted resonance 
@@ -900,10 +904,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // BS VTX FIT                                    //
         ///////////////////////////////////////////////////
 
-        KinematicConstrainedVertexFitter bsFitter;
-
-        RefCountedKinematicTree bsTree = bsFitter.fit(bsToFit); // no constraint for bs because missing momentum
-        if (!bsTree->isValid() || bsTree->isEmpty() ) continue; //check if fit result is valid 
+        // Kalman vertex fit, as for the phi and the Ds (vertexFit helper). KinematicConstrainedVertexFitter
+        // returns valid fits with negative chi2 on nearly collinear inputs (~20% of the Bs vertices on
+        // signal MC), which the chi2 < 0 check below silently dropped.
+        RefCountedKinematicTree bsTree;
+        try { bsTree = vertexFit(bsToFit, 0., false); } // no constraint for bs because missing momentum
+        catch (const std::exception&) { continue; }   // degenerate input: drop the candidate, not the job
+        if (!bsTree || !bsTree->isValid() || bsTree->isEmpty() ) continue; //check if fit result is valid 
 
         // access the fitted resonance 
         bsTree->movePointerToTheTop();

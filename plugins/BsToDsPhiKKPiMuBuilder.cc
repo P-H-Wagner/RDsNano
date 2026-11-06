@@ -413,6 +413,16 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     return edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());       //lost tracks
   };
 
+  // Key of a track for the momentum-calibration random numbers. Each collection gets its own
+  // range, as in Bmmm TrackMomentumCalib.KEY_OFFSET (pf 0, lost 1e6, muon 2e6): before, the
+  // muon key (index in slimmedMuons) collided with the pf candidate of the same index, giving
+  // the two tracks the same Gaussian number.
+  auto calibKey = [&](size_t idx) -> int64_t {
+    if (idx < pcand->size()) return static_cast<int64_t>(idx);                          // packedPFCandidates
+    return static_cast<int64_t>(1000000 + (idx - pcand->size()));                       // lostTracks
+  };
+  auto calibKeyMuon = [](int muIdx) -> int64_t { return static_cast<int64_t>(2000000 + muIdx); };
+
   // AOD (unpacked) track closest in dR with the same charge sign, evaluated once per particle.
   // Only tracks within dR < 0.01 and |dpt|/pt < 5% are accepted (as in the Bmmm R(Ds) ntuplizer):
   // before, the closest track anywhere in the event was taken, so a wrong track could be removed
@@ -571,7 +581,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
     if (!iEvent.isRealData()) {
       const auto& id    = iEvent.id();
-      const double z_mu = muCalib ->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), muPtr->userInt("muIdx")); //take the index in the reco::muon collection
+      const double z_mu = muCalib ->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKeyMuon(muPtr->userInt("muIdx"))); //take the index in the reco::muon collection
       f_muCorr  = muCalib ->factor(muPtr->p(), muPtr->pt(), muPtr->eta(), muPtr->charge(), z_mu, "nominal", rdscalib::Kind::Muon);
       muVecCorr = math::PtEtaPhiMLorentzVector(muVecCorr.Pt() * f_muCorr, muVecCorr.Eta(), muVecCorr.Phi(), muMass_);
     }
@@ -616,8 +626,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       if (!iEvent.isRealData()) {
         const auto& id    = iEvent.id();
-        const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k1Idx);
-        const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k2Idx);
+        const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(k1Idx));
+        const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(k2Idx));
         f_k1Corr  = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
         f_k2Corr  = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
         k1VecCorr = math::PtEtaPhiMLorentzVector(k1VecCorr.Pt() * f_k1Corr, k1VecCorr.Eta(), k1VecCorr.Phi(), kMass_);
@@ -669,7 +679,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         if (!iEvent.isRealData()) {
           const auto& id    = iEvent.id();
-          const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), piIdx);
+          const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(piIdx));
           f_pi  = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
           piVec = math::PtEtaPhiMLorentzVector(piVec.Pt() * f_pi, piVec.Eta(), piVec.Phi(), piMass_);
         }
@@ -2265,7 +2275,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (!iEvent.isRealData()) {
 
           const auto& id    = iEvent.id();
-          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(idx));
           const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
 
           pfVec = math::PtEtaPhiMLorentzVector(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi(), pfVec.M());
@@ -2491,7 +2501,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (!iEvent.isRealData()) {
 
           const auto& id    = iEvent.id();
-          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), idx);
+          const double z_PF = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(idx));
           const double f_PF = trkCalib->factor(chPtr->p(), chPtr->pt(), chPtr->eta(), chPtr->charge(), z_PF);
 
           pfVec = math::PtEtaPhiMLorentzVector(pfVec.Pt() * f_PF, pfVec.Eta(), pfVec.Phi(), pfVec.M());

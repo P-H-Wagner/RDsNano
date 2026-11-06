@@ -343,7 +343,7 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     jsonCalib = loadTrackCalibJSON(edm::FileInPath(trkCalibFile_).fullPath());
     int i = 0;
     for (const auto& entry : jsonCalib.get_child("per_bin.a2")) a2[i++] = entry.second.get_value<double>();
-    auto c2 = jsonCalib.get_child("per_bin.c2").begin()->second.get_value<double>();
+    c2 = jsonCalib.get_child("per_bin.c2").begin()->second.get_value<double>(); // assign the member (was a local variable, leaving the member uninitialised)
 
     // output collection
     produces<pat::CompositeCandidateCollection>        ("bs"                  );

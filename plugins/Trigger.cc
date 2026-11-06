@@ -407,27 +407,38 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
     for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
 
-      // get object
-      pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
+      const pat::TriggerObjectStandAlone& trgObjRef = (*triggerObjects)[objIdx];
 
       //check pt, eta, and if trigger object is of type muon
-      if (
-          (std::fabs(trgObj.eta()) > 1.6) || 
-          (trgObj.pt() < 6.0)             || 
-          (!trgObj.hasTriggerObjectType(trigger::TriggerMuon)) 
-         ) {
-        failsSelection_Vec.push_back(1);
-      } 
+      const bool failsSelection = 
+          (std::fabs(trgObjRef.eta()) > 1.6) || 
+          (trgObjRef.pt() < 6.0)             || 
+          (!trgObjRef.hasTriggerObjectType(trigger::TriggerMuon));
 
-      else failsSelection_Vec.push_back(0);
+      failsSelection_Vec.push_back(failsSelection);
 
-      //std::cout << std::fabs(trgObj.pt()) << std::endl;
+      // Objects failing the selection are never matched to a muon (see the matching loop below),
+      // so there is no need to copy them and unpack their filter labels (the expensive part).
+      if (failsSelection) {
+        passTrigger_Vec          .push_back(false);
+        filterLabelMu7_4_Vec     .push_back(false);
+        filterLabelMu8_3_Vec     .push_back(false);
+        filterLabelMu8p5_3p5_Vec .push_back(false);
+        filterLabelMu8_5_Vec     .push_back(false);
+        filterLabelMu8_6_Vec     .push_back(false);
+        filterLabelMu9_4_Vec     .push_back(false);
+        filterLabelMu9_5_Vec     .push_back(false);
+        filterLabelMu9_6_Vec     .push_back(false);
+        filterLabelMu10p5_3p5_Vec.push_back(false);
+        filterLabelMu12_6_Vec    .push_back(false);
+        continue;
+      }
+
+      // copy needed: unpacking modifies the object
+      pat::TriggerObjectStandAlone trgObj = trgObjRef;
 
       //unpack trigger labels
       trgObj.unpackFilterLabels(iEvent, *triggerBits);
-
-      // get filter labels  
-      std::vector<std::string> filterLabels = trgObj.filterLabels();
 
       int filterLabelMu7_4        = trgObj.hasFilterLabel(trgFilterLabelMu7_4_)     ;
       int filterLabelMu8_3        = trgObj.hasFilterLabel(trgFilterLabelMu8_3_)     ;
@@ -510,7 +521,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         if (!passTrigger_Vec.at(objIdx)) continue;
         if (failsSelection_Vec.at(objIdx)) continue;
 
-        pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];
+        const pat::TriggerObjectStandAlone& trgObj = (*triggerObjects)[objIdx]; // no copy needed here
 
         if (trgObj.charge() * muon.charge() < 0) continue; // exclude opposite charge
 

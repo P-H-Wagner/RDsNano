@@ -713,7 +713,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                bId = bMotherId;
   
                // Step1: the b Mother fixes the 10s
-               switch(abs(bMotherId)){
+               switch(std::abs(bMotherId)){
                  case 521:  sigId = 100;  break;  // B+
                  case 511:  sigId = 200;  break;  // B0
                  case 531:  sigId = 300;  break;  // Bs
@@ -729,7 +729,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
 
                int checkSignal = -1;
-               if ((abs(bMotherId) == 531) and (sameMother == 1)) {
+               if ((std::abs(bMotherId) == 531) and (sameMother == 1)) {
                  checkSignal = isSignal(bsFromDs);
                } 
 

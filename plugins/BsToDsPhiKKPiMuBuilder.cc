@@ -532,8 +532,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       else pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size()); //lost tracks
      
       float deltaRMuTrk = reco::deltaR(*pfPtr, *muPtr);
-      if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPfIdx.push_back(pfIdx); 
-      else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) {chargedPfIdx.push_back(pfIdx); 
+      if      ( neutralPdgId.count(std::abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPfIdx.push_back(pfIdx); 
+      else if ( chargedPdgId.count(std::abs(pfPtr->pdgId())) && (deltaRMuTrk < 0.4) && (deltaRMuTrk > 0.0001)                        ) {chargedPfIdx.push_back(pfIdx); 
       
       }    
     }
@@ -563,8 +563,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       bool hSel = (( muonHdR < maxdRHadMuon_ )                                                                       && 
       (reco::deltaR(*hPtr, *muPtr) > mindRHadMuon_)                                                                  && 
-      (abs(hPtr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
-      (abs(hPtr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
+      (std::abs(hPtr->bestTrack()->dz(pv_dz.position()) - muPtr->bestTrack()->dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
+      (std::abs(hPtr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
 
       if (!hSel) continue;
       k1Sel2Counter++;
@@ -1118,7 +1118,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           float mDsStar      = dsStarVec  .M();
           float dr           = reco::deltaR(gVec, phiPiVec);
-          float deltaDsStar  = abs(mDsStar - dsStarMass_); 
+          float deltaDsStar  = std::abs(mDsStar - dsStarMass_); 
  
           if (((dr < minDeltaDsStar) || (foundPhoton == 0))  && ( deltaDsStar < dsStarMassAllowance_)){
 
@@ -2135,9 +2135,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
           // and minimize the dz           
-          float vtxDz_pi = abs( piPtr->vz() - vtxPtr->z() );  
-          float vtxDz_k1 = abs( k1Ptr->vz() - vtxPtr->z() );  
-          float vtxDz_k2 = abs( k2Ptr->vz() - vtxPtr->z() );  
+          float vtxDz_pi = std::abs( piPtr->vz() - vtxPtr->z() );  
+          float vtxDz_k1 = std::abs( k1Ptr->vz() - vtxPtr->z() );  
+          float vtxDz_k2 = std::abs( k2Ptr->vz() - vtxPtr->z() );  
 
           if ( ( vtxDz_pi < minVtxDz_pi) || (idxMinVtxDz_pi < 0) ) {
 
@@ -2258,7 +2258,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (idx < pcand->size()) chPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx);   //normal tracks
           else chPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
-          if ((abs(chPtr->pdgId()) == 11) || (abs(chPtr->pdgId()) == 13)) continue;
+          if ((std::abs(chPtr->pdgId()) == 11) || (std::abs(chPtr->pdgId()) == 13)) continue;
 
           // skip if no track
           if (!chPtr->hasTrackDetails())  continue;
@@ -2297,7 +2297,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             if (!vtx.isValid()) continue;
 
             // and minimize the dz           
-            float vtxDz = abs( chPtr->vz() - vtx.z() );  
+            float vtxDz = std::abs( chPtr->vz() - vtx.z() );  
             if ( ( vtxDz < minVtxDz) || (idxMinVtxDz < 0) ) {
  
               minVtxDz    = vtxDz;
@@ -2315,7 +2315,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           // if closest refit vtx is our custom pv, count it to isolation!
           // remove electrons and muons (11 and 13) as in cmssw isolation definition
-          if  ((idxMinVtxDz == pvIdx) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13)) {
+          if  ((idxMinVtxDz == pvIdx) && (std::abs(chPtr->pdgId()) != 11) && (std::abs(chPtr->pdgId()) != 13)) {
             iso04_ch_pv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_pv += pfVec.Pt();
           } 
@@ -2333,7 +2333,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
-          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (std::abs(chPtr->pdgId()) != 11) && (std::abs(chPtr->pdgId()) != 13) ){
             iso04_ch_sv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_sv += pfVec.Pt();
           }
@@ -2351,7 +2351,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           const reco::TransientTrack& ttTv = ttSv; // same track, no need to build it twice
           std::pair<bool, Measurement1D> ip3DTv = IPTools::signedDecayLength3D(ttTv, direction_ds, recoTv);
 
-          if ( ip3DTv.first && (std::fabs(ip3DTv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+          if ( ip3DTv.first && (std::fabs(ip3DTv.second.value()) < 0.01) && (std::abs(chPtr->pdgId()) != 11) && (std::abs(chPtr->pdgId()) != 13) ){
             iso04_ch_tv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_tv += pfVec.Pt();
           }
@@ -2450,8 +2450,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           else pfPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, pfIdx - pcand->size()); //lost tracks
          
           float deltaRDsTrk = reco::deltaR(*pfPtr, phiPiVec);
-          if      ( neutralPdgId.count(abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPf_Ds_Idx.push_back(pfIdx); 
-          else if ( chargedPdgId.count(abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.0001)                        ) {chargedPf_Ds_Idx.push_back(pfIdx); 
+          if      ( neutralPdgId.count(std::abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.01  ) && (pfPtr->pt() > 0.5 )) neutralPf_Ds_Idx.push_back(pfIdx); 
+          else if ( chargedPdgId.count(std::abs(pfPtr->pdgId())) && (deltaRDsTrk < 0.4) && (deltaRDsTrk > 0.0001)                        ) {chargedPf_Ds_Idx.push_back(pfIdx); 
           
           //std::cout << "collecting: " << pfPtr->pt() << std::endl; 
           }    
@@ -2484,7 +2484,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           if (idx < pcand->size()) chPtr = edm::Ptr<pat::PackedCandidate>(pcand, idx);   //normal tracks
           else chPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());  //lost tracks
 
-          if ((abs(chPtr->pdgId()) == 11) || (abs(chPtr->pdgId()) == 13)) continue;
+          if ((std::abs(chPtr->pdgId()) == 11) || (std::abs(chPtr->pdgId()) == 13)) continue;
 
           // skip if no track
           if (!chPtr->hasTrackDetails())  continue;
@@ -2520,7 +2520,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             if (!vtx.isValid()) continue;
 
             // and minimize the dz           
-            float vtxDz = abs( chPtr->vz() - vtx.z() );  
+            float vtxDz = std::abs( chPtr->vz() - vtx.z() );  
             if ( ( vtxDz < minVtxDz) || (idxMinVtxDz < 0) ) {
  
               minVtxDz    = vtxDz;
@@ -2539,7 +2539,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::TransientTrack ttSv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DSv = IPTools::signedDecayLength3D(ttSv, direction_bs, recoSv);
 
-          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+          if ( ip3DSv.first && (std::fabs(ip3DSv.second.value()) < 0.01) && (std::abs(chPtr->pdgId()) != 11) && (std::abs(chPtr->pdgId()) != 13) ){
             iso04_ds_ch_sv += pfVec.Pt();
             if (deltaR_ds_chTrk < 0.3) iso03_ds_ch_sv += pfVec.Pt();
           }

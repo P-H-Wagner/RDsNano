@@ -1257,7 +1257,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "ds vtc cosine" << ds_vtx_cosine << std::endl;
 
         //if (ds_vtx_cosine < 0.8) continue;
-        if (std::fabs(ds_vtx_cosine_xyz_pv) < 0.8) continue;
+        if (ds_vtx_cosine_xyz_pv < 0.8) continue; // was fabs(): kept Ds pointing backwards (cos < -0.8)
 
         //std::cout << "survived cos 2d cut" << std::endl;
 

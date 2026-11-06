@@ -43,7 +43,8 @@ process.Timing = cms.Service("Timing",
 #load all the chosen options
 process.MessageLogger.cerr.FwkReport.reportEvery = 5000
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(-1) # CHANGE ME BACK
+    #input = cms.untracked.int32(200)
 )
 
 process.source = cms.Source(

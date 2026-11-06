@@ -22,6 +22,7 @@ genMatcher = cms.EDProducer(
 'abs(pdgId) != 13',
 'charge != 0',
 'pt > 0.7', 
+#'pt > 1.3', 
 'eta > -2.4',
 'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
@@ -35,7 +36,8 @@ mindRHadMuon = cms.double(0.005),     # min dR "
 maxdzDiffHadMuon = cms.double(0.6),   # difference in dz between muon/pv and had/pv
 phiMassAllowance = cms.double(0.030), # allow 30 MeV when collecting candidates for phi 
 dsMassAllowance = cms.double(0.150),  # allow 150 MeV when collecting candidates for ds
-drMatchGen = cms.double(0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
+#drMatchGen = cms.double(0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
+drMatchGen = cms.double(0.05),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
 maxBsMass = cms.double(8.0),
 
 piMass = cms.double(0.13957039),      # pi mass

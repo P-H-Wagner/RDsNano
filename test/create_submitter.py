@@ -14,25 +14,26 @@ args = parser.parse_args()
 ######################################
 
 #800 jobs per user on short queue
-nMaxJobs = 1000
+nMaxJobs = 10000
 
 #default
 filesPerJob = 1
 
 if (int(args.nFiles) < nMaxJobs) and (int(args.nFiles) != -1):
   filesPerJob = 1 #below 500 jobs we can take 1 file per job and thus short
-  queue = 'standard' 
-  time = 6*60
+  queue = 'short' 
+  time = 60
 else:
-  queue = 'standard'
-  time = 4*60
+  queue = 'short'
+  time = 60
+  #mem = 2500
 print("========> processing ", filesPerJob, " files per job")
 
 ######################################
 
 #queue = 'standard'
 #time = 60
-nevents = -1
+nevents = 1000
 nFiles = int(args.nFiles)
 now = datetime.now()
 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
@@ -62,7 +63,9 @@ def filesFromTxt(txtFile):
 
 if args.channel == 'sig':
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1/' #old signal from MA thesis
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_21_11_23.txt' # new signals!!
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_18_07_25.txt' # new signals!!
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/signals/all_signals_request_18_07_25_ext.txt' # new signals, extension!!
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/all_signals_HbToDsPhiKKPiMuNu_MT_MINI_21jan23_v1_PV_REFITTED/'
   #inputfiles = filesFromFolder(directory)
   inputfiles = filesFromTxt(directory)
@@ -70,9 +73,11 @@ if args.channel == 'sig':
 
 if args.channel == 'hb':
 
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/hbInclusiveToDsPhiKKPi_20250829/hbInclusiveToDsPhiKKPi/hbInclusiveToDsPhiKKPi_MINI/250829_074208/0000/' #new hb
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/hbInclusiveToDsPhiKKPi_20250829/hbInclusiveToDsPhiKKPi/hbInclusiveToDsPhiKKPi_MINI/250829_074208/0000/' #new hb
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/hb_request_18_07_25.txt' # new hb!!
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/mc/hb/hb_request_18_07_25_ext.txt' # new hb, extension!!
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/inclusive_HbToDsPhiKKPiMuNu_MINI_25mar21_v1/' #hb 
-  inputfiles = filesFromFolder(directory)
+  inputfiles = filesFromTxt(directory)
   naming = 'hb_inclusive'
 
 if args.channel == 'b0':
@@ -106,14 +111,21 @@ if args.channel == 'bc':
   naming = 'bc'
 
 if args.channel == 'data':
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/BPark_2018D.txt' #data bParking 2018 part D
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/mu9.txt' #data bParking 2018 part D
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/runTest/files_run_325117_lumi_172.txt' # only one run
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPark_2018_D/ten_parts/BPark_2018D_part5.txt' #data bParking 2018 part D
-  #txtFile = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/dataTest/single.txt' # test
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH1/BPH1_partC.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH2/BPH2_partC.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH3/BPH3_partC.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH5/BPH5_partC.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH6/BPH6_partA.txt' #data bParking 2018 part D
   inputfiles = filesFromTxt(directory)
   #inputfiles = [inputfiles[0]] #debugging only first file
   naming = 'data'
+
+if args.channel == 'qcd':
+
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/qcd/pt_50_to_80.txt' #bc 
+  inputfiles = filesFromTxt(directory)
+  naming = 'qcd_pt_50_to_80'
+
 
 if args.channel in qcd_samples:
 
@@ -205,7 +217,7 @@ for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
         '--account=t3',
         '-o {0}/logs/chunk_{1}.log'.format(dt_string,i),
         '-e {0}/errs/chunk_{1}.err'.format(dt_string,i),
-        #'--mem=1200M',
+        '--mem=2500M',
         '--job-name=MINI_{0}_{1}'.format(i,args.channel),
         '--time={0}'.format(time),
         '{0}/submitter_chunk_{1}.sh'.format(dt_string,i),

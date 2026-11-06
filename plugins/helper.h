@@ -44,6 +44,12 @@
 #include <memory>
 #include <typeinfo>
 
+//to read json
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+
+
 typedef std::vector<reco::TransientTrack> TransientTrackCollection;
 
 constexpr float MU_MASS     = 0.1056583745;
@@ -75,6 +81,14 @@ const std::set<int> bBaryonIds = {
         5532, 5534, 5542, 5544, 5554
 };
 
+
+/////////////////////////////
+// to load the json
+inline boost::property_tree::ptree loadTrackCalibJSON(const std::string& path) {
+    boost::property_tree::ptree json;
+    boost::property_tree::read_json(path, json);
+    return json;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // function which checks if particle is b meson, bb meson or b bayron
@@ -268,6 +282,17 @@ inline auto getAncestor(const auto dau, const int id){
   return empty;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////
+inline bool isDescendantOf(const auto p, const auto anc){
+  if (p == nullptr || anc == nullptr) return false;
+  for (size_t i = 0; i < p->numberOfMothers(); ++i){
+    const auto  m = p->mother(i);
+    if (m == anc || isDescendantOf(m, anc)) return true;
+  }
+  return false;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // function which returns pointer to daughter with pdgid <id> 
 
@@ -407,14 +432,14 @@ inline float angMuW (TLorentzVector d, TLorentzVector b, TLorentzVector mu){
   TLorentzVector w;
   w.SetVectM(-d.Vect(),std::sqrt(q2));           
 
-  std::cout << "q2 is: " << std::sqrt(q2) << std::endl;
+  //std::cout << "q2 is: " << std::sqrt(q2) << std::endl;
 
   // boost it back into lab frame
   w.Boost(bBoost);
 
   // now take the boost vector of w
   TVector3 wBoost = w.BoostVector();
-  std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
+  //std::cout << "wBoost vector: " << wBoost.Mag() << std::endl;
   if (wBoost.Mag() >=1) wBoost.SetMag(0.99999999999999);
   //std::cout << "wBoost vector now: " << wBoost.Mag() << std::endl;
 
@@ -1082,6 +1107,131 @@ inline reco::Track correctCovMat(const reco::Track *tk, double delta){
 
     return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
     }
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// scale col/rows by 1/f and add calibration term to (0,0)
+
+inline std::array<std::array<double, 3>, 3> scaleAndCalibrateCovMat(const reco::Track *tk, const double *a_sq, const double c_sq, double f = -1.0) {
+
+  // define a 3x3 matrix (we dont need all 5 parameters of the cov matrix)
+  std::array<std::array<double, 3>, 3> cov{};
+
+  //////////////////////
+  // SCALE cov matrix //
+  //////////////////////
+ 
+  // just refill
+  for (int i = 0; i < 3; ++i){
+    for (int j = 0; j < 3; ++j){
+      cov[i][j] = tk->covariance(i,j);
+    }
+  }
+
+  // for MC, we want to scale the q/p row/column [index 0] entry by 1/f 
+  if (f > 0.0){
+  for (int k = 0; k < 3; ++k) {
+    cov[0][k] /= f;
+    cov[k][0] /= f; 
+    } 
+  }   
+
+  ///////////////////////////////////////////
+  // add calibration term to (0,0) element //
+  ///////////////////////////////////////////
+
+  // CALIBRATION CONSTANTS 
+  std::array<double, 2> etaEdges{{0.7, 1.2}}; //to define the eta bins
+  std::array<double, 3> a{{std::sqrt(a_sq[0]), std::sqrt(a_sq[1]), std::sqrt(a_sq[2])}}; 
+  double c = std::sqrt(c_sq);  
+
+  
+  const double p   = tk->pt() * std::cosh(tk->eta()); // 1/|q/p|
+  const double ae  = std::fabs(tk->eta());         // |eta|
+  const int r      = ae < etaEdges[0] ? 0 : (ae < etaEdges[1] ? 1 : 2); // get index of eta bin
+  double s         = std::sqrt(a[r] * a[r] + c * c * tk->pt() * tk->pt()) / p;
+
+  //add the term to cov[0][0]
+  cov[0][0] += s * s;
+
+  return cov;
+
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculate mass uncertainty
+
+inline double getMassSigma(const std::vector<reco::Track> *trks, const std::vector<std::array<std::array<double, 3>, 3>> *covs, const std::vector<double> *masses, double* mOut = nullptr) {
+
+  //size of tracks (will be 3 :)
+  const size_t n = trks->size();
+
+  //calculate the three momentum and Energy for all final state particles
+  std::vector<std::array<double, 3>> p3(n);
+  std::vector<double> En(n);
+  double E = 0, P[3] = {0, 0, 0};
+
+  // loop over tracks
+  for (size_t i = 0; i < n; ++i) {
+
+    //dereference the pointer (get the object) and stores its adress in t
+    const reco::Track& t = (*trks)[i];
+
+    //fill three momentum vector and calculate p^2 
+    p3[i] = {{t.pt() * std::cos(t.phi()), t.pt() * std::sin(t.phi()), t.pt() * std::sinh(t.eta())}};
+    const double p2 = p3[i][0] * p3[i][0] + p3[i][1] * p3[i][1] + p3[i][2] * p3[i][2];
+
+    // calculate energy
+    En[i] = std::sqrt(p2 + (*masses)[i] * (*masses)[i]);
+
+    //sum to total enery and momentum
+    E += En[i];
+    for (int k = 0; k < 3; ++k) P[k] += p3[i][k];
+  }
+
+
+  //build the reconsructed mass (KKPi Mass)
+  const double m2 = E * E - P[0] * P[0] - P[1] * P[1] - P[2] * P[2];
+  const double m = m2 > 0 ? std::sqrt(m2) : 0.0;
+  if (mOut) *mOut = m;
+  if (m <= 0) return 0.0;
+ 
+  //std::cout << " reconstructed mass: " << m << std::endl;
+
+
+  //now we do the error propagation
+  double var = 0;
+
+  //loop over track
+  for (size_t i = 0; i < n; ++i) {
+    const reco::Track& t = (*trks)[i];
+
+    //calculate the g vector dm/dp_vec = (E p_i / E_i - P) / m
+    double g[3]; 
+    for (int k = 0; k < 3; ++k) g[k] = (E * p3[i][k] / En[i] - P[k]) / m;
+
+    //prepare terms for error propagation   
+    const double p = t.pt() * std::cosh(t.eta());
+    const double sl = std::tanh(t.eta()), cl = 1.0 / std::cosh(t.eta());  // sin, cos of lambda
+    const double cp = std::cos(t.phi()), sp = std::sin(t.phi());
+
+    //scalar product between g vector and three momentum
+    const double gp = g[0] * p3[i][0] + g[1] * p3[i][1] + g[2] * p3[i][2];
+
+    //fill the jacobian :)
+    const double J[3] = {
+        -t.charge() * p * gp,                                    // dm/d(q/p)
+        p * (-sl * cp * g[0] - sl * sp * g[1] + cl * g[2]),    // dm/dlambda
+        t.pt() * (-sp * g[0] + cp * g[1])};                      // dm/dphi
+
+    // do the final error propagation sum
+    for (int a = 0; a < 3; ++a)
+      for (int b = 0; b < 3; ++b) var += J[a] * (*covs)[i][a][b] * J[b];
+  }
+  return var > 0 ? std::sqrt(var) : 0.0;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Fix the track covariance matrix to be pos. def.

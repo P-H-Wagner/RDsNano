@@ -207,10 +207,6 @@ private:
   const double bsMass_;
   const double isoCone_;
 
-  // track correction
-  //std::unique_ptr<const rdscalib::TrackCalib> trkCalib_;
-  const std::string  trkCalibFile_;
-
   //tokens to access data later
 
   //beamspot
@@ -256,11 +252,15 @@ private:
   const edm::InputTag vtxWithBsTag;
   const edm::EDGetTokenT<reco::VertexCollection> vtxWithBs_;
 
-  std::unique_ptr<const rdscalib::TrackCalib> trkCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath());
+  // track scale correction
+  const std::string  trkCalibFile_;
+  std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
+  std::unique_ptr<const rdscalib::TrackCalib> muCalib;
 
-  std::unique_ptr<const rdscalib::TrackCalib> muCalib = std::make_unique<const rdscalib::TrackCalib>(edm::FileInPath("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v3.json").fullPath()); //CHANGE JSON
-
-
+  // for the mass error propagation (load json file and access a and c)
+  boost::property_tree::ptree jsonCalib;
+  double a2[3];
+  double c2;
 
 
 };
@@ -298,8 +298,6 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     bsMass_             (iConfig.getParameter<double>     ("bsMass"             )),
     isoCone_            (iConfig.getParameter<double>     ("isoCone"            )),
 
-    trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       )),
-
     beamSpotTag(iConfig.getParameter<edm::InputTag>       ("offBeamSpot"        )),
     beamSpot_(consumes<reco::BeamSpot>                    (beamSpotTag          )),
 
@@ -330,10 +328,22 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     unpackedTracks_(consumes<reco::TrackCollection>       (unpackedTracksTag    )),
  
     vtxWithBsTag(iConfig.getParameter<edm::InputTag>      ("vtxWithBsCand"      )),
-    vtxWithBs_(consumes<reco::VertexCollection>           (vtxWithBsTag         ))
+    vtxWithBs_(consumes<reco::VertexCollection>           (vtxWithBsTag         )),
+    trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       ))
    {
-       // output collection
-       produces<pat::CompositeCandidateCollection>        ("bs"                  );
+    //for the track scale correction
+    const std::string calibPath = edm::FileInPath(trkCalibFile_).fullPath();
+    trkCalib = std::make_unique<const rdscalib::TrackCalib>(calibPath);
+    muCalib  = std::make_unique<const rdscalib::TrackCalib>(calibPath);
+
+    //for the mass error propagation
+    jsonCalib = loadTrackCalibJSON(edm::FileInPath(trkCalibFile_).fullPath());
+    int i = 0;
+    for (const auto& entry : jsonCalib.get_child("per_bin.a2")) a2[i++] = entry.second.get_value<double>();
+    auto c2 = jsonCalib.get_child("per_bin.c2").begin()->second.get_value<double>();
+
+    // output collection
+    produces<pat::CompositeCandidateCollection>        ("bs"                  );
    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -565,51 +575,42 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         math::PtEtaPhiMLorentzVector k1Vec(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), kMass_ );
         math::PtEtaPhiMLorentzVector k2Vec(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), kMass_ );
         math::PtEtaPhiMLorentzVector piVec(piPtr->pt(), piPtr->eta(), piPtr->phi(), piMass_); //just to be sure lets also force the pi mass
+
+        double f_mu = -1.0; 
+        double f_k1 = -1.0; 
+        double f_k2 = -1.0; 
+        double f_pi = -1.0; 
+
  
+        //std::cout << "Before k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
+        //std::cout << "Before mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
         if (!iEvent.isRealData()) {
+
           const auto& id    = iEvent.id();
           const double z_mu = muCalib ->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), muPtr->userInt("muIdx")); //take the index in the reco::muon collection
           const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k1Idx);
           const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), k2Idx);
           const double z_pi = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), piIdx);
 
-          const double f_mu = muCalib ->factor(muPtr->p(), muPtr->pt(), muPtr->eta(), muPtr->charge(), z_mu);
-          const double f_k1 = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
-          const double f_k2 = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
-          const double f_pi = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
+          f_mu = muCalib ->factor(muPtr->p(), muPtr->pt(), muPtr->eta(), muPtr->charge(), z_mu, "nominal", rdscalib::Kind::Muon);
+          f_k1 = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
+          f_k2 = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
+          f_pi = trkCalib->factor(piPtr->p(), piPtr->pt(), piPtr->eta(), piPtr->charge(), z_pi);
 
-          //std::cout << "Before k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
-          //std::cout << "Before mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
- 
-          muVec.SetXYZT(muVec.Px() * f_mu, 
-                       muVec.Py() * f_mu, 
-                       muVec.Pz() * f_mu, 
-                       std::sqrt(std::pow(muVec.Px() * f_mu, 2) + std::pow(muVec.Py() * f_mu, 2) + std::pow(muVec.Pz() * f_mu, 2) + muMass_ * muMass_));
+          muVec = math::PtEtaPhiMLorentzVector(muVec.Pt() * f_mu, muVec.Eta(), muVec.Phi(), muMass_);
+          k1Vec = math::PtEtaPhiMLorentzVector(k1Vec.Pt() * f_k1, k1Vec.Eta(), k1Vec.Phi(), kMass_);
+          k2Vec = math::PtEtaPhiMLorentzVector(k2Vec.Pt() * f_k2, k2Vec.Eta(), k2Vec.Phi(), kMass_);
+          piVec = math::PtEtaPhiMLorentzVector(piVec.Pt() * f_pi, piVec.Eta(), piVec.Phi(), piMass_);
 
-          k1Vec.SetXYZT(k1Vec.Px() * f_k1, 
-                       k1Vec.Py() * f_k1, 
-                       k1Vec.Pz() * f_k1, 
-                       std::sqrt(std::pow(k1Vec.Px() * f_k1, 2) + std::pow(k1Vec.Py() * f_k1, 2) + std::pow(k1Vec.Pz() * f_k1, 2) + kMass_ * kMass_ ));
 
-          k2Vec.SetXYZT(k2Vec.Px() * f_k2, 
-                       k2Vec.Py() * f_k2, 
-                       k2Vec.Pz() * f_k2, 
-                       std::sqrt(std::pow(k2Vec.Px() * f_k2, 2) + std::pow(k2Vec.Py() * f_k2, 2) + std::pow(k2Vec.Pz() * f_k2, 2) + kMass_ * kMass_ ));
-
-          piVec.SetXYZT(piVec.Px() * f_pi, 
-                       piVec.Py() * f_pi, 
-                       piVec.Pz() * f_pi, 
-                       std::sqrt(std::pow(piVec.Px() * f_pi, 2) + std::pow(piVec.Py() * f_pi, 2) + std::pow(piVec.Pz() * f_pi, 2) + piMass_ * piMass_ ));
-
-          //std::cout << "After k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
-          //std::cout << "After mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
-
+          //std::cout << "f1 and f2 are: " << f_k1 << " " << f_mu << std::endl;
           // corrected momentum: (c.px() * f, c.py() * f, c.pz() * f); energy from the mass hypothesis
           // optional: trkCalib_->factor(c.p(), c.pt(), c.eta(), c.charge(), z, "eig0_up"), ...
-          //std::cout << "f1 and f2 are: " << f_k1 << " " << f_k2 << std::endl;
 
         }
 
+        //std::cout << "After k1: pt=" << k1Vec.Pt() << ", eta=" << k1Vec.Eta() << ", phi=" << k1Vec.Phi() << ", px=" << k1Vec.Px() << ", py=" << k1Vec.Py() << ", pz=" << k1Vec.Pz() << std::endl;
+        //std::cout << "After mu: pt=" << muVec.Pt() << ", eta=" << muVec.Eta() << ", phi=" << muVec.Phi() << ", px=" << muVec.Px() << ", py=" << muVec.Py() << ", pz=" << muVec.Pz() << std::endl;
 
         //////////////////////////////////////////////////
         // Build Phi resonance                          //
@@ -638,8 +639,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // CHANGE ME BACK!!
         //if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
-        if (phiPiVec.M() - dsMass_ < -0.12) continue;
-        if (phiPiVec.M() - dsMass_ >  0.08) continue;
+        if (phiPiVec.M() - dsMass_ < -0.220) continue;
+        if (phiPiVec.M() - dsMass_ >  0.182) continue;
 
         //phiPi.setCharge(kk.charge() + piPtr->charge());
         int phiPiCharge = k1Ptr->charge() + k2Ptr->charge() + piPtr->charge();
@@ -703,14 +704,18 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         const reco::Track k2Track = *k2Ptr->bestTrack();
         const reco::Track piTrack = *piPtr->bestTrack();
 
-        //////////////////////////////////////////////////////
-        // Build track for corrected momentum scale & smear //
-        //////////////////////////////////////////////////////
+        //////////////////////////////////////////////
+        // Build track for corrected momentum scale //
+        //////////////////////////////////////////////
 
         reco::Track::Vector trackVectorMu(muVec.Px(), muVec.Py(), muVec.Pz());
         reco::Track::Vector trackVectorK1(k1Vec.Px(), k1Vec.Py(), k1Vec.Pz());
         reco::Track::Vector trackVectorK2(k2Vec.Px(), k2Vec.Py(), k2Vec.Pz());
         reco::Track::Vector trackVectorPi(piVec.Px(), piVec.Py(), piVec.Pz());
+
+
+        //std::cout << "k1 track pt before: " << k1Track.pt() << std::endl;
+
 
         reco::Track newTrackMu ( muTrack.chi2(), muTrack.ndof(), muTrack.referencePoint(),
                                  trackVectorMu, //thats the only thing that changed!
@@ -728,11 +733,13 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
                                  trackVectorPi, //thats the only thing that changed!
                                  piTrack.charge(), piTrack.covariance() , piTrack.algo());
 
+        //std::cout << "k1 track pt: " << newTrackK1.pt() << std::endl;
 
-        //////////////////////////////////////////////////////
-        // Fix covariane matrix to be positive definite     //
-        //////////////////////////////////////////////////////
+        //////////////////////////////////////////////////
+        // Fix covariane matrix to be positive definite //
+        //////////////////////////////////////////////////
 
+        //those tracks have the new covariance matrix assigned :) 
         reco::Track muTrackCorr   = correctCovMat(&newTrackMu, 1e-8);
         reco::Track k1TrackCorr   = correctCovMat(&newTrackK1, 1e-8);
         reco::Track k2TrackCorr   = correctCovMat(&newTrackK2, 1e-8);
@@ -889,6 +896,30 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "we passed all the vtx fit" << std::endl;
 
         //////////////////////////////////// end of fitter /////////////////////////////////////
+
+        ///////////////////////////////////////////////////
+        // Calculate the mass resolution in a custom way //
+        ///////////////////////////////////////////////////
+
+
+        std::array<std::array<double, 3>, 3> covK1 = scaleAndCalibrateCovMat(&newTrackK1, a2, c2 ,f_k1);
+        std::array<std::array<double, 3>, 3> covK2 = scaleAndCalibrateCovMat(&newTrackK2, a2, c2 ,f_k2);
+        std::array<std::array<double, 3>, 3> covPi = scaleAndCalibrateCovMat(&newTrackPi, a2, c2 ,f_pi);
+
+        //stack tracks and covariance matrices
+        std::vector<std::array<std::array<double, 3>, 3>> covs;
+        std::vector<reco::Track> tracks;
+        std::vector<double> masses;
+ 
+        covs.push_back(covK1); tracks.push_back(newTrackK1); masses.push_back(kMass_ );
+        covs.push_back(covK2); tracks.push_back(newTrackK2); masses.push_back(kMass_ );
+        covs.push_back(covPi); tracks.push_back(newTrackPi); masses.push_back(piMass_);
+
+
+       //std::cout << "phiPi_m: " << phiPiVec.mass() << std::endl;     
+        double dsErrCustom =  getMassSigma(&tracks, &covs, &masses);
+        //std::cout << "mass error: " << dsErrCustom << std::endl;     
+ 
 
         // save the fitted resonances        
         TLorentzVector fittedPhi;
@@ -1185,6 +1216,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "ds vtc cosine" << ds_vtx_cosine << std::endl;
 
         //if (ds_vtx_cosine < 0.8) continue;
+        if (std::fabs(ds_vtx_cosine_xyz_pv) < 0.8) continue;
 
         //std::cout << "survived cos 2d cut" << std::endl;
 
@@ -1197,20 +1229,120 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("k2_idx",k2Idx);
         bs.addUserInt("pi_idx",piIdx);
 
-        //bs.addUserInt("mu_idx",muIdx); //always 0 :)
-
-        //add final states as Candidates
-        bs.addUserCand("k1",k1Ptr);  //be aware that this ptr has the wrong mass, need to assign it in variables_cff.py
-        bs.addUserFloat("k1_m",kMass_);
-
-        bs.addUserCand("k2",k2Ptr);  // "
-        bs.addUserFloat("k2_m",kMass_);
-
+        // still need to add the candidates (uncorrected) to match in dR in genMatcher
+        bs.addUserCand("k1",k1Ptr);
+        bs.addUserCand("k2",k2Ptr);
         bs.addUserCand("pi",piPtr);
-        bs.addUserFloat("pi_m",piMass_);
+        bs.addUserCand("mu",muPtr); 
 
-        bs.addUserCand("mu",muPtr); //muon mass is correct -> check
-        bs.addUserFloat("mu_m",muMass_);
+        //add final states 
+        bs.addUserFloat("mu_px"    , muVec.px()     );
+        bs.addUserFloat("mu_py"    , muVec.py()     );
+        bs.addUserFloat("mu_pz"    , muVec.pz()     );
+        bs.addUserFloat("mu_pt"    , muVec.pt()     );
+        bs.addUserFloat("mu_eta"   , muVec.eta()    );
+        bs.addUserFloat("mu_phi"   , muVec.phi()    );
+        bs.addUserFloat("mu_m"     , muVec.mass()   );
+        bs.addUserFloat("mu_charge", muPtr->charge());
+        bs.addUserInt  ("mu_pdgId" , muPtr->pdgId() );
+        
+        // Kaon 1
+        bs.addUserFloat("k1_px"    , k1Vec.px()     );
+        bs.addUserFloat("k1_py"    , k1Vec.py()     );
+        bs.addUserFloat("k1_pz"    , k1Vec.pz()     );
+        bs.addUserFloat("k1_pt"    , k1Vec.pt()     );
+        bs.addUserFloat("k1_eta"   , k1Vec.eta()    );
+        bs.addUserFloat("k1_phi"   , k1Vec.phi()    );
+        bs.addUserFloat("k1_m"     , k1Vec.mass()   );
+        bs.addUserFloat("k1_charge", k1Ptr->charge());
+        bs.addUserInt  ("k1_pdgId" , k1Ptr->pdgId() );
+        
+        // Kaon 2
+        bs.addUserFloat("k2_px"    , k2Vec.px()     );
+        bs.addUserFloat("k2_py"    , k2Vec.py()     );
+        bs.addUserFloat("k2_pz"    , k2Vec.pz()     );
+        bs.addUserFloat("k2_pt"    , k2Vec.pt()     );
+        bs.addUserFloat("k2_eta"   , k2Vec.eta()    );
+        bs.addUserFloat("k2_phi"   , k2Vec.phi()    );
+        bs.addUserFloat("k2_m"     , k2Vec.mass()   );
+        bs.addUserFloat("k2_charge", k2Ptr->charge());
+        bs.addUserInt  ("k2_pdgId" , k2Ptr->pdgId() );
+        
+        // Pion
+        bs.addUserFloat("pi_px"    , piVec.px()     );
+        bs.addUserFloat("pi_py"    , piVec.py()     );
+        bs.addUserFloat("pi_pz"    , piVec.pz()     );
+        bs.addUserFloat("pi_pt"    , piVec.pt()     );
+        bs.addUserFloat("pi_eta"   , piVec.eta()    );
+        bs.addUserFloat("pi_phi"   , piVec.phi()    );
+        bs.addUserFloat("pi_m"     , piVec.mass()   );
+        bs.addUserFloat("pi_charge", piPtr->charge());
+        bs.addUserInt  ("pi_pdgId" , piPtr->pdgId() );
+
+        // track covariance matrix
+        bs.addUserFloat("mu_cov_00", muTrackCorr.covariance(0,0));
+        bs.addUserFloat("mu_cov_01", muTrackCorr.covariance(0,1));
+        bs.addUserFloat("mu_cov_02", muTrackCorr.covariance(0,2));
+        bs.addUserFloat("mu_cov_03", muTrackCorr.covariance(0,3));
+        bs.addUserFloat("mu_cov_04", muTrackCorr.covariance(0,4));
+        bs.addUserFloat("mu_cov_11", muTrackCorr.covariance(1,1));
+        bs.addUserFloat("mu_cov_12", muTrackCorr.covariance(1,2));
+        bs.addUserFloat("mu_cov_13", muTrackCorr.covariance(1,3));
+        bs.addUserFloat("mu_cov_14", muTrackCorr.covariance(1,4));
+        bs.addUserFloat("mu_cov_22", muTrackCorr.covariance(2,2));
+        bs.addUserFloat("mu_cov_23", muTrackCorr.covariance(2,3));
+        bs.addUserFloat("mu_cov_24", muTrackCorr.covariance(2,4));
+        bs.addUserFloat("mu_cov_33", muTrackCorr.covariance(3,3));
+        bs.addUserFloat("mu_cov_34", muTrackCorr.covariance(3,4));
+        bs.addUserFloat("mu_cov_44", muTrackCorr.covariance(4,4));
+        
+        bs.addUserFloat("k1_cov_00", k1TrackCorr.covariance(0,0));
+        bs.addUserFloat("k1_cov_01", k1TrackCorr.covariance(0,1));
+        bs.addUserFloat("k1_cov_02", k1TrackCorr.covariance(0,2));
+        bs.addUserFloat("k1_cov_03", k1TrackCorr.covariance(0,3));
+        bs.addUserFloat("k1_cov_04", k1TrackCorr.covariance(0,4));
+        bs.addUserFloat("k1_cov_11", k1TrackCorr.covariance(1,1));
+        bs.addUserFloat("k1_cov_12", k1TrackCorr.covariance(1,2));
+        bs.addUserFloat("k1_cov_13", k1TrackCorr.covariance(1,3));
+        bs.addUserFloat("k1_cov_14", k1TrackCorr.covariance(1,4));
+        bs.addUserFloat("k1_cov_22", k1TrackCorr.covariance(2,2));
+        bs.addUserFloat("k1_cov_23", k1TrackCorr.covariance(2,3));
+        bs.addUserFloat("k1_cov_24", k1TrackCorr.covariance(2,4));
+        bs.addUserFloat("k1_cov_33", k1TrackCorr.covariance(3,3));
+        bs.addUserFloat("k1_cov_34", k1TrackCorr.covariance(3,4));
+        bs.addUserFloat("k1_cov_44", k1TrackCorr.covariance(4,4));
+        
+        bs.addUserFloat("k2_cov_00", k2TrackCorr.covariance(0,0));
+        bs.addUserFloat("k2_cov_01", k2TrackCorr.covariance(0,1));
+        bs.addUserFloat("k2_cov_02", k2TrackCorr.covariance(0,2));
+        bs.addUserFloat("k2_cov_03", k2TrackCorr.covariance(0,3));
+        bs.addUserFloat("k2_cov_04", k2TrackCorr.covariance(0,4));
+        bs.addUserFloat("k2_cov_11", k2TrackCorr.covariance(1,1));
+        bs.addUserFloat("k2_cov_12", k2TrackCorr.covariance(1,2));
+        bs.addUserFloat("k2_cov_13", k2TrackCorr.covariance(1,3));
+        bs.addUserFloat("k2_cov_14", k2TrackCorr.covariance(1,4));
+        bs.addUserFloat("k2_cov_22", k2TrackCorr.covariance(2,2));
+        bs.addUserFloat("k2_cov_23", k2TrackCorr.covariance(2,3));
+        bs.addUserFloat("k2_cov_24", k2TrackCorr.covariance(2,4));
+        bs.addUserFloat("k2_cov_33", k2TrackCorr.covariance(3,3));
+        bs.addUserFloat("k2_cov_34", k2TrackCorr.covariance(3,4));
+        bs.addUserFloat("k2_cov_44", k2TrackCorr.covariance(4,4));
+        
+        bs.addUserFloat("pi_cov_00", piTrackCorr.covariance(0,0));
+        bs.addUserFloat("pi_cov_01", piTrackCorr.covariance(0,1));
+        bs.addUserFloat("pi_cov_02", piTrackCorr.covariance(0,2));
+        bs.addUserFloat("pi_cov_03", piTrackCorr.covariance(0,3));
+        bs.addUserFloat("pi_cov_04", piTrackCorr.covariance(0,4));
+        bs.addUserFloat("pi_cov_11", piTrackCorr.covariance(1,1));
+        bs.addUserFloat("pi_cov_12", piTrackCorr.covariance(1,2));
+        bs.addUserFloat("pi_cov_13", piTrackCorr.covariance(1,3));
+        bs.addUserFloat("pi_cov_14", piTrackCorr.covariance(1,4));
+        bs.addUserFloat("pi_cov_22", piTrackCorr.covariance(2,2));
+        bs.addUserFloat("pi_cov_23", piTrackCorr.covariance(2,3));
+        bs.addUserFloat("pi_cov_24", piTrackCorr.covariance(2,4));
+        bs.addUserFloat("pi_cov_33", piTrackCorr.covariance(3,3));
+        bs.addUserFloat("pi_cov_34", piTrackCorr.covariance(3,4));
+        bs.addUserFloat("pi_cov_44", piTrackCorr.covariance(4,4));
 
         // add information about trg muon
         bs.addUserInt("mu_is_tracker",     muPtr->isTrackerMuon());
@@ -1441,9 +1573,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("lxyz_phi_sig", lxyzPhiVect.significance());
 
         // dxy(z) is the impact parameter in the xy(z) plane(space), i.e. the distance to the PV
-        // TODO: check the errors of dxy and dz      
-        // TODO: bestTrack() is not refitted -> bad? #can be changed but i think its good! bc the refitted track
-        // may be wrongly crorected when its coming from a tau, nbc we fit it with the ds directly to the bs
 
         auto direction_ds        =  GlobalVector(phiPiVec.px(),  phiPiVec.py(),  phiPiVec.pz()  ).unit();
         auto direction_bs        =  GlobalVector(sv_x - pv_x, sv_y - pv_y, sv_z - pv_z ).unit();
@@ -1485,23 +1614,23 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
  
-        float dxyMu_pv           = muPtr->bestTrack()->dxy(pv.position());  
-        float dxyMuErr_pv        = muPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
+        float dxyMu_pv           = muTrackCorr.dxy(pv.position());  
+        float dxyMuErr_pv        = muTrackCorr.dxyError(pv.position(),pv.covariance());  
         float dxyMuSig_pv        = dxyMu_pv/dxyMuErr_pv;
 
-        float dxyMu_pv_dz        = muPtr->bestTrack()->dxy(pv_dz.position());  
-        float dxyMuErr_pv_dz     = muPtr->bestTrack()->dxyError(pv_dz.position(),pv_dz.covariance());  
+        float dxyMu_pv_dz        = muTrackCorr.dxy(pv_dz.position());  
+        float dxyMuErr_pv_dz     = muTrackCorr.dxyError(pv_dz.position(),pv_dz.covariance());  
         float dxyMuSig_pv_dz     = dxyMu_pv_dz/dxyMuErr_pv_dz;
 
-        float dxyMu_pv_dz_w_bs        = muPtr->bestTrack()->dxy(pv_dz_w_bs.position());  
-        float dxyMuErr_pv_dz_w_bs     = muPtr->bestTrack()->dxyError(pv_dz_w_bs.position(),pv_dz_w_bs.covariance());  
+        float dxyMu_pv_dz_w_bs        = muTrackCorr.dxy(pv_dz_w_bs.position());  
+        float dxyMuErr_pv_dz_w_bs     = muTrackCorr.dxyError(pv_dz_w_bs.position(),pv_dz_w_bs.covariance());  
         float dxyMuSig_pv_dz_w_bs     = dxyMu_pv_dz_w_bs/dxyMuErr_pv_dz_w_bs;
 
         //std::cout << "pv general position x is: " << pv_general.position().x() << std::endl;
         //std::cout << "pv general _x is: : " << pv_general_x << std::endl;
 
-        float dxyMu_pv_general        = muPtr->bestTrack()->dxy(pv_general.position());  
-        float dxyMuErr_pv_general     = muPtr->bestTrack()->dxyError(pv_general.position(),pv_general.covariance());  
+        float dxyMu_pv_general        = muTrackCorr.dxy(pv_general.position());  
+        float dxyMuErr_pv_general     = muTrackCorr.dxyError(pv_general.position(),pv_general.covariance());  
         float dxyMuSig_pv_general     = dxyMu_pv_general/dxyMuErr_pv_general;
 
 
@@ -1520,37 +1649,37 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bsCovFixed(2,2) = bsCov(2,2);
 
 
-        float dxyMu_beamSpot        = muPtr->bestTrack()->dxy(beamSpot.position());  
-        float dxyMuErr_beamSpot     = muPtr->bestTrack()->dxyError(beamSpot.position(),bsCovFixed);  
+        float dxyMu_beamSpot        = muTrackCorr.dxy(beamSpot.position());  
+        float dxyMuErr_beamSpot     = muTrackCorr.dxyError(beamSpot.position(),bsCovFixed);  
         float dxyMuSig_beamSpot     = dxyMu_beamSpot/dxyMuErr_beamSpot;
 
 
-        float dzMu_pv            = muPtr->bestTrack()->dz(pv.position());  
-        float dzMuErr_pv         = muPtr->bestTrack()->dzError();  
+        float dzMu_pv            = muTrackCorr.dz(pv.position());  
+        float dzMuErr_pv         = muTrackCorr.dzError();  
         float dzMuSig_pv         = dzMu_pv/dzMuErr_pv ; 
 
-        float dxyMu_sv           = muPtr->bestTrack()->dxy(recoSv.position());  
-        float dxyMuErr_sv        = muPtr->bestTrack()->dxyError(recoSv.position(),recoSv.covariance());  
+        float dxyMu_sv           = muTrackCorr.dxy(recoSv.position());  
+        float dxyMuErr_sv        = muTrackCorr.dxyError(recoSv.position(),recoSv.covariance());  
         float dxyMuSig_sv        = dxyMu_sv/dxyMuErr_sv;
 
-        float dzMu_sv            = muPtr->bestTrack()->dz(recoSv.position());  
-        float dzMuErr_sv         = muPtr->bestTrack()->dzError();  
+        float dzMu_sv            = muTrackCorr.dz(recoSv.position());  
+        float dzMuErr_sv         = muTrackCorr.dzError();  
         float dzMuSig_sv         = dzMu_sv/dzMuErr_sv ; 
 
-        float dxyPi_pv           = piPtr->bestTrack()->dxy(pv.position());  //maybe useful for Ds* vs Ds ? 
-        float dxyPiErr_pv        = piPtr->bestTrack()->dxyError(pv.position(),pv.covariance());  
+        float dxyPi_pv           = muTrackCorr.dxy(pv.position());  //maybe useful for Ds* vs Ds ? 
+        float dxyPiErr_pv        = muTrackCorr.dxyError(pv.position(),pv.covariance());  
         float dxyPiSig_pv        = dxyPi_pv/dxyPiErr_pv;
 
-        float dzPi_pv            = piPtr->bestTrack()->dz(pv.position());  
-        float dzPiErr_pv         = piPtr->bestTrack()->dzError();  
+        float dzPi_pv            = muTrackCorr.dz(pv.position());  
+        float dzPiErr_pv         = muTrackCorr.dzError();  
         float dzPiSig_pv         = dzPi_pv/dzPiErr_pv ; 
 
-        float dxyPi_sv           = piPtr->bestTrack()->dxy(recoSv.position());  //maybe useful for Ds* vs Ds ? 
-        float dxyPiErr_sv        = piPtr->bestTrack()->dxyError(recoSv.position(),recoSv.covariance());  
+        float dxyPi_sv           = muTrackCorr.dxy(recoSv.position());  //maybe useful for Ds* vs Ds ? 
+        float dxyPiErr_sv        = muTrackCorr.dxyError(recoSv.position(),recoSv.covariance());  
         float dxyPiSig_sv        = dxyPi_sv/dxyPiErr_sv;
 
-        float dzPi_sv            = piPtr->bestTrack()->dz(recoSv.position());  
-        float dzPiErr_sv         = piPtr->bestTrack()->dzError();  
+        float dzPi_sv            = muTrackCorr.dz(recoSv.position());  
+        float dzPiErr_sv         = muTrackCorr.dzError();  
         float dzPiSig_sv         = dzPi_sv/dzPiErr_sv ; 
 
         bs.addUserFloat("signed_decay_ip3d_mu_ds_sv",     signed_decay_ip3DMu_ds_sv    );
@@ -1837,6 +1966,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
         bs.addUserFloat("ds_fitted_m_err",  dsErr.At(6,6)); 
+        bs.addUserFloat("ds_custom_m_err",  dsErrCustom); 
 
         // bs fit
         bs.addUserFloat("bs_fitted_px",     fittedBs.Px()); 
@@ -2168,13 +2298,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           reco::TransientTrack ttTv = ttBuilder->build(chPtr->bestTrack());
           std::pair<bool, Measurement1D> ip3DTv = IPTools::signedDecayLength3D(ttTv, direction_ds, recoTv);
-          if ( ip3DTv.first && (ip3DTv.second.value() < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
+
+          if ( ip3DTv.first && (std::fabs(ip3DTv.second.value()) < 0.01) && (abs(chPtr->pdgId()) != 11) && (abs(chPtr->pdgId()) != 13) ){
             iso04_ch_tv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_ch_tv += pfVec.Pt();
           }
 
           // displaced track, count it to pile up (why no deltaR_mu_chTrk > 0.01 here ? )
-          else if (( ip3DTv.first && (ip3DTv.second.value() >= 0.01)) && (pfVec.Pt() > 0.5)) {
+          else if ( ip3DTv.first && (std::fabs(ip3DTv.second.value()) >= 0.01) && (pfVec.Pt() > 0.5)) {
             iso04_pu_tv += pfVec.Pt();
             if (deltaR_mu_chTrk < 0.3) iso03_pu_tv += pfVec.Pt();
           }
@@ -2964,7 +3095,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
 
         /////////////////////// END OF VARIABLE DEFINITION //////////////////////
-        //std::cout << "saving.."<< std::endl; 
+        //std::cout << "Found RECO candidate!"<< std::endl; 
         //append candidate at the end of our return value :)
         bsCandidates->emplace_back(bs);
 

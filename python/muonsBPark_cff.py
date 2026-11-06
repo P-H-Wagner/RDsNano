@@ -11,16 +11,18 @@ muonTrgSelector = cms.EDProducer("Trigger",
   vtxCollection         = cms.InputTag("offlineSlimmedPrimaryVertices"),
 
   #cuts and selections
-  trgFilterLabelMu7_4 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q"),
-  trgFilterLabelMu8_3 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8Q"),
-  trgFilterLabelMu8p5_3p5 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8p5Q"),
-  trgFilterLabelMu8_5 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP5Q"),
-  trgFilterLabelMu8_6 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP6Q"),
-  trgFilterLabelMu9_4 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP4Q"),
-  trgFilterLabelMu9_5 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP5Q"),
-  trgFilterLabelMu9_6 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9Q"),
+  #pretty sure the FilterLabel doesnt change over the different runs. We checked explicitly for a run in the
+  #beginning and end of Mu9_Ip6
+  trgFilterLabelMu7_4      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q"),
+  trgFilterLabelMu8_3      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8Q"   ),
+  trgFilterLabelMu8p5_3p5  = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8p5Q" ),
+  trgFilterLabelMu8_5      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP5Q"),
+  trgFilterLabelMu8_6      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP6Q"),
+  trgFilterLabelMu9_4      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP4Q"),
+  trgFilterLabelMu9_5      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP5Q"),
+  trgFilterLabelMu9_6      = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9Q"   ),
   trgFilterLabelMu10p5_3p5 = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered10p5Q"),
-  trgFilterLabelMu12_6= cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered12Q"),
+  trgFilterLabelMu12_6     = cms.string("hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered12Q"  ),
   muSelection    = cms.string(' &&  '.join([
   'pt > 7.0', 
   'eta > -1.5',
@@ -31,16 +33,16 @@ muonTrgSelector = cms.EDProducer("Trigger",
 
   #versions check with https://raw.githubusercontent.com/cms-sw/cmssw/6cb4ba7dea7cedb955469404e84e73063f69aa8f/HLTrigger/Configuration/python/HLT_GRun_cff.py
   
-  hlt_7_4   = cms.string("HLT_Mu7_IP4"), # trigger menue 
-  hlt_8_3   = cms.string("HLT_Mu8_IP3"), # trigger menue 
+  hlt_7_4       = cms.string("HLT_Mu7_IP4"), # trigger menue 
+  hlt_8_3       = cms.string("HLT_Mu8_IP3"), # trigger menue 
   hlt_8p5_3p5   = cms.string("HLT_Mu8p5_IP3p5"), # trigger menue 
-  hlt_8_5   = cms.string("HLT_Mu8_IP5"), # trigger menue 
-  hlt_8_6   = cms.string("HLT_Mu8_IP6"), # trigger menue 
-  hlt_9_4   = cms.string("HLT_Mu9_IP4"), # trigger menue
-  hlt_9_5   = cms.string("HLT_Mu9_IP5"), # trigger menue
-  hlt_9_6   = cms.string("HLT_Mu9_IP6"), # trigger menue
-  hlt_10p5_3p5   = cms.string("HLT_Mu10p5_IP3p5"), # trigger menue 
-  hlt_12_6  = cms.string("HLT_Mu12_IP6"), # trigger menue
+  hlt_8_5       = cms.string("HLT_Mu8_IP5"), # trigger menue 
+  hlt_8_6       = cms.string("HLT_Mu8_IP6"), # trigger menue 
+  hlt_9_4       = cms.string("HLT_Mu9_IP4"), # trigger menue
+  hlt_9_5       = cms.string("HLT_Mu9_IP5"), # trigger menue
+  hlt_9_6       = cms.string("HLT_Mu9_IP6"), # trigger menue
+  hlt_10p5_3p5  = cms.string("HLT_Mu10p5_IP3p5"), # trigger menue 
+  hlt_12_6      = cms.string("HLT_Mu12_IP6"), # trigger menue
   
   maxdR_matching = cms.double(0.05), #muon trg object matching                             
 )

@@ -476,7 +476,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
  
                int sameMother = 0;
                if (bsFromDs == bsFromMu) sameMother = 1;
-               if (sameMother == 0 ) std::cout << " --> not the same mom!!" << std::endl;
                // -----------------------------------------
  
                //std::cout << "found a b mom!" << std::endl;
@@ -792,7 +791,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                    }
                  }
    
-               std::cout << "found signal id:" << sigId << std::endl;
+               //std::cout << "found signal id:" << sigId << std::endl;
                /////////////////////////////////////////////
 
                ////////////////////////////////////

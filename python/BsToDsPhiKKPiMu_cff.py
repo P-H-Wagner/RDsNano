@@ -27,9 +27,8 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     hadSelection = cms.string(' &&  '.join([
 'abs(pdgId) != 11',
 'abs(pdgId) != 13',
-'charge != 0',
-#'pt > 0.7', 
-'pt > 1.3', 
+'charge != 0','pt > 0.7', 
+#'pt > 1.3', 
 'eta > -2.4',
 'eta < 2.4',
 'hasTrackDetails'])), # pre-selection of hadrons (k1,k2 and pion)
@@ -40,6 +39,7 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
 ])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
+   trkCalibFile = cms.string("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v4.json"),
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),    # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds
@@ -66,7 +66,6 @@ muMass           = cms.double( 0.105658),        # mu ma
 muMassSigma      = cms.double( 0.0000000023),        # mu mass
 bsMass           = cms.double( 5.36688),         # bs mass
 isoCone          = cms.double( 0.5),             # cut on dR for the mu isolation cone
-trkCalibFile     = cms.string("")             # cut on dR for the mu isolation cone
 )
 
 print( " ========> Parameters used:")

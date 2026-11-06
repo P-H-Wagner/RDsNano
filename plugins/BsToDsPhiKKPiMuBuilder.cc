@@ -857,6 +857,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get the vectors full of fit information (vertex and momenta and mass)
         AlgebraicVector7 phiParams     = phiParticle->currentState().kinematicParameters().vector();     
+        // mass uncertainty (sigma, not variance) read NOW: the Ds fit below updates phiParticle in place
+        const float phiFittedMassErr   = std::sqrt(std::max(0., phiParticle->currentState().kinematicParametersError().matrix()(6,6)));
         //AlgebraicVector7 phiDau1Params = phiDau1->currentState().kinematicParameters().vector();     
         //AlgebraicVector7 phiDau2Params = phiDau2->currentState().kinematicParameters().vector();
      
@@ -900,6 +902,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // get the vectors full of fit information (vertex and momenta and mass)
         AlgebraicVector7 dsParams     = dsParticle->currentState().kinematicParameters().vector();     
+        // mass uncertainty (sigma, not variance) read NOW: the Bs fit below updates dsParticle in place
+        const float dsFittedMassErr   = std::sqrt(std::max(0., dsParticle->currentState().kinematicParametersError().matrix()(6,6)));
         //AlgebraicVector7 dsDau1Params = dsDau1->currentState().kinematicParameters().vector();     
         //AlgebraicVector7 dsDau2Params = dsDau2->currentState().kinematicParameters().vector();
 
@@ -1476,9 +1480,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(35)); // 
 
 
-        AlgebraicMatrix77 phiErr = phiParticle->currentState().kinematicParametersError().matrix();
-        AlgebraicMatrix77 dsErr = dsParticle->currentState().kinematicParametersError().matrix();
-        AlgebraicMatrix77 bsErr = bsParticle->currentState().kinematicParametersError().matrix();
+        // fitted mass uncertainties: sigma (sqrt of the 6,6 covariance element), not the variance as before;
+        // phi and Ds are taken before they entered the next fit (see above)
+        const float bsFittedMassErr = std::sqrt(std::max(0., bsParticle->currentState().kinematicParametersError().matrix()(6,6)));
         
         //check if vertex position is truly at 0,1,2: result: Yes it is!
         //double xdecay = phiDecayVertex->position().x();
@@ -1992,7 +1996,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("phi_fitted_eta",   fittedPhi.Eta()); 
         bs.addUserFloat("phi_fitted_phi",   fittedPhi.Phi()); 
         bs.addUserFloat("phi_fitted_m",     fittedPhi.M()); 
-        bs.addUserFloat("phi_fitted_m_err", phiErr.At(6,6)); 
+        bs.addUserFloat("phi_fitted_m_err", phiFittedMassErr); 
 
         // bs fit
         bs.addUserFloat("ds_fitted_px",     fittedDs.Px()); 
@@ -2002,7 +2006,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("ds_fitted_eta",    fittedDs.Eta()); 
         bs.addUserFloat("ds_fitted_phi",    fittedDs.Phi()); 
         bs.addUserFloat("ds_fitted_m",      fittedDs.M()); 
-        bs.addUserFloat("ds_fitted_m_err",  dsErr.At(6,6)); 
+        bs.addUserFloat("ds_fitted_m_err",  dsFittedMassErr); 
         bs.addUserFloat("ds_custom_m_err",  dsErrCustom); 
 
         // bs fit
@@ -2013,7 +2017,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("bs_fitted_eta",    fittedBs.Eta()); 
         bs.addUserFloat("bs_fitted_phi",    fittedBs.Phi()); 
         bs.addUserFloat("bs_fitted_m",      fittedBs.M()); 
-        bs.addUserFloat("bs_fitted_m_err",  bsErr.At(6,6)); 
+        bs.addUserFloat("bs_fitted_m_err",  bsFittedMassErr); 
 
         /////////////////////// helicity angles in all possibe variations /////////////////////////
 

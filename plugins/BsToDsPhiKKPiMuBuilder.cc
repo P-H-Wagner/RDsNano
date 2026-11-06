@@ -413,14 +413,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     return edm::Ptr<pat::PackedCandidate>(tracksLost, idx - pcand->size());       //lost tracks
   };
 
-  // AOD (unpacked) track closest in dR with the same charge sign: same logic as
-  // before, but evaluated once per particle instead of once per candidate.
+  // AOD (unpacked) track closest in dR with the same charge sign, evaluated once per particle.
+  // Only tracks within dR < 0.01 and |dpt|/pt < 5% are accepted (as in the Bmmm R(Ds) ntuplizer):
+  // before, the closest track anywhere in the event was taken, so a wrong track could be removed
+  // from the PV refit. -1 means no match (nothing is removed from the vertex for that particle).
+  static constexpr double kAodTrkDrMatch    = 0.01;
+  static constexpr double kAodTrkRelPtMatch = 0.05;
   auto matchAodTrack = [&](const reco::Candidate& cand) -> int {
     int   bestIdx = -1;
     float minDr   = 0;
     for(size_t trkIdx = 0; trkIdx < unpackedTracks->size(); ++trkIdx) {
       const reco::Track& trk = (*unpackedTracks)[trkIdx];
       double dr = reco::deltaR(trk, cand);
+      if (dr >= kAodTrkDrMatch) continue;
+      if (std::abs(trk.pt() - cand.pt()) >= kAodTrkRelPtMatch * cand.pt()) continue;
       if (((dr < minDr) || (bestIdx < 0)) && ( cand.charge() * trk.charge() > 0)){
         minDr   = dr;
         bestIdx = trkIdx;
@@ -998,10 +1004,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         edm::Ptr<reco::Track> trkK2;
         edm::Ptr<reco::Track> trkPi;
 
-        trkMu = edm::Ptr<reco::Track>(unpackedTracks, trkIdxMu); 
-        trkK1 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK1); 
-        trkK2 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK2); 
-        trkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
+        // unmatched particle (-1): leave the Ptr null, it never equals a vertex track
+        if (trkIdxMu >= 0) trkMu = edm::Ptr<reco::Track>(unpackedTracks, trkIdxMu); 
+        if (trkIdxK1 >= 0) trkK1 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK1); 
+        if (trkIdxK2 >= 0) trkK2 = edm::Ptr<reco::Track>(unpackedTracks, trkIdxK2); 
+        if (trkIdxPi >= 0) trkPi = edm::Ptr<reco::Track>(unpackedTracks, trkIdxPi); 
 
                 
         // now fill a vector of aod tracks, except for the signal tracks
@@ -1023,10 +1030,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bool hasSignalTrk = false;
           for (size_t trkIdx2 = 0; trkIdx2 < vtx.tracksSize(); ++trkIdx2){
             edm::Ptr<reco::Track> refitTrack = vtx.trackRefAt(trkIdx2).castTo<edm::Ptr<reco::Track>>();
-            if(refitTrack == trkMu) { matchedMu = true; hasSignalTrk = true; continue;}
-            if(refitTrack == trkK1) { matchedK1 = true; hasSignalTrk = true; continue;}
-            if(refitTrack == trkK2) { matchedK2 = true; hasSignalTrk = true; continue;}
-            if(refitTrack == trkPi) { matchedPi = true; hasSignalTrk = true; continue;}
+            if(trkMu.isNonnull() && refitTrack == trkMu) { matchedMu = true; hasSignalTrk = true; continue;}
+            if(trkK1.isNonnull() && refitTrack == trkK1) { matchedK1 = true; hasSignalTrk = true; continue;}
+            if(trkK2.isNonnull() && refitTrack == trkK2) { matchedK2 = true; hasSignalTrk = true; continue;}
+            if(trkPi.isNonnull() && refitTrack == trkPi) { matchedPi = true; hasSignalTrk = true; continue;}
           }
 
           // vertex without signal tracks: the refit uses all its tracks, identical for every candidate
@@ -1040,12 +1047,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           toFit.reserve(vtx.tracksSize());
           for (size_t trkIdx2 = 0; trkIdx2 < vtx.tracksSize(); ++trkIdx2){
             edm::Ptr<reco::Track> refitTrack = vtx.trackRefAt(trkIdx2).castTo<edm::Ptr<reco::Track>>();
-            if((refitTrack == trkMu) || (refitTrack == trkK1) || (refitTrack == trkK2) || (refitTrack == trkPi)) continue;
+            if((trkMu.isNonnull() && refitTrack == trkMu) || (trkK1.isNonnull() && refitTrack == trkK1) ||
+               (trkK2.isNonnull() && refitTrack == trkK2) || (trkPi.isNonnull() && refitTrack == trkPi)) continue;
             toFit.push_back(*refitTrack);
           }
 
           // one fit per vertex (the old code fitted every vertex twice and kept only the second result)
-          refitVtx.push_back(pvRefitter_.fit(toFit, beamSpot));
+          // a vertex made only of signal tracks has nothing left to fit: keep an invalid vertex
+          // (skipped below), and a fit that throws gives an invalid vertex instead of ending the job
+          reco::Vertex refit; // default-constructed reco::Vertex is invalid
+          if (!toFit.empty()) {
+            try { refit = pvRefitter_.fit(toFit, beamSpot); }
+            catch (const std::exception&) {}
+          }
+          refitVtx.push_back(refit);
 
           if (!hasSignalTrk) {
             pvRefitCache[vtxIdx] = refitVtx.back();
@@ -1182,6 +1197,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
  
         for(size_t vtxIdx = 0; vtxIdx < refitVtx.size(); ++vtxIdx){
           reco::Vertex* vtx = &refitVtx.at(vtxIdx);
+          if (!vtx->isValid()) continue; // invalid refit sits at (0,0,0) and must not be chosen
 
           float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, phiPiVec, muVec);
 
@@ -2264,6 +2280,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
             // loop over all refit vertices 
             const reco::Vertex& vtx = refitVtx[vtxIdx];
+            if (!vtx.isValid()) continue;
 
             // and minimize the dz           
             float vtxDz = abs( chPtr->vz() - vtx.z() );  
@@ -2486,6 +2503,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
             // loop over all refit vertices 
             const reco::Vertex& vtx = refitVtx[vtxIdx];
+            if (!vtx.isValid()) continue;
 
             // and minimize the dz           
             float vtxDz = abs( chPtr->vz() - vtx.z() );  

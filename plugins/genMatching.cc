@@ -228,6 +228,17 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   edm::Handle<std::vector<PileupSummaryInfo>> pileupInfo;
   iEvent.getByToken(pileupInfo_, pileupInfo); 
 
+  // pileup info is an event property: filled for every candidate, gen-matched or not
+  int numTrueInts = -1;
+  int numPUInts   = -1;
+  for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
+    int BX = iPU->getBunchCrossing();
+    if(BX == 0){ // "0" is the in-time crossing. Negative are early crossings. Positive are late.
+      numTrueInts = iPU->getTrueNumInteractions();
+      numPUInts   = iPU->getPU_NumInteractions();
+    }
+  }
+
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> ret_value(new pat::CompositeCandidateCollection());
   //std::unique_ptr<pat::CompositeCandidateCollection> ret_value_gen(new pat::CompositeCandidateCollection());
@@ -589,17 +600,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //save the gen info by adding gen candidates of final states
 
 
-               // add pileup info
-               int numTrueInts = -1;
-               int numPUInts   = -1;
-
-               for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
-                 int BX = iPU->getBunchCrossing();
-                 if(BX == 0){ // "0" is the in-time crossing. Negative are early crossings. Positive are late.
-                   numTrueInts = iPU->getTrueNumInteractions();
-                   numPUInts   = iPU->getPU_NumInteractions();
-                 }
-               }
+               // pileup info: filled once per event, see after getByToken(pileupInfo_)
 
                //std::cout << "we have n pilue up: " << numTrueInts << std::endl;
 
@@ -1242,8 +1243,8 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("fv_y_gen"       ,std::nan(""));
             gen.addUserFloat("fv_z_gen"       ,std::nan(""));
  
-            gen.addUserInt( "numTrueInts",-9999);
-            gen.addUserInt( "numPUInts"  ,-9999);
+            gen.addUserInt( "numTrueInts",numTrueInts);
+            gen.addUserInt( "numPUInts"  ,numPUInts  );
   
             gen.addUserFloat("angMuWGen"      ,std::nan(""));
             gen.addUserFloat("cosMuWGen"      ,std::nan(""));

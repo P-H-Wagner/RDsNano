@@ -650,6 +650,7 @@ postfitBasicVariables = cms.PSet(
         ds_fitted_eta            = Var("userFloat('ds_fitted_eta')",float),
         ds_fitted_phi            = Var("userFloat('ds_fitted_phi')",float),
         ds_fitted_m              = Var("userFloat('ds_fitted_m')",float),
+        ds_fitted_m_err          = Var("userFloat('ds_fitted_m_err')",float),
         ds_custom_m_err          = Var("userFloat('ds_custom_m_err')",float),
 
         # Bs fit

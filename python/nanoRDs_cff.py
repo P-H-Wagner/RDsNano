@@ -7,6 +7,8 @@ import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import ExtVar
 from PhysicsTools.NanoAOD.nano_cff import nanoMetadata
 from PhysicsTools.NanoAOD.globals_cff import rhoTable as _rhoTable16
+# MC: event-level pileup (Pileup_nTrueInt, Pileup_nPU, ...) for every event, including events without candidates
+from PhysicsTools.NanoAOD.globals_cff import puTable
 
 rhoTable = _rhoTable16.clone(
     name = "",
@@ -44,6 +46,6 @@ def nanoAOD_customizeBsToDsPhiKKPiMu(process):
     return process
 
 def nanoAOD_customizeGenMatching(process):
-    process.nanoGenMatchingSequence = cms.Sequence( genMatchingSequence )
+    process.nanoGenMatchingSequence = cms.Sequence( genMatchingSequence + puTable )
 
     return process

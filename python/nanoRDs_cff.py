@@ -1,10 +1,24 @@
-from __future__ import print_function
 import FWCore.ParameterSet.Config as cms
-from PhysicsTools.NanoAOD.common_cff import *   #why do we need all these nanoaod functions?
-from PhysicsTools.NanoAOD.globals_cff import *
-from PhysicsTools.NanoAOD.nano_cff import *
-from PhysicsTools.NanoAOD.vertices_cff import *
-from PhysicsTools.NanoAOD.NanoAODEDMEventContent_cff import *
+
+# port (CMSSW_16_X): import only what is used from PhysicsTools.NanoAOD instead of nano_cff wholesale.
+# In 16_X globals_cff has no 'globalTables' Sequence any more (globalTablesTask = beamSpotTable + rhoTable),
+# and its rhoTable is named "Rho" (branches Rho_*) with an extra variable (fixedGridRhoAll).
+# Keep the 10_6 content: globalTables == rhoTable with the 10_6 variables and unprefixed branch names.
+from PhysicsTools.NanoAOD.common_cff import ExtVar
+from PhysicsTools.NanoAOD.nano_cff import nanoMetadata
+from PhysicsTools.NanoAOD.globals_cff import rhoTable as _rhoTable16
+
+rhoTable = _rhoTable16.clone(
+    name = "",
+    variables = cms.PSet(
+        fixedGridRhoFastjetAll = ExtVar( cms.InputTag("fixedGridRhoFastjetAll"), "double", doc = "rho from all PF Candidates, used e.g. for JECs" ),
+        fixedGridRhoFastjetCentralNeutral = ExtVar( cms.InputTag("fixedGridRhoFastjetCentralNeutral"), "double", doc = "rho from neutral PF Candidates with |eta| < 2.5, used e.g. for rho corrections of some lepton isolations" ),
+        fixedGridRhoFastjetCentralCalo = ExtVar( cms.InputTag("fixedGridRhoFastjetCentralCalo"), "double", doc = "rho from calo towers with |eta| < 2.5, used e.g. egamma PFCluster isolation" ),
+        fixedGridRhoFastjetCentral = ExtVar( cms.InputTag("fixedGridRhoFastjetCentral"), "double", doc = "rho from all PF Candidates for central region, used e.g. for JECs" ),
+        fixedGridRhoFastjetCentralChargedPileUp = ExtVar( cms.InputTag("fixedGridRhoFastjetCentralChargedPileUp"), "double", doc = "rho from charged PF Candidates for central region, used e.g. for JECs" ),
+    )
+)
+globalTables = cms.Sequence(rhoTable)
 
 # for trigger muon
 from PhysicsTools.RDsNano.muonsBPark_cff import * 
@@ -14,8 +28,6 @@ from PhysicsTools.RDsNano.BsToDsPhiKKPiMu_cff import *
 
 # gen matching 
 from PhysicsTools.RDsNano.genMatching_cff import *
-
-#G: nanoSequenceOnlyFullSim = cms.Sequence(triggerObjectBParkTables + l1bits)  #purpose?
 
 
 def nanoAOD_customizeStart(process):

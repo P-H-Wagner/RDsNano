@@ -1,6 +1,6 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "PhysicsTools/RDsNano/plugins/ParametrizedEngine/OAEParametrizedMagneticField.h"
 
 #include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"

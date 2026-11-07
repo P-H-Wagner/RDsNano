@@ -29,7 +29,7 @@
 #include "TrackingTools/TransientTrack/interface/BasicTransientTrack.h"
 
 //B field 
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "PhysicsTools/RDsNano/plugins/ParametrizedEngine/OAEParametrizedMagneticField.h"
 // for the cut as string
 #include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 

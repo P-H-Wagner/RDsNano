@@ -47,7 +47,7 @@
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h" 
 
 // B field
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "PhysicsTools/RDsNano/plugins/ParametrizedEngine/OAEParametrizedMagneticField.h"
 // for 3DPoint
 #include "DataFormats/Math/interface/Point3D.h"
 // for the cov matrix correction

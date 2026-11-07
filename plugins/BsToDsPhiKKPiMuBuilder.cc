@@ -265,6 +265,9 @@ private:
   // one refitter for the whole job (it owns a magnetic field object; constructing one per vertex leaked it)
   const PVRefitter pvRefitter_;
 
+  // TransientTrackBuilder from the EventSetup (16_X: esConsumes token instead of iSetup.get<>().get())
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
+
 
 };
 
@@ -332,7 +335,8 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
  
     vtxWithBsTag(iConfig.getParameter<edm::InputTag>      ("vtxWithBsCand"      )),
     vtxWithBs_(consumes<reco::VertexCollection>           (vtxWithBsTag         )),
-    trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       ))
+    trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       )),
+    ttBuilderToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder")))
    {
     //for the track scale correction
     const std::string calibPath = edm::FileInPath(trkCalibFile_).fullPath();
@@ -391,8 +395,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   edm::Handle<reco::VertexCollection> vtxWithBs;
   iEvent.getByToken(vtxWithBs_, vtxWithBs);
 
-  edm::ESHandle<TransientTrackBuilder> ttBuilder;
-  iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", ttBuilder);
+  const TransientTrackBuilder* ttBuilder = &iSetup.getData(ttBuilderToken_);
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> bsCandidates(new pat::CompositeCandidateCollection());

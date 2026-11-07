@@ -229,7 +229,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   iEvent.getByToken(pileupInfo_, pileupInfo); 
 
   // pileup info is an event property: filled for every candidate, gen-matched or not
-  int numTrueInts = -1;
+  float numTrueInts = -1;
   int numPUInts   = -1;
   for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
     int BX = iPU->getBunchCrossing();
@@ -701,7 +701,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("fv_y_gen"       ,fv_y_gen);
                gen.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
-               gen.addUserInt( "numTrueInts",numTrueInts );
+               gen.addUserFloat("numTrueInts",numTrueInts );
                gen.addUserInt( "numPUInts"  ,numPUInts   );
 
                gen.addUserInt( "same_mother", sameMother);
@@ -1243,7 +1243,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("fv_y_gen"       ,std::nan(""));
             gen.addUserFloat("fv_z_gen"       ,std::nan(""));
  
-            gen.addUserInt( "numTrueInts",numTrueInts);
+            gen.addUserFloat("numTrueInts",numTrueInts);
             gen.addUserInt( "numPUInts"  ,numPUInts  );
   
             gen.addUserFloat("angMuWGen"      ,std::nan(""));

@@ -406,7 +406,7 @@ genVariables = cms.PSet(
         fv_y          = Var("userFloat('fv_y_gen')",float),
         fv_z          = Var("userFloat('fv_z_gen')",float),
 
-        numTrueInts   = Var("userInt('numTrueInts')", int),
+        numTrueInts   = Var("userFloat('numTrueInts')", float),
         numPUInts     = Var("userInt('numPUInts')"  , int),
 
         m2_miss       = ufloat('m2_miss_gen'),

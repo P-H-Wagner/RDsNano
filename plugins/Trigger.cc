@@ -5,7 +5,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/one/EDProducer.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -43,7 +43,7 @@ int passesHLTFilter= 0;
 int patTriggerCand = 0;
 int trgCand        = 0;
 
-class Trigger : public edm::EDProducer {
+class Trigger : public edm::one::EDProducer<> {
 
 public:
 

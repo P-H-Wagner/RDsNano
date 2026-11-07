@@ -28,7 +28,7 @@ SAMPLES = {
 def make_config(name, pilot, tag):
     dataset, is_mc, gt, files_per_job, pilot_files = SAMPLES[name]
     c = crab_config()
-    c.General.requestName     = 'rds16_%s_%s%s' % (name, tag, '_pilot' if pilot else '')
+    c.General.requestName     = 'rds16_%s_%s%s' % (name, tag, '_pilot1' if pilot else '')
     c.General.workArea        = '/work/manzoni/rds/rds16/crab_projects'
     c.General.transferOutputs = True
     c.General.transferLogs    = True
@@ -55,6 +55,10 @@ def make_config(name, pilot, tag):
     c.Site.storageSite = 'T2_CH_CSCS'
     return c
 
+def submit(cfg, dry):
+    print('submitting', cfg.General.requestName, cfg.Data.inputDataset, 'unitsPerJob', cfg.Data.unitsPerJob, 'totalUnits', cfg.Data.totalUnits, flush=True)
+    print(crabCommand('submit', config=cfg, dryrun=dry), flush=True)
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     g = p.add_mutually_exclusive_group(required=True)
@@ -64,7 +68,8 @@ if __name__ == '__main__':
     p.add_argument('--tag', default=datetime.date.today().strftime('%Y%m%d'), help='YYYYMMDD for outLFNDirBase / requestName')
     p.add_argument('--dry', action='store_true', help='crab submit --dryrun (no jobs)')
     a = p.parse_args()
+    # one process per request: the CRAB API caches the CMSSW config inside a process
+    from multiprocessing import Process
     for s in a.samples.split(','):
-        cfg = make_config(s, a.pilot, a.tag)
-        print('submitting', cfg.General.requestName, cfg.Data.inputDataset, 'unitsPerJob', cfg.Data.unitsPerJob, 'totalUnits', cfg.Data.totalUnits)
-        print(crabCommand('submit', config=cfg, dryrun=a.dry))
+        proc = Process(target=submit, args=(make_config(s, a.pilot, a.tag), a.dry))
+        proc.start(); proc.join()

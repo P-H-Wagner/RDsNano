@@ -39,7 +39,7 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
 ])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
-   trkCalibFile = cms.string("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v4.json"),
+   trkCalibFile = cms.string("PhysicsTools/RDsNano/data/rds_trkcalib_2018BParking_v4.json"),
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),    # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds

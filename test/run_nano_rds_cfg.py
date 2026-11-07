@@ -110,7 +110,7 @@ process.source = cms.Source(
 )
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True),
-    SkipEvent = cms.untracked.vstring('ProductNotFound')
+    TryToContinue = cms.untracked.vstring('ProductNotFound')
 )
 
 # Production Info

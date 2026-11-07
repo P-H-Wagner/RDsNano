@@ -1720,20 +1720,20 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float dzMuErr_sv         = muTrackCorr.dzError();  
         float dzMuSig_sv         = dzMu_sv/dzMuErr_sv ; 
 
-        float dxyPi_pv           = muTrackCorr.dxy(pv.position());  //maybe useful for Ds* vs Ds ? 
-        float dxyPiErr_pv        = muTrackCorr.dxyError(pv.position(),pv.covariance());  
+        float dxyPi_pv           = piTrackCorr.dxy(pv.position());  //maybe useful for Ds* vs Ds ? 
+        float dxyPiErr_pv        = piTrackCorr.dxyError(pv.position(),pv.covariance());  
         float dxyPiSig_pv        = dxyPi_pv/dxyPiErr_pv;
 
-        float dzPi_pv            = muTrackCorr.dz(pv.position());  
-        float dzPiErr_pv         = muTrackCorr.dzError();  
+        float dzPi_pv            = piTrackCorr.dz(pv.position());  
+        float dzPiErr_pv         = piTrackCorr.dzError();  
         float dzPiSig_pv         = dzPi_pv/dzPiErr_pv ; 
 
-        float dxyPi_sv           = muTrackCorr.dxy(recoSv.position());  //maybe useful for Ds* vs Ds ? 
-        float dxyPiErr_sv        = muTrackCorr.dxyError(recoSv.position(),recoSv.covariance());  
+        float dxyPi_sv           = piTrackCorr.dxy(recoSv.position());  //maybe useful for Ds* vs Ds ? 
+        float dxyPiErr_sv        = piTrackCorr.dxyError(recoSv.position(),recoSv.covariance());  
         float dxyPiSig_sv        = dxyPi_sv/dxyPiErr_sv;
 
-        float dzPi_sv            = muTrackCorr.dz(recoSv.position());  
-        float dzPiErr_sv         = muTrackCorr.dzError();  
+        float dzPi_sv            = piTrackCorr.dz(recoSv.position());  
+        float dzPiErr_sv         = piTrackCorr.dzError();  
         float dzPiSig_sv         = dzPi_sv/dzPiErr_sv ; 
 
         bs.addUserFloat("signed_decay_ip3d_mu_ds_sv",     signed_decay_ip3DMu_ds_sv    );

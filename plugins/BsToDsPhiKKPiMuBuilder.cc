@@ -52,6 +52,8 @@
 
 // Helper functions and ROOT 
 #include "trackCorrection.h"
+#include "bmmmExtras.h"     // quantities ported from the Bmmm ntuplizer (same definitions)
+#include "correction.h"    // correctionlib: muon sigma_dxy quantile morph (MC)
 #include "helper.h"         // helper functions
 #include "PVRefitter.h"     // refit the primary vertex 
 #include "TLorentzVector.h" 
@@ -258,6 +260,12 @@ private:
   std::unique_ptr<const rdscalib::TrackCalib> trkCalib;
   std::unique_ptr<const rdscalib::TrackCalib> muCalib;
 
+  // muon sigma_dxy quantile morph (MC only, as Bmmm --cov-scale <morph.json> --cov-scale-muon-only); empty file: off
+  const std::string dxyMorphFile_;
+  const std::string dxyMorphName_;
+  std::unique_ptr<correction::CorrectionSet> dxyMorphSet_;
+  const correction::Correction* dxyMorph_ = nullptr;
+
   // for the mass error propagation (load json file and access a and c)
   boost::property_tree::ptree jsonCalib;
   double a2[3];
@@ -337,12 +345,19 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     vtxWithBsTag(iConfig.getParameter<edm::InputTag>      ("vtxWithBsCand"      )),
     vtxWithBs_(consumes<reco::VertexCollection>           (vtxWithBsTag         )),
     trkCalibFile_       (iConfig.getParameter<std::string>("trkCalibFile"       )),
+    dxyMorphFile_       (iConfig.getParameter<std::string>("dxyMorphFile"       )),
+    dxyMorphName_       (iConfig.getParameter<std::string>("dxyMorphName"       )),
     ttBuilderToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder")))
    {
     //for the track scale correction
     const std::string calibPath = edm::FileInPath(trkCalibFile_).fullPath();
     trkCalib = std::make_unique<const rdscalib::TrackCalib>(calibPath);
     muCalib  = std::make_unique<const rdscalib::TrackCalib>(calibPath);
+
+    if (!dxyMorphFile_.empty()) {
+      dxyMorphSet_ = correction::CorrectionSet::from_file(edm::FileInPath(dxyMorphFile_).fullPath());
+      dxyMorph_    = dxyMorphSet_->at(dxyMorphName_).get();
+    }
 
     //for the mass error propagation
     jsonCalib = loadTrackCalibJSON(edm::FileInPath(trkCalibFile_).fullPath());
@@ -397,6 +412,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
   iEvent.getByToken(vtxWithBs_, vtxWithBs);
 
   const TransientTrackBuilder* ttBuilder = &iSetup.getData(ttBuilderToken_);
+
+  // ---- per-event inputs of the quantities ported from Bmmm (bmmmExtras.h)
+  bmmm::IsoInputs isoIn;
+  isoIn.fill(*pcand);
+  std::vector<float> offlineVtxZ;
+  offlineVtxZ.reserve(primaryVtx->size());
+  for (const auto& v : *primaryVtx) offlineVtxZ.push_back(v.z());
+  const int nPV = static_cast<int>(primaryVtx->size());
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> bsCandidates(new pat::CompositeCandidateCollection());
@@ -804,6 +827,33 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         reco::Track k1TrackCorr   = correctCovMat(&newTrackK1, 1e-8);
         reco::Track k2TrackCorr   = correctCovMat(&newTrackK2, 1e-8);
         reco::Track piTrackCorr   = correctCovMat(&newTrackPi, 1e-8);
+
+        //////////////////////////////////////////////////////////////////////////
+        // Muon sigma_dxy quantile morph (MC only), as Bmmm MorphCovScaler     //
+        // (--cov-scale <morph.json> --cov-scale-muon-only): the morph maps the  //
+        // MC sigma_dxy w.r.t. the beam spot (track and beam spot in quadrature)//
+        // to data; only the track part is rescaled, correlations are kept     //
+        // (dxy row and column of the covariance times s). Applied before every //
+        // fit and impact parameter; the *_raw branches keep the unscaled ones. //
+        //////////////////////////////////////////////////////////////////////////
+        const reco::Track muTrackNoMorph = muTrackCorr;
+        float muCovScaleDxy = 1.0;
+        if (dxyMorph_ && !iEvent.isRealData()) {
+          const reco::Track& rawMu = *muPtr->bestTrack();
+          const double zMu = rawMu.vz();
+          const reco::TrackBase::Point bsAtZ(beamSpot.x(zMu), beamSpot.y(zMu), beamSpot.z0());
+          const double sigBs  = rawMu.dxyError(bsAtZ, beamSpot.covariance3D());
+          const double sigTrk = rawMu.dxyError();
+          const double sigCor = dxyMorph_->evaluate({rawMu.pt(), std::abs(rawMu.eta()), sigBs});
+          const double b2     = std::max(sigBs * sigBs - sigTrk * sigTrk, 0.);
+          const double new2   = sigCor * sigCor - b2;
+          muCovScaleDxy = (new2 > 0. && sigTrk > 0.) ? std::sqrt(new2) / sigTrk : (sigBs > 0. ? sigCor / sigBs : 1.);
+          reco::TrackBase::CovarianceMatrix cMu = muTrackCorr.covariance();
+          for (int i = 0; i < 5; ++i) if (i != 3) cMu(3, i) *= muCovScaleDxy;   // symmetric storage: (3,i) == (i,3)
+          cMu(3, 3) *= muCovScaleDxy * muCovScaleDxy;
+          muTrackCorr = reco::Track(muTrackCorr.chi2(), muTrackCorr.ndof(), muTrackCorr.referencePoint(),
+                                    muTrackCorr.momentum(), muTrackCorr.charge(), cMu, muTrackCorr.algo());
+        }
 
         reco::TransientTrack ttMu = ttBuilder->build(muTrackCorr);
         reco::TransientTrack ttK1 = ttBuilder->build(k1TrackCorr);
@@ -1826,6 +1876,156 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("dz_pi_sv",      dzPi_sv);
         bs.addUserFloat("dz_pi_err_sv",  dzPiErr_sv);
         bs.addUserFloat("dz_pi_sig_sv",  dzPiSig_sv);
+
+        ////////////////////////////////////////////////////////////////////////////
+        // Quantities ported from the Bmmm ntuplizer (same definitions; see       //
+        // bmmmExtras.h and rds16/mutual/branch_inventory.md)                     //
+        ////////////////////////////////////////////////////////////////////////////
+
+        // ---- event: number of reconstructed (offline) primary vertices
+        bs.addUserInt("npv", nPV);
+
+        // ---- muon sigma_dxy morph: scale factor and the unscaled impact-parameter errors
+        bs.addUserFloat("mu_cov_scale_dxy",        muCovScaleDxy);
+        bs.addUserFloat("dxy_mu_err_pv_raw",       muTrackNoMorph.dxyError(pv.position(), pv.covariance()));
+        bs.addUserFloat("dz_mu_err_pv_raw",        muTrackNoMorph.dzError());
+        bs.addUserFloat("dxy_mu_err_beamSpot_raw", muTrackNoMorph.dxyError(beamSpot.position(), bsCovFixed));
+
+        // ---- kaon impact parameters (as the muon / pion ones above) and the pion one w.r.t. the beam spot
+        auto addIP = [&](const reco::Track& t, const std::string& n, bool withPV) {
+          if (withPV) {
+            const float dxy  = t.dxy(pv.position());
+            const float dxyE = t.dxyError(pv.position(), pv.covariance());
+            const float dz   = t.dz(pv.position());
+            const float dzE  = t.dzError();
+            bs.addUserFloat("dxy_" + n + "_pv",     dxy);
+            bs.addUserFloat("dxy_" + n + "_err_pv", dxyE);
+            bs.addUserFloat("dxy_" + n + "_sig_pv", dxy / dxyE);
+            bs.addUserFloat("dz_"  + n + "_pv",     dz);
+            bs.addUserFloat("dz_"  + n + "_err_pv", dzE);
+            bs.addUserFloat("dz_"  + n + "_sig_pv", dz / dzE);
+          }
+          const float bdxy  = t.dxy(beamSpot.position());
+          const float bdxyE = t.dxyError(beamSpot.position(), bsCovFixed);
+          bs.addUserFloat("dxy_" + n + "_beamSpot",     bdxy);
+          bs.addUserFloat("dxy_" + n + "_err_beamSpot", bdxyE);
+          bs.addUserFloat("dxy_" + n + "_sig_beamSpot", bdxy / bdxyE);
+        };
+        addIP(k1TrackCorr, "k1", true);
+        addIP(k2TrackCorr, "k2", true);
+        addIP(piTrackCorr, "pi", false);
+
+        // ---- covariance of the phi, Ds and Bs vertices (cm^2), as Bmmm free_<v>_cov_*
+        const std::pair<std::string, const reco::Vertex*> fitVtx[3] = {{"fv", &recoFv}, {"tv", &recoTv}, {"sv", &recoSv}};
+        for (const auto& fv_ : fitVtx) {
+          const reco::Vertex& v = *fv_.second;
+          bs.addUserFloat(fv_.first + "_cov_xx", v.covariance(0, 0));
+          bs.addUserFloat(fv_.first + "_cov_xy", v.covariance(0, 1));
+          bs.addUserFloat(fv_.first + "_cov_xz", v.covariance(0, 2));
+          bs.addUserFloat(fv_.first + "_cov_yy", v.covariance(1, 1));
+          bs.addUserFloat(fv_.first + "_cov_yz", v.covariance(1, 2));
+          bs.addUserFloat(fv_.first + "_cov_zz", v.covariance(2, 2));
+        }
+
+        // ---- Ds pointing w.r.t. the Bs vertex (Bmmm free_ds_cos3d_bs / cos2d_bs; lxy_ds is already the Ds-Bs distance)
+        {
+          const double d[3] = {tv_x - sv_x, tv_y - sv_y, tv_z - sv_z};
+          const double p[3] = {fittedDs.Px(), fittedDs.Py(), fittedDs.Pz()};
+          const double n3 = std::sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]) * std::sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2]);
+          const double n2 = std::hypot(d[0], d[1]) * std::hypot(p[0], p[1]);
+          bs.addUserFloat("ds_vtx_cosine_xyz_sv", n3 > 0 ? (d[0]*p[0] + d[1]*p[1] + d[2]*p[2]) / n3 : NAN);
+          bs.addUserFloat("ds_vtx_cosine_xy_sv",  n2 > 0 ? (d[0]*p[0] + d[1]*p[1]) / n2 : NAN);
+        }
+
+        // ---- KK and KKpi mass errors from the track covariances (Bmmm kk_mass_err, kkpi_mass_err, kkpi_mass_err_cal)
+        {
+          const bool mc = !iEvent.isRealData();
+          auto met = [&](const math::PtEtaPhiMLorentzVector& v, const edm::Ptr<pat::PackedCandidate>& c,
+                         const reco::Track& t, double f) {
+            const double scal = mc ? trkCalib->resolution(c->pt(), c->eta(), "nominal", rdscalib::Kind::Hadron) : NAN;
+            return bmmm::MassErrTrack{v.Px(), v.Py(), v.Pz(), v.M(), c->charge(), t.covariance(), f > 0 ? f : 1., scal};
+          };
+          const auto mk1 = met(k1Vec, k1Ptr, k1TrackCorr, f_k1);
+          const auto mk2 = met(k2Vec, k2Ptr, k2TrackCorr, f_k2);
+          const auto mpi = met(piVec, piPtr, piTrackCorr, f_pi);
+          const auto errKK   = bmmm::massError({mk1, mk2});
+          const auto errKKPi = bmmm::massError({mk1, mk2, mpi});
+          bs.addUserFloat("kk_m_err",         errKK.first);
+          bs.addUserFloat("phiPi_m_err",      errKKPi.first);
+          bs.addUserFloat("phiPi_m_err_cal",  errKKPi.second);
+        }
+
+        // ---- track quality and hit content of the four tracks (Bmmm <obj>_high_purity ... pix_hit_count)
+        {
+          auto addHits = [&](const reco::Track& t, const std::string& n) {
+            const bmmm::HitContent h = bmmm::hitContent(t);
+            bs.addUserInt(n + "_n_pix_hit",         h.n_pix_hit);
+            bs.addUserInt(n + "_n_pix_b_hit",       h.n_pix_b_hit);
+            bs.addUserInt(n + "_n_pix_e_hit",       h.n_pix_e_hit);
+            bs.addUserInt(n + "_n_pix_layer",       h.n_pix_layer);
+            bs.addUserInt(n + "_n_trk_layer",       h.n_trk_layer);
+            bs.addUserInt(n + "_pix_first_b_layer", h.pix_first_b_layer);
+            bs.addUserInt(n + "_pix_first_e_disk",  h.pix_first_e_disk);
+            bs.addUserInt(n + "_pix_first_layer",   h.pix_first_layer);
+            bs.addUserInt(n + "_n_pix_miss_inner",  h.n_pix_miss_inner);
+            bs.addUserInt(n + "_n_pix_inact_inner", h.n_pix_inact_inner);
+            bs.addUserInt(n + "_pix_valid_mask",    h.pix_valid_mask);
+            bs.addUserInt(n + "_pix_miss_mask",     h.pix_miss_mask);
+            bs.addUserInt(n + "_pix_inact_mask",    h.pix_inact_mask);
+            bs.addUserInt(n + "_pix_hit_count",     h.pix_hit_count);
+          };
+          addHits(*muPtr->bestTrack(), "mu");
+          bs.addUserInt("mu_best_trk_type", static_cast<int>(muPtr->muonBestTrackType()));
+          const std::tuple<std::string, edm::Ptr<pat::PackedCandidate>, size_t> hads[3] =
+              {{"k1", k1Ptr, k1Idx}, {"k2", k2Ptr, k2Idx}, {"pi", piPtr, piIdx}};
+          for (const auto& h : hads) {
+            const auto& c = std::get<1>(h);
+            const std::string& n = std::get<0>(h);
+            addHits(*c->bestTrack(), n);   // packed pseudo-track: only pix_first_* keep their full meaning
+            bs.addUserInt(n + "_from_pv",         c->fromPV());
+            bs.addUserInt(n + "_pv_assoc_q",      static_cast<int>(c->pvAssociationQuality()));
+            bs.addUserInt(n + "_high_purity",     c->trackHighPurity());
+            bs.addUserInt(n + "_lost_inner_hits", c->lostInnerHits());
+            bs.addUserInt(n + "_is_lost",         std::get<2>(h) >= pcand->size());
+          }
+        }
+
+        // ---- PF isolation of mu, Ds (KKpi) and Bs (KKpi mu) with the PU split (Bmmm <obj>_iso_*_03/04)
+        {
+          int pvIdxOff = -1;   // the offline vertex the candidate PV comes from: the closest in z
+          for (size_t v = 0; v < offlineVtxZ.size(); ++v)
+            if (pvIdxOff < 0 || std::abs(offlineVtxZ[v] - pv.z()) < std::abs(offlineVtxZ[pvIdxOff] - pv.z())) pvIdxOff = v;
+          const std::vector<bmmm::SignalTrk> sigTrks = {
+              {static_cast<float>(muPtr->eta()), static_cast<float>(muPtr->phi()), static_cast<float>(muPtr->pt()), muPtr->charge()},
+              {static_cast<float>(k1Ptr->eta()), static_cast<float>(k1Ptr->phi()), static_cast<float>(k1Ptr->pt()), k1Ptr->charge()},
+              {static_cast<float>(k2Ptr->eta()), static_cast<float>(k2Ptr->phi()), static_cast<float>(k2Ptr->pt()), k2Ptr->charge()},
+              {static_cast<float>(piPtr->eta()), static_cast<float>(piPtr->phi()), static_cast<float>(piPtr->pt()), piPtr->charge()}};
+          std::vector<char> isoFromPV, isoIsSig;
+          bmmm::isoAssociation(isoIn, offlineVtxZ, pvIdxOff, pv.z(), sigTrks, isoFromPV, isoIsSig);
+          const std::tuple<std::string, float, float, float> isoObjs[3] = {
+              {"mu", static_cast<float>(muVec.Eta()),    static_cast<float>(muVec.Phi()),    static_cast<float>(muVec.Pt())},
+              {"ds", static_cast<float>(phiPiVec.Eta()), static_cast<float>(phiPiVec.Phi()), static_cast<float>(phiPiVec.Pt())},
+              {"b",  static_cast<float>(dsMuVec.Eta()),  static_cast<float>(dsMuVec.Phi()),  static_cast<float>(dsMuVec.Pt())}};
+          for (const auto& o : isoObjs) {
+            for (const float cone : {0.3f, 0.4f}) {
+              const std::string rr = cone < 0.35f ? "03" : "04";
+              const std::string n = std::get<0>(o);
+              const bmmm::IsoResult r = bmmm::isolation(isoIn, isoFromPV, isoIsSig, std::get<1>(o), std::get<2>(o), std::get<3>(o), cone);
+              bs.addUserFloat(n + "_iso_ch_"       + rr, r.ch);
+              bs.addUserFloat(n + "_iso_ch_clean_" + rr, r.ch_clean);
+              bs.addUserFloat(n + "_iso_pu_"       + rr, r.pu);
+              bs.addUserFloat(n + "_iso_nh_"       + rr, r.nh);
+              bs.addUserFloat(n + "_iso_ph_"       + rr, r.ph);
+              bs.addUserFloat(n + "_iso_"          + rr, r.iso);
+              bs.addUserFloat(n + "_iso_clean_"    + rr, r.iso_clean);
+              bs.addUserFloat(n + "_reliso_"       + rr, r.reliso);
+              bs.addUserFloat(n + "_reliso_clean_" + rr, r.reliso_clean);
+            }
+          }
+        }
+
+        // ---- dR of the muon to its trigger object (Bmmm mu_trig_dr)
+        bs.addUserFloat("mu_trig_dr", muPtr->hasUserFloat("trgDr") ? muPtr->userFloat("trgDr") : NAN);
 
 
         ////////////////////////////////////////// deltaR (defined above) /////////////////////////////////////

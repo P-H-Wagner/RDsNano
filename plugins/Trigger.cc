@@ -541,6 +541,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //store
   	trgMatchedMuon.addUserInt("muIdx",     muIdx    );
    	trgMatchedMuon.addUserInt("trgObjIdx", trgObjIdx);
+        trgMatchedMuon.addUserFloat("trgDr", drMuonTrgObj);  // dR to the matched trigger object (Bmmm mu_trig_dr)
 
         trgMatchedMuon.addUserInt("mu7_ip4",           pass_7_4);
         trgMatchedMuon.addUserInt("prescale_mu7_ip4",  prescale_7_4);

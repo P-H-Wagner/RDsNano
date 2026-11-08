@@ -40,6 +40,9 @@ BsToDsPhiKKPiMu = cms.EDProducer(
 'charge != 0',
 ])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
    trkCalibFile = cms.string("PhysicsTools/RDsNano/data/rds_trkcalib_2018BParking_v4.json"),
+   # muon sigma_dxy quantile morph, MC only (Bmmm --cov-scale <morph> --cov-scale-muon-only); "" = off
+   dxyMorphFile = cms.string("PhysicsTools/RDsNano/data/sigma_dxy_morph_splot_fixed_muonid_fixed_decay_length.json"),
+   dxyMorphName = cms.string("mu_bs_dxy_e_morph"),
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),    # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds

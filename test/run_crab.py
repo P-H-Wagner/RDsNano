@@ -77,8 +77,8 @@ process.configurationMetadata = cms.untracked.PSet(
 
 # Output definition
 process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
-    compressionAlgorithm = cms.untracked.string('LZMA'),
-    compressionLevel = cms.untracked.int32(9),
+    compressionAlgorithm = cms.untracked.string('ZSTD'),   # as Bmmm (zstd:5): ~1.5x LZMA 9 size, 2.6x faster reads
+    compressionLevel = cms.untracked.int32(5),
     dataset = cms.untracked.PSet(
         dataTier = cms.untracked.string('NANOAOD'),
         filterName = cms.untracked.string('')

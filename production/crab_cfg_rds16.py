@@ -2,7 +2,8 @@
 """CRAB submission for the RDs16 production (CMSSW_16_X, test/run_crab.py). One request per sample.
 
   python3 crab_cfg_rds16.py --pilot  [--dry] [--samples data,sig,hb]   # pilot (few files per sample)
-  --samples qcd = all QCD MuEnrichedPt5 bins (qcd15To20, ..., qcd1000)
+  --samples qcd = all QCD MuEnrichedPt5 bins (qcd15To20, ..., qcd1000); data_all = all 2018 parking data (22 datasets)
+  full production: --full --samples data_all,sig,sig_ext,hb,hb_ext,qcd
   python3 crab_cfg_rds16.py --full   [--dry] [--samples data,sig,hb]   # full production (only after Ric's OK)
 
 Global tags: PAT-step tag from edmProvDump of the first file of each sample (see LOG.md).
@@ -31,6 +32,16 @@ SAMPLES = {
   'hb_ext' : ('/HbToDsMu_DsToPhiKKPi_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1_ext1-v2/MINIAODSIM',
               True, '106X_upgrade2018_realistic_v16_L1v1', 11, 11),   # 19k ev/file
 }
+# All 2018 B-parking data (Ric, 8 Nov): Run2018A-D, ParkingBPH1-5, plus BPH6 for A and B (BPH6 exists only there).
+# UL2018_MiniAODv2-v1, PAT global tag 106X_dataRun2_v35 in every era (edmProvDump), golden JSON, ~52-53k ev/file.
+# 'data' above (BPH1 2018D) is the pilot sample; '--samples data_all' expands to the 22 datasets below.
+DATA_ALL = []
+for era in 'ABCD':
+    for n in range(1, 7 if era in 'AB' else 6):
+        name = 'dataBPH%d%s' % (n, era)
+        SAMPLES[name] = ('/ParkingBPH%d/Run2018%s-UL2018_MiniAODv2-v1/MINIAOD' % (n, era), False, '106X_dataRun2_v35', 6, 24)
+        DATA_ALL.append(name)
+
 # QCD MuEnrichedPt5 (no Custom_RDStarPU_BParking version exists in DAS): standard UL18 MiniAODv2, same PAT global tag
 # as signal/Hb (106X_upgrade2018_realistic_v16_L1v1), BParking HLT paths in the menu, standard 2018 pile-up profile.
 QCD_BINS = ['15To20', '20To30', '30To50', '50To80', '80To120', '120To170', '170To300',
@@ -89,7 +100,7 @@ if __name__ == '__main__':
     from multiprocessing import Process
     names = []
     for s in a.samples.split(','):
-        names += ['qcd' + b for b in QCD_BINS] if s == 'qcd' else [s]
+        names += ['qcd' + b for b in QCD_BINS] if s == 'qcd' else DATA_ALL if s == 'data_all' else [s]
     for s in names:
         proc = Process(target=submit, args=(make_config(s, a.pilot, a.tag), a.dry))
         proc.start(); proc.join()

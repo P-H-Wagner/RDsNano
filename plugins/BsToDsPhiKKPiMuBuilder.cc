@@ -43,6 +43,7 @@
 
 // Muon, tracks and vertices
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h" 
@@ -1455,7 +1456,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserInt("mu_id_loose",               muPtr->passed(reco::Muon::Selector(0))); // 
         bs.addUserInt("mu_id_medium",              muPtr->passed(reco::Muon::Selector(1))); // 
         bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(reco::Muon::Selector(2))); // 
-        bs.addUserInt("mu_id_tight",               muPtr->passed(reco::Muon::Selector(3))); // 
+        // tight and soft: w.r.t. the candidate PV (beam-spot-constrained refit without the signal tracks), as Bmmm;
+        // the MiniAOD selector bits are computed w.r.t. PV[0], often not the candidate PV in B-parking events
+        bs.addUserInt("mu_id_tight",               muon::isTightMuon(*muPtr, pv)); // 
         bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(reco::Muon::Selector(4))); // 
         bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(reco::Muon::Selector(5))); // 
         bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(reco::Muon::Selector(6))); // 
@@ -1466,7 +1469,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(reco::Muon::Selector(11))); // 
         bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(reco::Muon::Selector(12))); // 
-        bs.addUserInt("mu_id_soft",                muPtr->passed(reco::Muon::Selector(13))); // 
+        bs.addUserInt("mu_id_soft",                muon::isSoftMuon(*muPtr, pv)); // 
         bs.addUserInt("mu_id_soft_mva",            muPtr->passed(reco::Muon::Selector(14))); // 
         bs.addUserInt("mu_mva_loose",              muPtr->passed(reco::Muon::Selector(15))); // 
         bs.addUserInt("mu_mva_medium",             muPtr->passed(reco::Muon::Selector(16))); // 

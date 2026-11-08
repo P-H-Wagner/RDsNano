@@ -1,6 +1,8 @@
 #ifndef PhysicsTools_BParkingNano_helpers
 #define PhysicsTools_BParkingNano_helpers
 
+#include <cmath>
+
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
@@ -119,7 +121,7 @@ inline int isKNuMu(const auto mom){
   int nDaus = mom->numberOfDaughters();
 
   for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
-    dau_list.insert( abs(mom->daughter(dauIdx)->pdgId()) );
+    dau_list.insert( std::abs(mom->daughter(dauIdx)->pdgId()) );
   }
 
   if      ((dau_list == k_dsmu)      && (nDaus == 4)) foundSignal = 107;
@@ -148,7 +150,7 @@ inline int isSignal(const auto mom){
 
   for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
 
-    unsigned int dauId = abs(mom->daughter(dauIdx)->pdgId());
+    unsigned int dauId = std::abs(mom->daughter(dauIdx)->pdgId());
 
     if(dauId == 22){
       //std::cout << "found photon!!" << std::endl;
@@ -349,7 +351,7 @@ inline const reco::Candidate* removeOscillations(const auto dau){
 
     //std::cout << "mom has pdg Id = " << dau->mother(momIdx)->pdgId() << " and vertex vx = " << dau->mother(momIdx)->vx() << std::endl; 
     //check if dau has a mother with a "b" pdg ID 
-    if (isB(abs(dau->mother(momIdx)->pdgId()))) {
+    if (isB(std::abs(dau->mother(momIdx)->pdgId()))) {
       //std::cout << "oscillation!" << std::endl;
 
       auto dau2 = removeOscillations(dau->mother(momIdx));
@@ -931,7 +933,7 @@ inline std::tuple<std::vector<TLorentzVector>, float> recoMethod(TLorentzVector 
     recoNeutPll_2 = -b / (2*a);
     //std::cout << "---- disc is negative!!" << std::endl;
     //std::cout << "disc = " << disc << std::endl;
-    discNegativity = std::sqrt(abs(disc)) / abs(b);
+    discNegativity = std::sqrt(std::abs(disc)) / std::abs(b);
   }
  
   recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
@@ -1020,7 +1022,7 @@ inline std::tuple<std::vector<math::PtEtaPhiMLorentzVector>, float> recoMethod(m
     recoNeutPll_2 = -b / (2*a);
     //std::cout << "---- disc is negative!!" << std::endl;
     //std::cout << "disc = " << disc << std::endl;
-    discNegativity = std::sqrt(abs(disc)) / abs(b);
+    discNegativity = std::sqrt(std::abs(disc)) / std::abs(b);
   }
  
   recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 

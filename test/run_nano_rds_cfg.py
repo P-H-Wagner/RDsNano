@@ -110,7 +110,7 @@ process.source = cms.Source(
 )
 process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True),
-    SkipEvent = cms.untracked.vstring('ProductNotFound')
+    TryToContinue = cms.untracked.vstring('ProductNotFound')
 )
 
 # Production Info
@@ -122,8 +122,8 @@ process.configurationMetadata = cms.untracked.PSet(
 
 # Output definition
 process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
-    compressionAlgorithm = cms.untracked.string('LZMA'),
-    compressionLevel = cms.untracked.int32(9),
+    compressionAlgorithm = cms.untracked.string('ZSTD'),   # as Bmmm (zstd:5): ~1.5x LZMA 9 size, 2.6x faster reads
+    compressionLevel = cms.untracked.int32(5),
     dataset = cms.untracked.PSet(
         dataTier = cms.untracked.string('NANOAOD'),
         filterName = cms.untracked.string('')
@@ -156,6 +156,11 @@ process = nanoAOD_customizeBsToDsPhiKKPiMu(process) #comment this out to run onl
 ## put the refit process somewhere in the beginning before all the EDAnalyzer
 process.primaryVertexRefit = process.unsortedOfflinePrimaryVertices.clone()
 process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices")
+# Only the beam-spot-constrained collection is read (BsToDsPhiKKPiMu.vtxWithBsCand = primaryVertexRefit:WithBS).
+# Do not fit the unconstrained "" collection as well: it is computed for every event and never used.
+process.primaryVertexRefit.vertexCollections = cms.VPSet(
+    [pset for pset in process.primaryVertexRefit.vertexCollections if pset.label.value() == 'WithBS']
+)
 #process.primaryVertexRefitSequence = cms.Sequence(process.primaryVertexRefit)
 
 if channel != 'data':

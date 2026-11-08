@@ -39,18 +39,22 @@ BsToDsPhiKKPiMu = cms.EDProducer(
     hadSelectionGen = cms.string(' &&  '.join([
 'charge != 0',
 ])), # pre-selection of Gen hadrons (k1,k2 and pion), allow some tolerance w.r.t. hadSelection
-   trkCalibFile = cms.string("PhysicsTools/RDsNano/plugins/rds_trkcalib_2018BParking_v4.json"),
+   trkCalibFile = cms.string("PhysicsTools/RDsNano/data/rds_trkcalib_2018BParking_v4.json"),
+   # muon sigma_dxy quantile morph, MC only (Bmmm --cov-scale <morph> --cov-scale-muon-only); "" = off
+   dxyMorphFile = cms.string("PhysicsTools/RDsNano/data/sigma_dxy_morph_splot_fixed_muonid_fixed_decay_length.json"),
+   dxyMorphName = cms.string("mu_bs_dxy_e_morph"),
 maxdRHadMuon     = cms.double( 1.2),       # max dR between hadron and muon
 mindRHadMuon     = cms.double( 0.005),    # min dR "
 maxdRPhotonDs    = cms.double( 1.0),       # max dR between photon and Ds
 maxdzDiffHadMuon = cms.double( 1.0),       # max difference in dz between muon/pv and had/pv
 maxdxyHadPv      = cms.double( 0.6),
-phiMassAllowance = cms.double( 0.02),    # allow 20 MeV when collecting candidates for phi 
-#dsMassAllowance  = cms.double( 0.06),    # allow 60 MeV when collecting candidates for ds
-dsMassAllowance  = cms.double( 0.12),    # allow 120 MeV when collecting candidates for ds
+phiMassAllowance = cms.double( 0.02),    # |m(KK) - m(phi)| [GeV] on the calibrated momenta (MC), as Bmmm (phi_window)
+
+dsMassMin        = cms.double( 1.75),    # m(KKpi) window [GeV] on the calibrated momenta (MC), as Bmmm (RDsCuts kkpi_min)
+dsMassMax        = cms.double( 2.15),    #                               (RDsCuts kkpi_max)
 dsStarMassAllowance  = cms.double( 0.1), # allow 100 MeV when collecting candidates for dsstar
 drMatchGen       = cms.double( 0.1),         # allow 0.1, (0.05 would also be reasonable) in dR when gen matching
-maxBsMass        = cms.double( 8.0 ),  
+maxBsMass        = cms.double( 8.0 ),    # m(KKpi mu) [GeV] on the calibrated momenta (MC), as Bmmm (max_mass)
 piMass           = cms.double( 0.13957039),      # pi mass
 piMassSigma      = cms.double( 0.00000018),      # pi mass
 kMass            = cms.double( 0.493677),         # kaon mass

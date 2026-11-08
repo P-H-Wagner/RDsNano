@@ -72,5 +72,12 @@ genMatcherTable= cms.EDProducer('SimpleCompositeCandidateFlatTableProducer',
 )
 
 #tables = cms.Sequence(BsToDsPhiKKPiMuTable) # * vertexTable)
-genMatchingSequence = cms.Sequence(genMatcher + genMatcherTable)
+# event level (MC): the signal Bs decay and the Hammer inputs, as Bmmm tree_gen (plugins/GenBsSignalTableProducer.cc)
+genBsSignalTable = cms.EDProducer("GenBsSignalTableProducer",
+    src   = cms.InputTag("prunedGenParticles"),
+    genPV = cms.InputTag("genParticles", "xyz0"),
+    name  = cms.string("GenBs"),
+)
+
+genMatchingSequence = cms.Sequence(genMatcher + genMatcherTable + genBsSignalTable)
 

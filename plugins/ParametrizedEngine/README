@@ -1,0 +1,6 @@
+Verbatim copies of MagneticField/ParametrizedEngine/src/{OAEParametrizedMagneticField,TkBfield,BCyl}.h
+from CMSSW_16_0_8. In 16_X these headers are private (scram "Private Header" check fails the build when
+another package includes them) and the public ParametrizedMagneticFieldFactory::get() is private too.
+The class implementation is NOT copied: the code links against libMagneticFieldParametrizedEngine of
+the release (the symbols are exported), so the field map is exactly the release's OAE 3.8T map.
+If the release changes, re-copy these three headers from that release.

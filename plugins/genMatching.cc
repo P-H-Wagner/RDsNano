@@ -40,6 +40,7 @@
 #include <cmath>
 #include "KinVtxFitter.h" //--> not needed now 
 #include "helper.h" // helper functions
+#include "genBmmm.h" // Bmmm candidate truth (gen_cand, gen_ds_b_ct, ...), same definitions
 // include "PxPyPzMVector.h" // to new :(
 #include "TLorentzVector.h" // use this instead 
 #include "TVector3.h" // for boost vector
@@ -47,7 +48,7 @@
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h" 
 
 // B field
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "PhysicsTools/RDsNano/plugins/ParametrizedEngine/OAEParametrizedMagneticField.h"
 // for 3DPoint
 #include "DataFormats/Math/interface/Point3D.h"
 // for the cov matrix correction
@@ -227,6 +228,28 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
   edm::Handle<std::vector<PileupSummaryInfo>> pileupInfo;
   iEvent.getByToken(pileupInfo_, pileupInfo); 
+
+  // pileup info is an event property: filled for every candidate, gen-matched or not
+  float numTrueInts = -1;
+  int numPUInts   = -1;
+  for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
+    int BX = iPU->getBunchCrossing();
+    if(BX == 0){ // "0" is the in-time crossing. Negative are early crossings. Positive are late.
+      numTrueInts = iPU->getTrueNumInteractions();
+      numPUInts   = iPU->getPU_NumInteractions();
+    }
+  }
+
+  // status-1 charged gen particles for the Bmmm-style track matching (pruned + packed), once per event
+  std::vector<const reco::Candidate*> genChargedBmmm;
+  for (const auto& p : *prunedGen) {
+    const int a = std::abs(p.pdgId());
+    if (p.status() == 1 && (a == 11 || a == 13 || a == 211 || a == 321 || a == 2212)) genChargedBmmm.push_back(&p);
+  }
+  for (const auto& p : *packedGen) {
+    const int a = std::abs(p.pdgId());
+    if (a == 11 || a == 13 || a == 211 || a == 321 || a == 2212) genChargedBmmm.push_back(&p);
+  }
 
   // to save 
   std::unique_ptr<pat::CompositeCandidateCollection> ret_value(new pat::CompositeCandidateCollection());
@@ -589,17 +612,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                //save the gen info by adding gen candidates of final states
 
 
-               // add pileup info
-               int numTrueInts = -1;
-               int numPUInts   = -1;
-
-               for(std::vector<PileupSummaryInfo>::const_iterator iPU = pileupInfo->begin(); iPU != pileupInfo->end(); iPU++){
-                 int BX = iPU->getBunchCrossing();
-                 if(BX == 0){ // "0" is the in-time crossing. Negative are early crossings. Positive are late.
-                   numTrueInts = iPU->getTrueNumInteractions();
-                   numPUInts   = iPU->getPU_NumInteractions();
-                 }
-               }
+               // pileup info: filled once per event, see after getByToken(pileupInfo_)
 
                //std::cout << "we have n pilue up: " << numTrueInts << std::endl;
 
@@ -700,7 +713,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserFloat("fv_y_gen"       ,fv_y_gen);
                gen.addUserFloat("fv_z_gen"       ,fv_z_gen);
 
-               gen.addUserInt( "numTrueInts",numTrueInts );
+               gen.addUserFloat("numTrueInts",numTrueInts );
                gen.addUserInt( "numPUInts"  ,numPUInts   );
 
                gen.addUserInt( "same_mother", sameMother);
@@ -713,7 +726,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                bId = bMotherId;
   
                // Step1: the b Mother fixes the 10s
-               switch(abs(bMotherId)){
+               switch(std::abs(bMotherId)){
                  case 521:  sigId = 100;  break;  // B+
                  case 511:  sigId = 200;  break;  // B0
                  case 531:  sigId = 300;  break;  // Bs
@@ -729,7 +742,7 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
 
                int checkSignal = -1;
-               if ((abs(bMotherId) == 531) and (sameMother == 1)) {
+               if ((std::abs(bMotherId) == 531) and (sameMother == 1)) {
                  checkSignal = isSignal(bsFromDs);
                } 
 
@@ -1032,8 +1045,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //define helicity angles
 
-               //test lhcb method on gen
-               TLorentzVector lhcbBsTlvGen = lhcbMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
                //std::cout << "this is the gen matched case: " << std::endl;
                std::tuple<std::vector<TLorentzVector>,float> recoResultGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
 
@@ -1049,22 +1060,17 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserInt("disc_is_negative_gen", discIsNegativeGen); 
                gen.addUserFloat("disc_negativity_gen", discNegativityGen); 
 
-               gen.addUserFloat("bs_gen_lhcb_pt",   lhcbBsTlvGen.Pt());
-               gen.addUserFloat("bs_gen_lhcb_eta",  lhcbBsTlvGen.Eta());
-               gen.addUserFloat("bs_gen_lhcb_phi",  lhcbBsTlvGen.Phi());
 
                //angle between Mu and W
 
 
                float angMuWGen = angMuW(genDsTlv,genBsTlv,genMuTlv); 
 
-               float angMuWGenLhcb  = angMuW(genDsTlv,lhcbBsTlvGen,genMuTlv); 
                float angMuWGenReco1 = angMuW(genDsTlv,reco1BsTlvGen,genMuTlv); 
                float angMuWGenReco2 = angMuW(genDsTlv,reco2BsTlvGen,genMuTlv); 
 
                gen.addUserFloat("angMuWGen",angMuWGen);
                gen.addUserFloat("cosMuWGen",cos(angMuWGen));
-               gen.addUserFloat("cosMuWGenLhcb",cos(angMuWGenLhcb));
                gen.addUserFloat("cosMuWGenReco1",cos(angMuWGenReco1));
                gen.addUserFloat("cosMuWGenReco2",cos(angMuWGenReco2));
 
@@ -1080,13 +1086,11 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                // equivalently, angle between phi(pi) and bs in ds rest frame
                float angPhiDsGen = angDsPi(genDsTlv,  genPhiTlv, genBsTlv);
                float angPiDsGen  = angDsPi(genDsTlv,  genPiTlv,  genBsTlv);
-               float angPiDsGenLhcb  = angDsPi(genDsTlv,  genPiTlv,  lhcbBsTlvGen);
 
                gen.addUserFloat("angPhiDsGen", angPhiDsGen);
                gen.addUserFloat("angPiDsGen",  angPiDsGen);
                gen.addUserFloat("cosPhiDsGen", cos(angPhiDsGen));
                gen.addUserFloat("cosPiDsGen",  cos(angPiDsGen));
-               gen.addUserFloat("cosPiDsGenLhcb",  cos(angPiDsGenLhcb));
 
                //plane angle
                float angPlaneBsGen = angPlane(genDsTlv, genBsTlv, genMuTlv, genPiTlv);
@@ -1234,20 +1238,16 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserInt("disc_is_negative_gen", -9999); 
             gen.addUserFloat("disc_negativity_gen", std::nan("")); 
   
-            gen.addUserFloat("bs_gen_lhcb_pt", std::nan(""));
-            gen.addUserFloat("bs_gen_lhcb_eta", std::nan(""));
-            gen.addUserFloat("bs_gen_lhcb_phi", std::nan(""));
   
             gen.addUserFloat("fv_x_gen"       ,std::nan(""));
             gen.addUserFloat("fv_y_gen"       ,std::nan(""));
             gen.addUserFloat("fv_z_gen"       ,std::nan(""));
  
-            gen.addUserInt( "numTrueInts",-9999);
-            gen.addUserInt( "numPUInts"  ,-9999);
+            gen.addUserFloat("numTrueInts",numTrueInts);
+            gen.addUserInt( "numPUInts"  ,numPUInts  );
   
             gen.addUserFloat("angMuWGen"      ,std::nan(""));
             gen.addUserFloat("cosMuWGen"      ,std::nan(""));
-            gen.addUserFloat("cosMuWGenLhcb"      ,std::nan(""));
             gen.addUserFloat("cosMuWGenReco1"      ,std::nan(""));
             gen.addUserFloat("cosMuWGenReco2"      ,std::nan(""));
   
@@ -1260,7 +1260,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("angPiDsGen"     ,std::nan(""));
             gen.addUserFloat("cosPhiDsGen"    ,std::nan(""));
             gen.addUserFloat("cosPiDsGen"     ,std::nan(""));
-            gen.addUserFloat("cosPiDsGenLhcb"     ,std::nan(""));
   
             gen.addUserFloat("angPlaneBsGen"  ,std::nan(""));
             gen.addUserFloat("cosPlaneBsGen"  ,std::nan(""));
@@ -1299,6 +1298,28 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   
           //append candidate at the end of our return value :)
           //ret_value can be a vector!!
+          // ---- Bmmm candidate truth (RDsGenHistory.classify_candidate), independent of the matching above:
+          //      each track matched to the closest same-charge status-1 gen particle within dR < 0.03
+          {
+            const double drBmmm = 0.03;
+            auto m = [&](const reco::CandidatePtr& c) {
+              return bmmmgen::matchTrack(c->eta(), c->phi(), c->charge(), genChargedBmmm, drBmmm);
+            };
+            const bmmmgen::CandTruth t = bmmmgen::classifyCandidate(m(k1Bs), m(k2Bs), m(piBs), m(muBs));
+            gen.addUserFloat("cand",            t.cand);
+            gen.addUserFloat("ds_true",         t.ds_true);
+            gen.addUserFloat("charm_pdgid",     t.charm_pdgid);
+            gen.addUserFloat("ds_mother_pdgid", t.ds_mother_pdgid);
+            gen.addUserFloat("ds_b_pdgid",      t.ds_b_pdgid);
+            gen.addUserFloat("mu_b_pdgid",      t.mu_b_pdgid);
+            gen.addUserFloat("mu_mother_pdgid", t.mu_mother_pdgid);
+            gen.addUserFloat("mu_from_tau",     t.mu_from_tau);
+            gen.addUserFloat("same_b",          t.same_b);
+            gen.addUserFloat("n_matched",       t.n_matched);
+            gen.addUserFloat("ds_b_ct",         t.ds_b_ct);
+            gen.addUserFloat("mu_b_ct",         t.mu_b_ct);
+          }
+
           ret_value->emplace_back(gen);
           //ret_value_gen->emplace_back(gen);
   

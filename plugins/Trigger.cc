@@ -5,7 +5,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/one/EDProducer.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
@@ -29,7 +29,7 @@
 #include "TrackingTools/TransientTrack/interface/BasicTransientTrack.h"
 
 //B field 
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "PhysicsTools/RDsNano/plugins/ParametrizedEngine/OAEParametrizedMagneticField.h"
 // for the cut as string
 #include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 
@@ -43,7 +43,7 @@ int passesHLTFilter= 0;
 int patTriggerCand = 0;
 int trgCand        = 0;
 
-class Trigger : public edm::EDProducer {
+class Trigger : public edm::one::EDProducer<> {
 
 public:
 
@@ -204,16 +204,16 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   bool pass_10p5_3p5    = false; 
   bool pass_12_6        = false; 
 
-  int prescale_7_4      = 0;
-  int prescale_8_3      = 0;
-  int prescale_8p5_3p5  = 0;
-  int prescale_8_5      = 0;
-  int prescale_8_6      = 0;
-  int prescale_9_4      = 0;
-  int prescale_9_5      = 0;
-  int prescale_9_6      = 0;
-  int prescale_10p5_3p5 = 0;
-  int prescale_12_6     = 0;
+  float prescale_7_4      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_8_3      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_8p5_3p5  = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_8_5      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_8_6      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_9_4      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_9_5      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_9_6      = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_10p5_3p5 = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
+  float prescale_12_6     = NAN;   // HLT prescale of the lumi section, NaN if the path is not in the menu (as Bmmm)
 
 
   ///////////// Debugging:
@@ -230,8 +230,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_7_4 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_7_4) << std::endl;
         pass_7_4 = true;
-        prescale_7_4  = triggerPrescales->getPrescaleForIndex (index_7_4 );
-        prescale_7_4 *= 5;
       }
 
     }
@@ -243,8 +241,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_8_3 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_8_3) << std::endl;
         pass_8_3      = true;
-        prescale_8_3  = triggerPrescales->getPrescaleForIndex (index_8_3 );
-        prescale_8_3 *= 5;
       }
 
     }
@@ -256,8 +252,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_8_5 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_8_5) << std::endl;
         pass_8_5 = true;
-        prescale_8_5  = triggerPrescales->getPrescaleForIndex (index_8_5 );
-        prescale_8_5 *= 5;
       }
 
     }
@@ -269,8 +263,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_8_6 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_8_6) << std::endl;
         pass_8_6 = true;
-        prescale_8_6  = triggerPrescales->getPrescaleForIndex (index_8_6 );
-        prescale_8_6 *= 5;
       }
 
     }
@@ -284,8 +276,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_8p5_3p5 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_8p5_3p5) << std::endl;
         pass_8p5_3p5 = true;
-        prescale_8p5_3p5  = triggerPrescales->getPrescaleForIndex (index_8p5_3p5 );
-        prescale_8p5_3p5 *= 5;
       }
 
     }
@@ -299,8 +289,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_9_4 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_9_4) << std::endl;
         pass_9_4 = true;
-        prescale_9_4  = triggerPrescales->getPrescaleForIndex (index_9_4 );
-        prescale_9_4 *= 5;
       }
 
     }
@@ -312,8 +300,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_9_5 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_9_5) << std::endl;
         pass_9_5 = true;
-        prescale_9_5  = triggerPrescales->getPrescaleForIndex (index_9_5 );
-        prescale_9_5 *= 5;
       }
 
     }
@@ -325,8 +311,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_9_6 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_9_6) << std::endl;
         pass_9_6 = true;
-        prescale_9_6  = triggerPrescales->getPrescaleForIndex (index_9_6 );
-        prescale_9_6 *= 5;
       }
 
     }
@@ -339,8 +323,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_10p5_3p5 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_10p5_3p5) << std::endl;
         pass_10p5_3p5 = true;
-        prescale_10p5_3p5  = triggerPrescales->getPrescaleForIndex (index_10p5_3p5 );
-        prescale_10p5_3p5 *= 5;
       }
 
     }
@@ -356,8 +338,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "index is: "  << index_12_6 << std::endl;
         //std::cout << "accepted ? " << triggerBits->accept(index_12_6) << std::endl;
         pass_12_6 = true;
-        prescale_12_6  = triggerPrescales->getPrescaleForIndex (index_12_6 );
-        prescale_12_6 *= 5;
       }
 
     }
@@ -391,6 +371,16 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     // Loop over trigger objects and unpack  //
     ///////////////////////////////////////////
 
+    // HLT prescales: written whether or not the path fired, as Bmmm (JpsiChargedInspector)
+    {
+      const std::pair<float*, unsigned int> psIdx[] = {
+          {&prescale_7_4, index_7_4},       {&prescale_8_3, index_8_3},     {&prescale_8p5_3p5, index_8p5_3p5},
+          {&prescale_8_5, index_8_5},       {&prescale_8_6, index_8_6},     {&prescale_9_4, index_9_4},
+          {&prescale_9_5, index_9_5},       {&prescale_9_6, index_9_6},     {&prescale_10p5_3p5, index_10p5_3p5},
+          {&prescale_12_6, index_12_6}};
+      for (const auto& p : psIdx)
+        if (p.second < trgBitsMax) *p.first = triggerPrescales->getPrescaleForIndex<double>(p.second);
+    }
     std::vector<bool> passTrigger_Vec          ;
     std::vector<bool> failsSelection_Vec       ;
     std::vector<bool> filterLabelMu7_4_Vec     ;
@@ -407,27 +397,38 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
     for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
 
-      // get object
-      pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
+      const pat::TriggerObjectStandAlone& trgObjRef = (*triggerObjects)[objIdx];
 
       //check pt, eta, and if trigger object is of type muon
-      if (
-          (std::fabs(trgObj.eta()) > 1.6) || 
-          (trgObj.pt() < 6.0)             || 
-          (!trgObj.hasTriggerObjectType(trigger::TriggerMuon)) 
-         ) {
-        failsSelection_Vec.push_back(1);
-      } 
+      const bool failsSelection = 
+          (std::fabs(trgObjRef.eta()) > 1.6) || 
+          (trgObjRef.pt() < 6.0)             || 
+          (!trgObjRef.hasTriggerObjectType(trigger::TriggerMuon));
 
-      else failsSelection_Vec.push_back(0);
+      failsSelection_Vec.push_back(failsSelection);
 
-      //std::cout << std::fabs(trgObj.pt()) << std::endl;
+      // Objects failing the selection are never matched to a muon (see the matching loop below),
+      // so there is no need to copy them and unpack their filter labels (the expensive part).
+      if (failsSelection) {
+        passTrigger_Vec          .push_back(false);
+        filterLabelMu7_4_Vec     .push_back(false);
+        filterLabelMu8_3_Vec     .push_back(false);
+        filterLabelMu8p5_3p5_Vec .push_back(false);
+        filterLabelMu8_5_Vec     .push_back(false);
+        filterLabelMu8_6_Vec     .push_back(false);
+        filterLabelMu9_4_Vec     .push_back(false);
+        filterLabelMu9_5_Vec     .push_back(false);
+        filterLabelMu9_6_Vec     .push_back(false);
+        filterLabelMu10p5_3p5_Vec.push_back(false);
+        filterLabelMu12_6_Vec    .push_back(false);
+        continue;
+      }
+
+      // copy needed: unpacking modifies the object
+      pat::TriggerObjectStandAlone trgObj = trgObjRef;
 
       //unpack trigger labels
       trgObj.unpackFilterLabels(iEvent, *triggerBits);
-
-      // get filter labels  
-      std::vector<std::string> filterLabels = trgObj.filterLabels();
 
       int filterLabelMu7_4        = trgObj.hasFilterLabel(trgFilterLabelMu7_4_)     ;
       int filterLabelMu8_3        = trgObj.hasFilterLabel(trgFilterLabelMu8_3_)     ;
@@ -510,7 +511,7 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         if (!passTrigger_Vec.at(objIdx)) continue;
         if (failsSelection_Vec.at(objIdx)) continue;
 
-        pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];
+        const pat::TriggerObjectStandAlone& trgObj = (*triggerObjects)[objIdx]; // no copy needed here
 
         if (trgObj.charge() * muon.charge() < 0) continue; // exclude opposite charge
 
@@ -540,37 +541,38 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //store
   	trgMatchedMuon.addUserInt("muIdx",     muIdx    );
    	trgMatchedMuon.addUserInt("trgObjIdx", trgObjIdx);
+        trgMatchedMuon.addUserFloat("trgDr", drMuonTrgObj);  // dR to the matched trigger object (Bmmm mu_trig_dr)
 
         trgMatchedMuon.addUserInt("mu7_ip4",           pass_7_4);
-        trgMatchedMuon.addUserInt("prescale_mu7_ip4",  prescale_7_4);
+        trgMatchedMuon.addUserFloat("prescale_mu7_ip4",  prescale_7_4);
 
         trgMatchedMuon.addUserInt("mu8_ip3",           pass_8_3);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip3",  prescale_8_3);
+        trgMatchedMuon.addUserFloat("prescale_mu8_ip3",  prescale_8_3);
 
         trgMatchedMuon.addUserInt("mu8_ip5",           pass_8_5);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip5",  prescale_8_5);
+        trgMatchedMuon.addUserFloat("prescale_mu8_ip5",  prescale_8_5);
 
         trgMatchedMuon.addUserInt("mu8p5_ip3p5",           pass_8p5_3p5);
-        trgMatchedMuon.addUserInt("prescale_mu8p5_ip3p5",  prescale_8p5_3p5);
+        trgMatchedMuon.addUserFloat("prescale_mu8p5_ip3p5",  prescale_8p5_3p5);
 
 
         trgMatchedMuon.addUserInt("mu8_ip6",           pass_8_6);
-        trgMatchedMuon.addUserInt("prescale_mu8_ip6",  prescale_8_6);
+        trgMatchedMuon.addUserFloat("prescale_mu8_ip6",  prescale_8_6);
 
         trgMatchedMuon.addUserInt("mu9_ip4",           pass_9_4);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip4",  prescale_9_4);
+        trgMatchedMuon.addUserFloat("prescale_mu9_ip4",  prescale_9_4);
 
         trgMatchedMuon.addUserInt("mu9_ip5",           pass_9_5);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip5",  prescale_9_5);
+        trgMatchedMuon.addUserFloat("prescale_mu9_ip5",  prescale_9_5);
 
         trgMatchedMuon.addUserInt("mu9_ip6",           pass_9_6);
-        trgMatchedMuon.addUserInt("prescale_mu9_ip6",  prescale_9_6);
+        trgMatchedMuon.addUserFloat("prescale_mu9_ip6",  prescale_9_6);
 
         trgMatchedMuon.addUserInt("mu10p5_ip3p5",           pass_10p5_3p5);
-        trgMatchedMuon.addUserInt("prescale_mu10p5_ip3p5",  prescale_10p5_3p5);
+        trgMatchedMuon.addUserFloat("prescale_mu10p5_ip3p5",  prescale_10p5_3p5);
 
         trgMatchedMuon.addUserInt("mu12_ip6",              pass_12_6);
-        trgMatchedMuon.addUserInt("prescale_mu12_ip6",  prescale_12_6);
+        trgMatchedMuon.addUserFloat("prescale_mu12_ip6",  prescale_12_6);
 
         trgMatchedMuon.addUserInt("filter_mu7_4"         ,  filterLabelMu7_4_Vec      .at(trgObjIdx));
         trgMatchedMuon.addUserInt("filter_mu8_3"         ,  filterLabelMu8_3_Vec      .at(trgObjIdx));

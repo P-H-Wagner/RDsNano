@@ -30,6 +30,8 @@
 <use name="L1Trigger/L1TGlobal"/>
 <use name="L1Trigger/GlobalTriggerAnalyzer"/>
 <use name="L1Trigger/GlobalTrigger"/>
+<use name="correctionlib"/>
+<use name="json"/>
 <!--flags CXXFLAGS="-g"/-->  
 <library   file="*.cc" name="PhysicsToolsRDsNanoPlugins">
   <flags   EDM_PLUGIN="1"/>

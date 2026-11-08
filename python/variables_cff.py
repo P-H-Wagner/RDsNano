@@ -22,34 +22,34 @@ triggerVariables = cms.PSet(
         trg_obj_idx          = Var("userInt('trgObjIdx')", int),
         
         mu7_ip4              = Var("userInt('mu7_ip4')", int),
-        prescale_mu7_ip4     = Var("userInt('prescale_mu7_ip4')"   , int),
+        prescale_mu7_ip4     = Var("userFloat('prescale_mu7_ip4')"   , float),
 
         mu8_ip3              = Var("userInt('mu8_ip3')", int),
-        prescale_mu8_ip3     = Var("userInt('prescale_mu8_ip3')"   , int),
+        prescale_mu8_ip3     = Var("userFloat('prescale_mu8_ip3')"   , float),
 
         mu8p5_3p5            = Var("userInt('mu8p5_ip3p5')", int),
-        prescale_mu8p5_3p5   = Var("userInt('prescale_mu8p5_ip3p5')"   , int),
+        prescale_mu8p5_3p5   = Var("userFloat('prescale_mu8p5_ip3p5')"   , float),
 
         mu8_ip5              = Var("userInt('mu8_ip5')", int),
-        prescale_mu8_ip5     = Var("userInt('prescale_mu8_ip5')"   , int),
+        prescale_mu8_ip5     = Var("userFloat('prescale_mu8_ip5')"   , float),
 
         mu8_ip6              = Var("userInt('mu8_ip6')", int),
-        prescale_mu8_ip6     = Var("userInt('prescale_mu8_ip6')"   , int),
+        prescale_mu8_ip6     = Var("userFloat('prescale_mu8_ip6')"   , float),
 
         mu9_ip4              = Var("userInt('mu9_ip4')", int),
-        prescale_mu9_ip4     = Var("userInt('prescale_mu9_ip4')"   , int),
+        prescale_mu9_ip4     = Var("userFloat('prescale_mu9_ip4')"   , float),
 
         mu9_ip5              = Var("userInt('mu9_ip5')", int),
-        prescale_mu9_ip5     = Var("userInt('prescale_mu9_ip5')"   , int),
+        prescale_mu9_ip5     = Var("userFloat('prescale_mu9_ip5')"   , float),
 
         mu9_ip6              = Var("userInt('mu9_ip6')", int),
-        prescale_mu9_ip6     = Var("userInt('prescale_mu9_ip6')"   , int),
+        prescale_mu9_ip6     = Var("userFloat('prescale_mu9_ip6')"   , float),
 
         mu10p5_3p5           = Var("userInt('mu10p5_ip3p5')", int),
-        prescale_mu10p5_3p5  = Var("userInt('prescale_mu10p5_ip3p5')"   , int),
+        prescale_mu10p5_3p5  = Var("userFloat('prescale_mu10p5_ip3p5')"   , float),
 
         mu12_ip6             = Var("userInt('mu12_ip6')", int),
-        prescale_mu12_ip6    = Var("userInt('prescale_mu12_ip6')"   , int),
+        prescale_mu12_ip6    = Var("userFloat('prescale_mu12_ip6')"   , float),
 
         filter_mu7_4         = Var("userInt('filter_mu7_4')"       , int),
         filter_mu8_3         = Var("userInt('filter_mu8_3')"       , int),

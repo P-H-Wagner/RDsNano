@@ -2,11 +2,13 @@
 """CRAB submission for the RDs16 production (CMSSW_16_X, test/run_crab.py). One request per sample.
 
   python3 crab_cfg_rds16.py --pilot  [--dry] [--samples data,sig,hb]   # pilot (few files per sample)
+  --samples qcd = all QCD MuEnrichedPt5 bins (qcd15To20, ..., qcd1000)
   python3 crab_cfg_rds16.py --full   [--dry] [--samples data,sig,hb]   # full production (only after Ric's OK)
 
 Global tags: PAT-step tag from edmProvDump of the first file of each sample (see LOG.md).
-Job size from the stage-4 timing (CPU/event data 0.029 s, MC 0.041 s; RSS <= 1.6 GB):
-~3 h nominal per job, limit 8 h.
+Job size from the V8 timing with the final code (val/v8, 5000 ev; CPU/event data 0.030 s, signal/Hb 0.043 s,
+QCD 0.024-0.029 s; local RSS 1.5-1.6 GB, QCD 1.8 GB) and the pilot (grid ~2.5x slower than local, grid RSS ~1.3x local):
+~6 h median per job on the grid, limit 20 h, 2500 MB.
 """
 import argparse, datetime, os
 from CRABClient.UserUtilities import config as crab_config
@@ -18,17 +20,27 @@ GOLDEN = 'https://cms-service-dqmdc.web.cern.ch/CAF/certification/Collisions18/1
 
 SAMPLES = {
   #  name : (dataset, isMC, globalTag, files/job, pilot files)
-  'data': ('/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD', False, '106X_dataRun2_v35', 6, 24),
+  'data': ('/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD', False, '106X_dataRun2_v35', 6, 24),   # 53k ev/file
   'sig' : ('/BsToDsL_DsToPhiKKPi_TauToMuNuNu_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v3/MINIAODSIM',
-           True, '106X_upgrade2018_realistic_v16_L1v1', 8, 8),
+           True, '106X_upgrade2018_realistic_v16_L1v1', 6, 6),     # 33k ev/file
   'hb'  : ('/HbToDsMu_DsToPhiKKPi_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM',
-           True, '106X_upgrade2018_realistic_v16_L1v1', 10, 10),
+           True, '106X_upgrade2018_realistic_v16_L1v1', 8, 8),     # 26k ev/file
 }
+# QCD MuEnrichedPt5 (no Custom_RDStarPU_BParking version exists in DAS): standard UL18 MiniAODv2, same PAT global tag
+# as signal/Hb (106X_upgrade2018_realistic_v16_L1v1), BParking HLT paths in the menu, standard 2018 pile-up profile.
+QCD_BINS = ['15To20', '20To30', '30To50', '50To80', '80To120', '120To170', '170To300',
+            '300To470', '470To600', '600To800', '800To1000', '1000']
+# ~290k events per job (0.075 s/ev on the grid); DAS events/file: 15To20 94k, 20To120 77-81k, 120To170 74k, >=170 53-55k
+QCD_FILES_PER_JOB = {'15To20': 3, '20To30': 4, '30To50': 4, '50To80': 4, '80To120': 4, '120To170': 4,
+                     '170To300': 5, '300To470': 5, '470To600': 5, '600To800': 5, '800To1000': 5, '1000': 5}
+for b in QCD_BINS:
+    SAMPLES['qcd' + b] = ('/QCD_Pt-%s_MuEnrichedPt5_TuneCP5_13TeV-pythia8/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM' % b,
+                          True, '106X_upgrade2018_realistic_v16_L1v1', QCD_FILES_PER_JOB.get(b, 2), QCD_FILES_PER_JOB.get(b, 2))
 
 def make_config(name, pilot, tag):
     dataset, is_mc, gt, files_per_job, pilot_files = SAMPLES[name]
     c = crab_config()
-    c.General.requestName     = 'rds16_%s_%s%s' % (name, tag, '_pilot1' if pilot else '')
+    c.General.requestName     = 'rds16_%s_%s%s' % (name, tag, '_pilot2' if pilot else '')
     c.General.workArea        = '/work/manzoni/rds/rds16/crab_projects'
     c.General.transferOutputs = True
     c.General.transferLogs    = True
@@ -37,8 +49,8 @@ def make_config(name, pilot, tag):
     c.JobType.psetName         = PSET
     c.JobType.pyCfgParams      = ['isMC=%s' % is_mc, 'globalTag=%s' % gt]
     c.JobType.outputFiles      = ['rds_nano.root']      # = outputFile default of run_crab.py
-    c.JobType.maxJobRuntimeMin = 480
-    c.JobType.maxMemoryMB      = 2000
+    c.JobType.maxJobRuntimeMin = 1200
+    c.JobType.maxMemoryMB      = 2500
     c.JobType.numCores         = 1
     c.JobType.allowUndistributedCMSSW = True
 
@@ -70,6 +82,9 @@ if __name__ == '__main__':
     a = p.parse_args()
     # one process per request: the CRAB API caches the CMSSW config inside a process
     from multiprocessing import Process
+    names = []
     for s in a.samples.split(','):
+        names += ['qcd' + b for b in QCD_BINS] if s == 'qcd' else [s]
+    for s in names:
         proc = Process(target=submit, args=(make_config(s, a.pilot, a.tag), a.dry))
         proc.start(); proc.join()

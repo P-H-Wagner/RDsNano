@@ -1455,12 +1455,15 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         bs.addUserInt("mu_id_loose",               muPtr->passed(reco::Muon::Selector(0))); // 
         bs.addUserInt("mu_id_medium",              muPtr->passed(reco::Muon::Selector(1))); // 
-        bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(reco::Muon::Selector(2))); // 
+        // medium prompt and the high-pt IDs: as in MuonSelectors.cc setCutBasedSelectorFlags, but w.r.t. the candidate PV
+        const bool muMediumPrompt = muon::isMediumMuon(*muPtr) && std::abs(muPtr->muonBestTrack()->dz(pv.position())) < 0.1
+                                    && std::abs(muPtr->muonBestTrack()->dxy(pv.position())) < 0.02;
+        bs.addUserInt("mu_id_medium_prompt",       muMediumPrompt); // 
         // tight and soft: w.r.t. the candidate PV (beam-spot-constrained refit without the signal tracks), as Bmmm;
         // the MiniAOD selector bits are computed w.r.t. PV[0], often not the candidate PV in B-parking events
         bs.addUserInt("mu_id_tight",               muon::isTightMuon(*muPtr, pv)); // 
-        bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(reco::Muon::Selector(4))); // 
-        bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(reco::Muon::Selector(5))); // 
+        bs.addUserInt("mu_id_global_high_pt",      muon::isHighPtMuon(*muPtr, pv)); // 
+        bs.addUserInt("mu_id_trk_high_pt",         muon::isTrackerHighPtMuon(*muPtr, pv)); // 
         bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(reco::Muon::Selector(6))); // 
         bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(reco::Muon::Selector(7))); // 
         bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(reco::Muon::Selector(8))); // 

@@ -231,7 +231,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_7_4) << std::endl;
         pass_7_4 = true;
         prescale_7_4  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_7_4));
-        prescale_7_4 *= 5;
       }
 
     }
@@ -244,7 +243,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_8_3) << std::endl;
         pass_8_3      = true;
         prescale_8_3  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_8_3));
-        prescale_8_3 *= 5;
       }
 
     }
@@ -257,7 +255,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_8_5) << std::endl;
         pass_8_5 = true;
         prescale_8_5  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_8_5));
-        prescale_8_5 *= 5;
       }
 
     }
@@ -270,7 +267,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_8_6) << std::endl;
         pass_8_6 = true;
         prescale_8_6  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_8_6));
-        prescale_8_6 *= 5;
       }
 
     }
@@ -285,7 +281,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_8p5_3p5) << std::endl;
         pass_8p5_3p5 = true;
         prescale_8p5_3p5  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_8p5_3p5));
-        prescale_8p5_3p5 *= 5;
       }
 
     }
@@ -300,7 +295,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_9_4) << std::endl;
         pass_9_4 = true;
         prescale_9_4  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_9_4));
-        prescale_9_4 *= 5;
       }
 
     }
@@ -313,7 +307,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_9_5) << std::endl;
         pass_9_5 = true;
         prescale_9_5  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_9_5));
-        prescale_9_5 *= 5;
       }
 
     }
@@ -326,7 +319,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_9_6) << std::endl;
         pass_9_6 = true;
         prescale_9_6  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_9_6));
-        prescale_9_6 *= 5;
       }
 
     }
@@ -340,7 +332,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_10p5_3p5) << std::endl;
         pass_10p5_3p5 = true;
         prescale_10p5_3p5  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_10p5_3p5));
-        prescale_10p5_3p5 *= 5;
       }
 
     }
@@ -357,7 +348,6 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         //std::cout << "accepted ? " << triggerBits->accept(index_12_6) << std::endl;
         pass_12_6 = true;
         prescale_12_6  = static_cast<int>(triggerPrescales->getPrescaleForIndex<double>(index_12_6));
-        prescale_12_6 *= 5;
       }
 
     }

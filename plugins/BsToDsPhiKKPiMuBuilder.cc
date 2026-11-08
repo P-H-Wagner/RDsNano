@@ -1452,45 +1452,45 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
 
-        bs.addUserInt("mu_id_loose",               muPtr->passed(0)); // 
-        bs.addUserInt("mu_id_medium",              muPtr->passed(1)); // 
-        bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(2)); // 
-        bs.addUserInt("mu_id_tight",               muPtr->passed(3)); // 
-        bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(4)); // 
-        bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(5)); // 
-        bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(6)); // 
-        bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(7)); // 
-        bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(8)); // 
-        bs.addUserInt("mu_pf_iso_tight",           muPtr->passed(9)); // 
-        bs.addUserInt("mu_pf_iso_very_tight",      muPtr->passed(10)); // 
+        bs.addUserInt("mu_id_loose",               muPtr->passed(reco::Muon::Selector(0))); // 
+        bs.addUserInt("mu_id_medium",              muPtr->passed(reco::Muon::Selector(1))); // 
+        bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(reco::Muon::Selector(2))); // 
+        bs.addUserInt("mu_id_tight",               muPtr->passed(reco::Muon::Selector(3))); // 
+        bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(reco::Muon::Selector(4))); // 
+        bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(reco::Muon::Selector(5))); // 
+        bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(reco::Muon::Selector(6))); // 
+        bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(reco::Muon::Selector(7))); // 
+        bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(reco::Muon::Selector(8))); // 
+        bs.addUserInt("mu_pf_iso_tight",           muPtr->passed(reco::Muon::Selector(9))); // 
+        bs.addUserInt("mu_pf_iso_very_tight",      muPtr->passed(reco::Muon::Selector(10))); // 
 
-        bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(11)); // 
-        bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(12)); // 
-        bs.addUserInt("mu_id_soft",                muPtr->passed(13)); // 
-        bs.addUserInt("mu_id_soft_mva",            muPtr->passed(14)); // 
-        bs.addUserInt("mu_mva_loose",              muPtr->passed(15)); // 
-        bs.addUserInt("mu_mva_medium",             muPtr->passed(16)); // 
-        bs.addUserInt("mu_mva_tight",              muPtr->passed(17)); // 
-        bs.addUserInt("mu_mini_iso_loose",         muPtr->passed(18)); // 
-        bs.addUserInt("mu_mini_iso_medium",        muPtr->passed(19)); // 
-        bs.addUserInt("mu_mini_iso_tight",         muPtr->passed(20)); // 
+        bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(reco::Muon::Selector(11))); // 
+        bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(reco::Muon::Selector(12))); // 
+        bs.addUserInt("mu_id_soft",                muPtr->passed(reco::Muon::Selector(13))); // 
+        bs.addUserInt("mu_id_soft_mva",            muPtr->passed(reco::Muon::Selector(14))); // 
+        bs.addUserInt("mu_mva_loose",              muPtr->passed(reco::Muon::Selector(15))); // 
+        bs.addUserInt("mu_mva_medium",             muPtr->passed(reco::Muon::Selector(16))); // 
+        bs.addUserInt("mu_mva_tight",              muPtr->passed(reco::Muon::Selector(17))); // 
+        bs.addUserInt("mu_mini_iso_loose",         muPtr->passed(reco::Muon::Selector(18))); // 
+        bs.addUserInt("mu_mini_iso_medium",        muPtr->passed(reco::Muon::Selector(19))); // 
+        bs.addUserInt("mu_mini_iso_tight",         muPtr->passed(reco::Muon::Selector(20))); // 
 
-        bs.addUserInt("mu_mini_iso_very_tight",    muPtr->passed(21)); // 
-        bs.addUserInt("mu_trigger_id_loose",       muPtr->passed(22)); // 
-        bs.addUserInt("mu_in_time_muon",           muPtr->passed(23)); // 
-        bs.addUserInt("mu_pf_iso_very_very_tight", muPtr->passed(24)); // 
-        bs.addUserInt("mu_multi_iso_loose",        muPtr->passed(25)); // 
-        bs.addUserInt("mu_multi_iso_medium",       muPtr->passed(26)); // 
-        bs.addUserInt("mu_puppi_iso_loose",        muPtr->passed(27)); // 
-        bs.addUserInt("mu_puppi_iso_medium",       muPtr->passed(28)); // 
-        bs.addUserInt("mu_puppi_iso_tight",        muPtr->passed(29)); // 
-        bs.addUserInt("mu_mva_v_tight",            muPtr->passed(30)); // 
+        bs.addUserInt("mu_mini_iso_very_tight",    muPtr->passed(reco::Muon::Selector(21))); // 
+        bs.addUserInt("mu_trigger_id_loose",       muPtr->passed(reco::Muon::Selector(22))); // 
+        bs.addUserInt("mu_in_time_muon",           muPtr->passed(reco::Muon::Selector(23))); // 
+        bs.addUserInt("mu_pf_iso_very_very_tight", muPtr->passed(reco::Muon::Selector(24))); // 
+        bs.addUserInt("mu_multi_iso_loose",        muPtr->passed(reco::Muon::Selector(25))); // 
+        bs.addUserInt("mu_multi_iso_medium",       muPtr->passed(reco::Muon::Selector(26))); // 
+        bs.addUserInt("mu_puppi_iso_loose",        muPtr->passed(reco::Muon::Selector(27))); // 
+        bs.addUserInt("mu_puppi_iso_medium",       muPtr->passed(reco::Muon::Selector(28))); // 
+        bs.addUserInt("mu_puppi_iso_tight",        muPtr->passed(reco::Muon::Selector(29))); // 
+        bs.addUserInt("mu_mva_v_tight",            muPtr->passed(reco::Muon::Selector(30))); // 
 
-        bs.addUserInt("mu_mva_vv_tight",           muPtr->passed(31)); // 
-        bs.addUserInt("mu_low_pt_mva_loose",       muPtr->passed(32)); // 
-        bs.addUserInt("mu_low_pt_mva_medium",      muPtr->passed(33)); // 
-        bs.addUserInt("mu_mv_id_wp_medium",        muPtr->passed(34)); // 
-        bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(35)); // 
+        bs.addUserInt("mu_mva_vv_tight",           muPtr->passed(reco::Muon::Selector(31))); // 
+        bs.addUserInt("mu_low_pt_mva_loose",       muPtr->passed(reco::Muon::Selector(32))); // 
+        bs.addUserInt("mu_low_pt_mva_medium",      muPtr->passed(reco::Muon::Selector(33))); // 
+        bs.addUserInt("mu_mv_id_wp_medium",        muPtr->passed(reco::Muon::Selector(34))); // 
+        bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(reco::Muon::Selector(35))); // 
 
 
         // fitted mass uncertainties: sigma (sqrt of the 6,6 covariance element), not the variance as before;

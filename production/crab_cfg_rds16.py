@@ -25,6 +25,11 @@ SAMPLES = {
            True, '106X_upgrade2018_realistic_v16_L1v1', 6, 6),     # 33k ev/file
   'hb'  : ('/HbToDsMu_DsToPhiKKPi_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM',
            True, '106X_upgrade2018_realistic_v16_L1v1', 8, 8),     # 26k ev/file
+  # extensions (Ric, 8 Nov: include them in the full production); same campaign and global tag as the main samples
+  'sig_ext': ('/BsToDsL_DsToPhiKKPi_TauToMuNuNu_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1_ext1-v2/MINIAODSIM',
+              True, '106X_upgrade2018_realistic_v16_L1v1', 5, 5),     # 46k ev/file
+  'hb_ext' : ('/HbToDsMu_DsToPhiKKPi_TuneCP5_13TeV_pythia8-evtgen/RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1_ext1-v2/MINIAODSIM',
+              True, '106X_upgrade2018_realistic_v16_L1v1', 11, 11),   # 19k ev/file
 }
 # QCD MuEnrichedPt5 (no Custom_RDStarPU_BParking version exists in DAS): standard UL18 MiniAODv2, same PAT global tag
 # as signal/Hb (106X_upgrade2018_realistic_v16_L1v1), BParking HLT paths in the menu, standard 2018 pile-up profile.

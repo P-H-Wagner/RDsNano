@@ -73,8 +73,9 @@ inline HitContent hitContent(const reco::Track& trk) {
 // ---------------------------------------------------------------- mass error
 // sigma(m) of a system of tracks by linear propagation of the (q/p, lambda, phi) block of each track's
 // covariance (tracks independent). p: calibrated 3-momentum and mass of each track; cov: the covariance of
-// the track as in the fits; f: calibration factor (q/p row/column scaled by 1/f as Bmmm's fit_track; 1 in
-// data); scal: relative q/p resolution of the calibration without the random number (NaN if none).
+// the track; f: calibration factor applied here to the q/p row/column (1/f, as Bmmm's fit_track): pass 1 when
+// cov is already the calibrated covariance (the builder's calibCov) and in data; scal: relative q/p resolution of
+// the calibration without the random number (NaN if none).
 // Returns {sigma, sigma_cal}: sigma_cal adds (J_qp * scal * q/p)^2 per track (NaN if any scal is NaN).
 struct MassErrTrack {
   double px, py, pz, m;

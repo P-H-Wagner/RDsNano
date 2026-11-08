@@ -812,21 +812,32 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         //std::cout << "k1 track pt before: " << k1Track.pt() << std::endl;
 
 
+        // The calibration scales the momentum by f (MC): q/p -> (q/p)/f. Its uncertainty scales with it,
+        // i.e. the q/p row and column of the covariance by 1/f (D C D, D = diag(1/f,1,1,1,1)), so that the
+        // relative momentum resolution of the track is unchanged, as Bmmm TrackRecord.fit_track.
+        // f <= 0: no calibration (data).
+        auto calibCov = [](reco::TrackBase::CovarianceMatrix c, double f) {
+          if (f > 0 && f != 1.) {
+            for (int i = 1; i < 5; ++i) c(0, i) /= f;   // symmetric storage: (0,i) == (i,0)
+            c(0, 0) /= f * f;
+          }
+          return c;
+        };
         reco::Track newTrackMu ( muTrack.chi2(), muTrack.ndof(), muTrack.referencePoint(),
                                  trackVectorMu, //thats the only thing that changed!
-                                 muTrack.charge(), muTrack.covariance() , muTrack.algo());
+                                 muTrack.charge(), calibCov(muTrack.covariance(), f_muCorr), muTrack.algo());
 
         reco::Track newTrackK1 ( k1Track.chi2(), k1Track.ndof(), k1Track.referencePoint(),
                                  trackVectorK1, //thats the only thing that changed!
-                                 k1Track.charge(), k1Track.covariance() , k1Track.algo());
+                                 k1Track.charge(), calibCov(k1Track.covariance(), f_k1), k1Track.algo());
 
         reco::Track newTrackK2 ( k2Track.chi2(), k2Track.ndof(), k2Track.referencePoint(),
                                  trackVectorK2, //thats the only thing that changed!
-                                 k2Track.charge(), k2Track.covariance() , k2Track.algo());
+                                 k2Track.charge(), calibCov(k2Track.covariance(), f_k2), k2Track.algo());
 
         reco::Track newTrackPi ( piTrack.chi2(), piTrack.ndof(), piTrack.referencePoint(),
                                  trackVectorPi, //thats the only thing that changed!
-                                 piTrack.charge(), piTrack.covariance() , piTrack.algo());
+                                 piTrack.charge(), calibCov(piTrack.covariance(), f_pi), piTrack.algo());
 
         //std::cout << "k1 track pt: " << newTrackK1.pt() << std::endl;
 
@@ -1960,7 +1971,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           auto met = [&](const math::PtEtaPhiMLorentzVector& v, const edm::Ptr<pat::PackedCandidate>& c,
                          const reco::Track& t, double f) {
             const double scal = mc ? trkCalib->resolution(c->pt(), c->eta(), "nominal", rdscalib::Kind::Hadron) : NAN;
-            return bmmm::MassErrTrack{v.Px(), v.Py(), v.Pz(), v.M(), c->charge(), t.covariance(), f > 0 ? f : 1., scal};
+            return bmmm::MassErrTrack{v.Px(), v.Py(), v.Pz(), v.M(), c->charge(), t.covariance(), 1., scal};  // covariance already scaled by 1/f (calibCov)
           };
           const auto mk1 = met(k1Vec, k1Ptr, k1TrackCorr, f_k1);
           const auto mk2 = met(k2Vec, k2Ptr, k2TrackCorr, f_k2);

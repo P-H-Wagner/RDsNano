@@ -1542,6 +1542,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("pv_redchi2", pv.normalizedChi2());
         bs.addUserFloat("pv_prob",    ChiSquaredProbability(pv.chi2(), pv.ndof()));
         bs.addUserInt  ("pv_idx",     pvIdx);
+        // PV covariance (cm^2) and number of tracks of the refit, as Bmmm pv_cov_* / pv_ntrk
+        bs.addUserFloat("pv_cov_xx",  pv.covariance(0,0));
+        bs.addUserFloat("pv_cov_xy",  pv.covariance(0,1));
+        bs.addUserFloat("pv_cov_xz",  pv.covariance(0,2));
+        bs.addUserFloat("pv_cov_yy",  pv.covariance(1,1));
+        bs.addUserFloat("pv_cov_yz",  pv.covariance(1,2));
+        bs.addUserFloat("pv_cov_zz",  pv.covariance(2,2));
+        bs.addUserInt  ("pv_ntrk",    static_cast<int>(pv.tracksSize()));
 
         // save also the x,y components without beamspot calculation 
         bs.addUserFloat("pv_x_wout_bs",  pv_general.x()); 

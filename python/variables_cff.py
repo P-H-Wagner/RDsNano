@@ -407,6 +407,19 @@ genVariables = cms.PSet(
         fv_z          = Var("userFloat('fv_z_gen')",float),
 
         numTrueInts   = Var("userFloat('numTrueInts')", float),
+        # ---- Bmmm candidate truth (plugins/genBmmm.h; own track->gen matching, dR < 0.03)
+        cand            = Var("userFloat('cand')", float, doc="Bmmm gen_cand: 0 Ds mu, 1 Ds* mu, 2 Ds tau, 3 Ds* tau, 10 Bs feed-down, 11 Bs double charm, 12-15 Ds from B0/B+/Lb/other b, 20 Ds and mu from different b, 21 mu not from b, 30 KKpi not from one Ds, -1 <4 tracks matched"),
+        ds_true         = Var("userFloat('ds_true')", float, doc="K K pi from one Ds"),
+        charm_pdgid     = Var("userFloat('charm_pdgid')", float, doc="common charm ancestor of K K pi"),
+        ds_mother_pdgid = Var("userFloat('ds_mother_pdgid')", float),
+        ds_b_pdgid      = Var("userFloat('ds_b_pdgid')", float, doc="b hadron of the Ds (first copy)"),
+        mu_b_pdgid      = Var("userFloat('mu_b_pdgid')", float, doc="b hadron of the muon (first copy)"),
+        mu_mother_pdgid = Var("userFloat('mu_mother_pdgid')", float),
+        mu_from_tau     = Var("userFloat('mu_from_tau')", float),
+        same_b          = Var("userFloat('same_b')", float, doc="Ds and muon from the same b hadron"),
+        n_matched       = Var("userFloat('n_matched')", float, doc="tracks matched to gen (0-4)"),
+        ds_b_ct         = Var("userFloat('ds_b_ct')", float, doc="c*t [cm] of the b hadron of the Ds (lifetime reweighting)"),
+        mu_b_ct         = Var("userFloat('mu_b_ct')", float, doc="c*t [cm] of the b hadron of the muon"),
         numPUInts     = Var("userInt('numPUInts')"  , int),
 
         m2_miss       = ufloat('m2_miss_gen'),

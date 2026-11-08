@@ -40,6 +40,7 @@
 #include <cmath>
 #include "KinVtxFitter.h" //--> not needed now 
 #include "helper.h" // helper functions
+#include "genBmmm.h" // Bmmm candidate truth (gen_cand, gen_ds_b_ct, ...), same definitions
 // include "PxPyPzMVector.h" // to new :(
 #include "TLorentzVector.h" // use this instead 
 #include "TVector3.h" // for boost vector
@@ -237,6 +238,17 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
       numTrueInts = iPU->getTrueNumInteractions();
       numPUInts   = iPU->getPU_NumInteractions();
     }
+  }
+
+  // status-1 charged gen particles for the Bmmm-style track matching (pruned + packed), once per event
+  std::vector<const reco::Candidate*> genChargedBmmm;
+  for (const auto& p : *prunedGen) {
+    const int a = std::abs(p.pdgId());
+    if (p.status() == 1 && (a == 11 || a == 13 || a == 211 || a == 321 || a == 2212)) genChargedBmmm.push_back(&p);
+  }
+  for (const auto& p : *packedGen) {
+    const int a = std::abs(p.pdgId());
+    if (a == 11 || a == 13 || a == 211 || a == 321 || a == 2212) genChargedBmmm.push_back(&p);
   }
 
   // to save 
@@ -1300,6 +1312,28 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   
           //append candidate at the end of our return value :)
           //ret_value can be a vector!!
+          // ---- Bmmm candidate truth (RDsGenHistory.classify_candidate), independent of the matching above:
+          //      each track matched to the closest same-charge status-1 gen particle within dR < 0.03
+          {
+            const double drBmmm = 0.03;
+            auto m = [&](const reco::CandidatePtr& c) {
+              return bmmmgen::matchTrack(c->eta(), c->phi(), c->charge(), genChargedBmmm, drBmmm);
+            };
+            const bmmmgen::CandTruth t = bmmmgen::classifyCandidate(m(k1Bs), m(k2Bs), m(piBs), m(muBs));
+            gen.addUserFloat("cand",            t.cand);
+            gen.addUserFloat("ds_true",         t.ds_true);
+            gen.addUserFloat("charm_pdgid",     t.charm_pdgid);
+            gen.addUserFloat("ds_mother_pdgid", t.ds_mother_pdgid);
+            gen.addUserFloat("ds_b_pdgid",      t.ds_b_pdgid);
+            gen.addUserFloat("mu_b_pdgid",      t.mu_b_pdgid);
+            gen.addUserFloat("mu_mother_pdgid", t.mu_mother_pdgid);
+            gen.addUserFloat("mu_from_tau",     t.mu_from_tau);
+            gen.addUserFloat("same_b",          t.same_b);
+            gen.addUserFloat("n_matched",       t.n_matched);
+            gen.addUserFloat("ds_b_ct",         t.ds_b_ct);
+            gen.addUserFloat("mu_b_ct",         t.mu_b_ct);
+          }
+
           ret_value->emplace_back(gen);
           //ret_value_gen->emplace_back(gen);
   

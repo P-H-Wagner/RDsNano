@@ -28,13 +28,20 @@ from PhysicsTools.RDsNano.muonsBPark_cff import *
 # Bs chain collection
 from PhysicsTools.RDsNano.BsToDsPhiKKPiMu_cff import *
 
+# L1 seeds of the parking paths: decision + brilcalc prescale (plugins/L1SeedsTableProducer.cc, as Bmmm)
+l1SeedsTable = cms.EDProducer("L1SeedsTableProducer",
+    src     = cms.InputTag("gtStage2Digis"),
+    name    = cms.string("L1"),
+    payload = cms.string("PhysicsTools/RDsNano/data/l1_seeds_bparking2018.json"),
+)
+
 # gen matching 
 from PhysicsTools.RDsNano.genMatching_cff import *
 
 
 def nanoAOD_customizeStart(process):
     # from PhysiscsTools.NanoAOD
-    process.nanoSequence = cms.Sequence(nanoMetadata + globalTables)
+    process.nanoSequence = cms.Sequence(nanoMetadata + globalTables + l1SeedsTable)
     return process
 
 def nanoAOD_customizeMuonTriggerBPark(process):  #delete trigger inside

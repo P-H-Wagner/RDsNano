@@ -1766,9 +1766,14 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bsCovFixed(2,1) = bsCov(2,1);
         bsCovFixed(2,2) = bsCov(2,2);
 
+        // beam spot evaluated at the z of the candidate PV (follows the beam-line tilt), as Bmmm
+        // build_beamspot_vertex(beamspot, pv.z()); its error is the beam-spot POSITION error (covariance3D()
+        // == covariance(): the beam width is not included, in either code)
+        const reco::TrackBase::Point bsAtPV(beamSpot.x(pv.z()), beamSpot.y(pv.z()), beamSpot.z0());
 
-        float dxyMu_beamSpot        = muTrackCorr.dxy(beamSpot.position());  
-        float dxyMuErr_beamSpot     = muTrackCorr.dxyError(beamSpot.position(),bsCovFixed);  
+
+        float dxyMu_beamSpot        = muTrackCorr.dxy(bsAtPV);  
+        float dxyMuErr_beamSpot     = muTrackCorr.dxyError(bsAtPV,bsCovFixed);  
         float dxyMuSig_beamSpot     = dxyMu_beamSpot/dxyMuErr_beamSpot;
 
 
@@ -1889,7 +1894,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("mu_cov_scale_dxy",        muCovScaleDxy);
         bs.addUserFloat("dxy_mu_err_pv_raw",       muTrackNoMorph.dxyError(pv.position(), pv.covariance()));
         bs.addUserFloat("dz_mu_err_pv_raw",        muTrackNoMorph.dzError());
-        bs.addUserFloat("dxy_mu_err_beamSpot_raw", muTrackNoMorph.dxyError(beamSpot.position(), bsCovFixed));
+        bs.addUserFloat("dxy_mu_err_beamSpot_raw", muTrackNoMorph.dxyError(bsAtPV, bsCovFixed));
 
         // ---- kaon impact parameters (as the muon / pion ones above) and the pion one w.r.t. the beam spot
         auto addIP = [&](const reco::Track& t, const std::string& n, bool withPV) {
@@ -1905,8 +1910,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
             bs.addUserFloat("dz_"  + n + "_err_pv", dzE);
             bs.addUserFloat("dz_"  + n + "_sig_pv", dz / dzE);
           }
-          const float bdxy  = t.dxy(beamSpot.position());
-          const float bdxyE = t.dxyError(beamSpot.position(), bsCovFixed);
+          const float bdxy  = t.dxy(bsAtPV);
+          const float bdxyE = t.dxyError(bsAtPV, bsCovFixed);
           bs.addUserFloat("dxy_" + n + "_beamSpot",     bdxy);
           bs.addUserFloat("dxy_" + n + "_err_beamSpot", bdxyE);
           bs.addUserFloat("dxy_" + n + "_sig_beamSpot", bdxy / bdxyE);

@@ -190,7 +190,7 @@ private:
   const double maxdzDiffHadMuon_; 
   const double maxdxyHadPv_; 
   const double phiMassAllowance_;
-  const double dsMassMin_;   // m(KKpi) window on the raw momenta (Bmmm kkpi_min / kkpi_max)
+  const double dsMassMin_;   // m(KKpi) window on the calibrated momenta (Bmmm kkpi_min / kkpi_max)
   const double dsMassMax_;
   const double dsStarMassAllowance_;
   const double drMatchGen_;
@@ -640,18 +640,6 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       k2Sel2Counter++;
 
       //////////////////////////////////////////////////////////////////
-      // phi mass window on the RAW momenta (as Bmmm: the selection   //
-      // does not depend on the MC momentum calibration). It depends  //
-      // only on the kaon pair, so it is checked before the pions.    //
-      //////////////////////////////////////////////////////////////////
-
-      {
-        const math::PtEtaPhiMLorentzVector kARaw(kAPtr->pt(), kAPtr->eta(), kAPtr->phi(), kMass_);
-        const math::PtEtaPhiMLorentzVector kBRaw(kBPtr->pt(), kBPtr->eta(), kBPtr->phi(), kMass_);
-        if (fabs((kARaw + kBRaw).M() - phiMass_) > phiMassAllowance_) continue;
-      }
-
-      //////////////////////////////////////////////////////////////////
       // K momentum correction (MC), then k1 = the kaon with the      //
       // higher calibrated pT (as Bmmm)                               //
       //////////////////////////////////////////////////////////////////
@@ -687,6 +675,9 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
       //define a composite candidate pair (calibrated momenta)
       math::PtEtaPhiMLorentzVector kkVec = k1VecCorr + k2VecCorr;
+
+      // phi mass window on the CALIBRATED momenta (MC; data are not calibrated), as Bmmm (phi_window)
+      if (fabs(kkVec.M() - phiMass_) > phiMassAllowance_) continue;
 
       int kkCharge = k1Ptr->charge() + k2Ptr->charge();
       nPhiMassCut++;
@@ -737,16 +728,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         math::PtEtaPhiMLorentzVector phiPiVec = kkVec + piVec;
 
-        // Ds and Bs mass windows on the RAW momenta, as Bmmm (RDsCuts kkpi_min/kkpi_max, max_mass): the
-        // selection does not depend on the MC momentum calibration
+        // Ds and Bs mass windows on the CALIBRATED momenta (MC; data are not calibrated), as Bmmm
+        // (RDsCuts kkpi_min / kkpi_max / max_mass, evaluated on its calibrated RDsTrack momenta)
         {
-          const math::PtEtaPhiMLorentzVector k1Raw(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), kMass_);
-          const math::PtEtaPhiMLorentzVector k2Raw(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), kMass_);
-          const math::PtEtaPhiMLorentzVector piRaw(piPtr->pt(), piPtr->eta(), piPtr->phi(), piMass_);
-          const math::PtEtaPhiMLorentzVector muRaw(muPtr->pt(), muPtr->eta(), muPtr->phi(), muMass_);
-          const double mKKPiRaw = (k1Raw + k2Raw + piRaw).M();
-          if (mKKPiRaw < dsMassMin_ || mKKPiRaw > dsMassMax_) continue;
-          if ((k1Raw + k2Raw + piRaw + muRaw).M() > maxBsMass_) continue;
+          const double mKKPi = phiPiVec.M();
+          if (mKKPi < dsMassMin_ || mKKPi > dsMassMax_) continue;
+          if ((phiPiVec + muVecCorr).M() > maxBsMass_) continue;
         }
         
 

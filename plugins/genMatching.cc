@@ -1045,8 +1045,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
 
                //define helicity angles
 
-               //test lhcb method on gen
-               TLorentzVector lhcbBsTlvGen = lhcbMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
                //std::cout << "this is the gen matched case: " << std::endl;
                std::tuple<std::vector<TLorentzVector>,float> recoResultGen = recoMethod(genDsTlv + genMuTlv, pv_x_gen, pv_y_gen, pv_z_gen, sv_x_gen, sv_y_gen, sv_z_gen, bsMass_);      
 
@@ -1062,22 +1060,17 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                gen.addUserInt("disc_is_negative_gen", discIsNegativeGen); 
                gen.addUserFloat("disc_negativity_gen", discNegativityGen); 
 
-               gen.addUserFloat("bs_gen_lhcb_pt",   lhcbBsTlvGen.Pt());
-               gen.addUserFloat("bs_gen_lhcb_eta",  lhcbBsTlvGen.Eta());
-               gen.addUserFloat("bs_gen_lhcb_phi",  lhcbBsTlvGen.Phi());
 
                //angle between Mu and W
 
 
                float angMuWGen = angMuW(genDsTlv,genBsTlv,genMuTlv); 
 
-               float angMuWGenLhcb  = angMuW(genDsTlv,lhcbBsTlvGen,genMuTlv); 
                float angMuWGenReco1 = angMuW(genDsTlv,reco1BsTlvGen,genMuTlv); 
                float angMuWGenReco2 = angMuW(genDsTlv,reco2BsTlvGen,genMuTlv); 
 
                gen.addUserFloat("angMuWGen",angMuWGen);
                gen.addUserFloat("cosMuWGen",cos(angMuWGen));
-               gen.addUserFloat("cosMuWGenLhcb",cos(angMuWGenLhcb));
                gen.addUserFloat("cosMuWGenReco1",cos(angMuWGenReco1));
                gen.addUserFloat("cosMuWGenReco2",cos(angMuWGenReco2));
 
@@ -1093,13 +1086,11 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
                // equivalently, angle between phi(pi) and bs in ds rest frame
                float angPhiDsGen = angDsPi(genDsTlv,  genPhiTlv, genBsTlv);
                float angPiDsGen  = angDsPi(genDsTlv,  genPiTlv,  genBsTlv);
-               float angPiDsGenLhcb  = angDsPi(genDsTlv,  genPiTlv,  lhcbBsTlvGen);
 
                gen.addUserFloat("angPhiDsGen", angPhiDsGen);
                gen.addUserFloat("angPiDsGen",  angPiDsGen);
                gen.addUserFloat("cosPhiDsGen", cos(angPhiDsGen));
                gen.addUserFloat("cosPiDsGen",  cos(angPiDsGen));
-               gen.addUserFloat("cosPiDsGenLhcb",  cos(angPiDsGenLhcb));
 
                //plane angle
                float angPlaneBsGen = angPlane(genDsTlv, genBsTlv, genMuTlv, genPiTlv);
@@ -1247,9 +1238,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserInt("disc_is_negative_gen", -9999); 
             gen.addUserFloat("disc_negativity_gen", std::nan("")); 
   
-            gen.addUserFloat("bs_gen_lhcb_pt", std::nan(""));
-            gen.addUserFloat("bs_gen_lhcb_eta", std::nan(""));
-            gen.addUserFloat("bs_gen_lhcb_phi", std::nan(""));
   
             gen.addUserFloat("fv_x_gen"       ,std::nan(""));
             gen.addUserFloat("fv_y_gen"       ,std::nan(""));
@@ -1260,7 +1248,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
   
             gen.addUserFloat("angMuWGen"      ,std::nan(""));
             gen.addUserFloat("cosMuWGen"      ,std::nan(""));
-            gen.addUserFloat("cosMuWGenLhcb"      ,std::nan(""));
             gen.addUserFloat("cosMuWGenReco1"      ,std::nan(""));
             gen.addUserFloat("cosMuWGenReco2"      ,std::nan(""));
   
@@ -1273,7 +1260,6 @@ void genMatching::produce(edm::StreamID, edm::Event &iEvent, const edm::EventSet
             gen.addUserFloat("angPiDsGen"     ,std::nan(""));
             gen.addUserFloat("cosPhiDsGen"    ,std::nan(""));
             gen.addUserFloat("cosPiDsGen"     ,std::nan(""));
-            gen.addUserFloat("cosPiDsGenLhcb"     ,std::nan(""));
   
             gen.addUserFloat("angPlaneBsGen"  ,std::nan(""));
             gen.addUserFloat("cosPlaneBsGen"  ,std::nan(""));

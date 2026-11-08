@@ -190,7 +190,8 @@ private:
   const double maxdzDiffHadMuon_; 
   const double maxdxyHadPv_; 
   const double phiMassAllowance_;
-  const double dsMassAllowance_;
+  const double dsMassMin_;   // m(KKpi) window on the raw momenta (Bmmm kkpi_min / kkpi_max)
+  const double dsMassMax_;
   const double dsStarMassAllowance_;
   const double drMatchGen_;
   const double maxBsMass_;
@@ -292,7 +293,8 @@ BsToDsPhiKKPiMuBuilder::BsToDsPhiKKPiMuBuilder(const edm::ParameterSet& iConfig)
     maxdzDiffHadMuon_   (iConfig.getParameter<double>     ("maxdzDiffHadMuon"   )),
     maxdxyHadPv_        (iConfig.getParameter<double>     ("maxdxyHadPv"        )),
     phiMassAllowance_   (iConfig.getParameter<double>     ("phiMassAllowance"   )),
-    dsMassAllowance_    (iConfig.getParameter<double>     ("dsMassAllowance"    )),
+    dsMassMin_          (iConfig.getParameter<double>     ("dsMassMin"          )),
+    dsMassMax_          (iConfig.getParameter<double>     ("dsMassMax"          )),
     dsStarMassAllowance_(iConfig.getParameter<double>     ("dsStarMassAllowance")),
     drMatchGen_         (iConfig.getParameter<double>     ("drMatchGen"         )),
     maxBsMass_          (iConfig.getParameter<double>     ("maxBsMass"          )),
@@ -622,52 +624,69 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
     for(size_t iK1 = 0; iK1 < hadIdx.size(); ++iK1) {
 
-      const size_t k1Idx = hadIdx[iK1];
-      edm::Ptr<pat::PackedCandidate> k1Ptr = pfAt(k1Idx);
-      float muonK1dR = reco::deltaR(*k1Ptr,*muPtr); // stored in the output
+      const size_t kAIdx = hadIdx[iK1];
+      edm::Ptr<pat::PackedCandidate> kAPtr = pfAt(kAIdx);
 
       //////////////////////////////////////////////////
-      // Loop over k2 (k2Idx > k1Idx, as before)      //
+      // Loop over the second kaon (each pair once)   //
       //////////////////////////////////////////////////
 
       for(size_t iK2 = iK1 + 1; iK2 < hadIdx.size(); ++iK2) {
 
-      const size_t k2Idx = hadIdx[iK2];
-      edm::Ptr<pat::PackedCandidate> k2Ptr = pfAt(k2Idx);
-      float muonK2dR = reco::deltaR(*k2Ptr,*muPtr); // stored in the output
+      const size_t kBIdx = hadIdx[iK2];
+      edm::Ptr<pat::PackedCandidate> kBPtr = pfAt(kBIdx);
 
       k2Sel1Counter++;
       k2Sel2Counter++;
 
       //////////////////////////////////////////////////////////////////
-      // K momentum correction and phi mass window.                   //
-      // Both depend only on (k1, k2), so they are checked here and   //
-      // not for every pion: most KK pairs fail the 20 MeV window and //
-      // never enter the pion loop.                                   //
+      // phi mass window on the RAW momenta (as Bmmm: the selection   //
+      // does not depend on the MC momentum calibration). It depends  //
+      // only on the kaon pair, so it is checked before the pions.    //
       //////////////////////////////////////////////////////////////////
 
-      math::PtEtaPhiMLorentzVector k1VecCorr(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), kMass_ );
-      math::PtEtaPhiMLorentzVector k2VecCorr(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), kMass_ );
-      double f_k1Corr = -1.0;
-      double f_k2Corr = -1.0;
+      {
+        const math::PtEtaPhiMLorentzVector kARaw(kAPtr->pt(), kAPtr->eta(), kAPtr->phi(), kMass_);
+        const math::PtEtaPhiMLorentzVector kBRaw(kBPtr->pt(), kBPtr->eta(), kBPtr->phi(), kMass_);
+        if (fabs((kARaw + kBRaw).M() - phiMass_) > phiMassAllowance_) continue;
+      }
+
+      //////////////////////////////////////////////////////////////////
+      // K momentum correction (MC), then k1 = the kaon with the      //
+      // higher calibrated pT (as Bmmm)                               //
+      //////////////////////////////////////////////////////////////////
+
+      math::PtEtaPhiMLorentzVector kAVecCorr(kAPtr->pt(), kAPtr->eta(), kAPtr->phi(), kMass_ );
+      math::PtEtaPhiMLorentzVector kBVecCorr(kBPtr->pt(), kBPtr->eta(), kBPtr->phi(), kMass_ );
+      double f_kACorr = -1.0;
+      double f_kBCorr = -1.0;
 
       if (!iEvent.isRealData()) {
         const auto& id    = iEvent.id();
-        const double z_k1 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(k1Idx));
-        const double z_k2 = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(k2Idx));
-        f_k1Corr  = trkCalib->factor(k1Ptr->p(), k1Ptr->pt(), k1Ptr->eta(), k1Ptr->charge(), z_k1);
-        f_k2Corr  = trkCalib->factor(k2Ptr->p(), k2Ptr->pt(), k2Ptr->eta(), k2Ptr->charge(), z_k2);
-        k1VecCorr = math::PtEtaPhiMLorentzVector(k1VecCorr.Pt() * f_k1Corr, k1VecCorr.Eta(), k1VecCorr.Phi(), kMass_);
-        k2VecCorr = math::PtEtaPhiMLorentzVector(k2VecCorr.Pt() * f_k2Corr, k2VecCorr.Eta(), k2VecCorr.Phi(), kMass_);
+        const double z_kA = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(kAIdx));
+        const double z_kB = trkCalib->gauss(id.run(), id.luminosityBlock(), static_cast<int64_t>(id.event()), calibKey(kBIdx));
+        f_kACorr  = trkCalib->factor(kAPtr->p(), kAPtr->pt(), kAPtr->eta(), kAPtr->charge(), z_kA);
+        f_kBCorr  = trkCalib->factor(kBPtr->p(), kBPtr->pt(), kBPtr->eta(), kBPtr->charge(), z_kB);
+        kAVecCorr = math::PtEtaPhiMLorentzVector(kAVecCorr.Pt() * f_kACorr, kAVecCorr.Eta(), kAVecCorr.Phi(), kMass_);
+        kBVecCorr = math::PtEtaPhiMLorentzVector(kBVecCorr.Pt() * f_kBCorr, kBVecCorr.Eta(), kBVecCorr.Phi(), kMass_);
       }
+
+      const bool kSwap = kBVecCorr.Pt() > kAVecCorr.Pt();
+      const size_t k1Idx = kSwap ? kBIdx : kAIdx;
+      const size_t k2Idx = kSwap ? kAIdx : kBIdx;
+      edm::Ptr<pat::PackedCandidate> k1Ptr = kSwap ? kBPtr : kAPtr;
+      edm::Ptr<pat::PackedCandidate> k2Ptr = kSwap ? kAPtr : kBPtr;
+      const math::PtEtaPhiMLorentzVector k1VecCorr = kSwap ? kBVecCorr : kAVecCorr;
+      const math::PtEtaPhiMLorentzVector k2VecCorr = kSwap ? kAVecCorr : kBVecCorr;
+      const double f_k1Corr = kSwap ? f_kBCorr : f_kACorr;
+      const double f_k2Corr = kSwap ? f_kACorr : f_kBCorr;
+      float muonK1dR = reco::deltaR(*k1Ptr,*muPtr); // stored in the output
+      float muonK2dR = reco::deltaR(*k2Ptr,*muPtr); // stored in the output
 
       nKKPiMu++; // now counts KK pairs (was: KK pi triplets)
 
-      //define a composite candidate pair 
+      //define a composite candidate pair (calibrated momenta)
       math::PtEtaPhiMLorentzVector kkVec = k1VecCorr + k2VecCorr;
-
-      //only continue when they build a phi resonance (see cfg for mass window):
-      if (fabs(kkVec.M() - phiMass_) > phiMassAllowance_) continue;     
 
       int kkCharge = k1Ptr->charge() + k2Ptr->charge();
       nPhiMassCut++;
@@ -717,13 +736,19 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         // ///////////////////////////////////////////////
 
         math::PtEtaPhiMLorentzVector phiPiVec = kkVec + piVec;
-        
-        //only continue when they build a ds resonance, (see cfg for mass window):
 
-        // CHANGE ME BACK!!
-        //if (fabs(phiPi.mass() - dsMass_) > dsMassAllowance_) continue;
-        if (phiPiVec.M() - dsMass_ < -0.220) continue;
-        if (phiPiVec.M() - dsMass_ >  0.182) continue;
+        // Ds and Bs mass windows on the RAW momenta, as Bmmm (RDsCuts kkpi_min/kkpi_max, max_mass): the
+        // selection does not depend on the MC momentum calibration
+        {
+          const math::PtEtaPhiMLorentzVector k1Raw(k1Ptr->pt(), k1Ptr->eta(), k1Ptr->phi(), kMass_);
+          const math::PtEtaPhiMLorentzVector k2Raw(k2Ptr->pt(), k2Ptr->eta(), k2Ptr->phi(), kMass_);
+          const math::PtEtaPhiMLorentzVector piRaw(piPtr->pt(), piPtr->eta(), piPtr->phi(), piMass_);
+          const math::PtEtaPhiMLorentzVector muRaw(muPtr->pt(), muPtr->eta(), muPtr->phi(), muMass_);
+          const double mKKPiRaw = (k1Raw + k2Raw + piRaw).M();
+          if (mKKPiRaw < dsMassMin_ || mKKPiRaw > dsMassMax_) continue;
+          if ((k1Raw + k2Raw + piRaw + muRaw).M() > maxBsMass_) continue;
+        }
+        
 
         //phiPi.setCharge(kk.charge() + piPtr->charge());
         int phiPiCharge = k1Ptr->charge() + k2Ptr->charge() + piPtr->charge();
@@ -735,7 +760,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         math::PtEtaPhiMLorentzVector dsMuVec = phiPiVec + muVec;
 
-        if(dsMuVec.M() > maxBsMass_) continue;
+        // (Bs mass window: above, on the raw momenta)
         nBsMassCut++;
 
         int dsMuCharge = k1Ptr->charge() + k2Ptr->charge() + piPtr->charge() + muPtr->charge();
@@ -2087,37 +2112,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("b_boost_coll_y"  ,-collBsTlv.BoostToCM().Y());
         bs.addUserFloat("b_boost_coll_z"  ,-collBsTlv.BoostToCM().Z());
 
-        //////////////////////////
-        // LHCb method          //
-        //////////////////////////
-
-        math::PtEtaPhiMLorentzVector lhcbBsTlv   = lhcbMethod(dsMuVec, pv_x, pv_y, pv_z, sv_x, sv_y, sv_z, bsMass_);      
-
-        math::PtEtaPhiMLorentzVector lhcbMissTlv = lhcbBsTlv - dsMuVec ;
-        math::PtEtaPhiMLorentzVector lhcbQTlv    = lhcbBsTlv - phiPiVec;
-
-        float m2_miss_lhcb = lhcbMissTlv.M2();
-        float pt_miss_lhcb = lhcbMissTlv.Pt();
-        float q2_lhcb      = lhcbQTlv.M2();
-        float e_star_lhcb  = getEStar(lhcbBsTlv, muVec); 
-
-        bs.addUserFloat("bs_px_lhcb" ,lhcbBsTlv.Px());
-        bs.addUserFloat("bs_py_lhcb" ,lhcbBsTlv.Py());
-        bs.addUserFloat("bs_pz_lhcb" ,lhcbBsTlv.Pz());
-        bs.addUserFloat("bs_pt_lhcb" ,lhcbBsTlv.Pt());
-        bs.addUserFloat("bs_eta_lhcb",lhcbBsTlv.Eta());
-        bs.addUserFloat("bs_phi_lhcb",lhcbBsTlv.Phi());
-
-        bs.addUserFloat("m2_miss_lhcb",m2_miss_lhcb);
-        bs.addUserFloat("pt_miss_lhcb",pt_miss_lhcb);
-        bs.addUserFloat("q2_lhcb"     ,q2_lhcb     );
-        bs.addUserFloat("e_star_lhcb" ,e_star_lhcb );
-
-        bs.addUserFloat("b_boost_lhcb"    ,-lhcbBsTlv.BoostToCM().R());
-        bs.addUserFloat("b_boost_lhcb_x"  ,-lhcbBsTlv.BoostToCM().X());
-        bs.addUserFloat("b_boost_lhcb_y"  ,-lhcbBsTlv.BoostToCM().Y());
-        bs.addUserFloat("b_boost_lhcb_z"  ,-lhcbBsTlv.BoostToCM().Z());
-
+        // (the "LHCb" Bs hypothesis, which scales p_z only and diverges for central Bs, was removed;
+        //  lhcb_alt below, Bs along the flight direction with |p| = |p_vis| m_Bs/m_vis, is kept: Bmmm "xyz")
 
         ///////////////////////////////////////////
         // Another Lhcb method                   //
@@ -2255,13 +2251,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
         //angle between Mu and W
         float angMuWColl    = angMuW(phiPiVec, collBsTlv,   muVec);
-        float angMuWLhcb    = angMuW(phiPiVec, lhcbBsTlv,   muVec);
         float angMuWLhcbAlt = angMuW(phiPiVec, lhcbAltBsTlv,muVec);
         float angMuWReco1   = angMuW(phiPiVec, recoBsTlv1,  muVec);
         float angMuWReco2   = angMuW(phiPiVec, recoBsTlv2,  muVec);
 
         bs.addUserFloat("cosMuWColl",       cos(angMuWColl)); 
-        bs.addUserFloat("cosMuWLhcb",       cos(angMuWLhcb)); 
         bs.addUserFloat("cosMuWLhcbAlt",    cos(angMuWLhcbAlt)); 
         bs.addUserFloat("cosMuWReco1",      cos(angMuWReco1)); 
         bs.addUserFloat("cosMuWReco2",      cos(angMuWReco2)); 
@@ -2272,13 +2266,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         float angPiK2  = angDoubleDecay(kkVec, k2Vec, piVec);
         // equivalently, angle between phi(pi) and bs in ds rest frame
         float angPhiDsColl    = angDsPi( phiPiVec, kkVec,  collBsTlv);
-        float angPhiDsLhcb    = angDsPi( phiPiVec, kkVec,  lhcbBsTlv);
         float angPhiDsLhcbAlt = angDsPi( phiPiVec, kkVec,  lhcbAltBsTlv);
         float angPhiDsReco1   = angDsPi( phiPiVec, kkVec,  recoBsTlv1);
         float angPhiDsReco2   = angDsPi( phiPiVec, kkVec,  recoBsTlv2);
 
         float angPiDsColl    = angDsPi ( phiPiVec, piVec,  collBsTlv);
-        float angPiDsLhcb    = angDsPi ( phiPiVec, piVec,  lhcbBsTlv);
         float angPiDsLhcbAlt = angDsPi ( phiPiVec, piVec,  lhcbAltBsTlv);
         float angPiDsReco1   = angDsPi ( phiPiVec, piVec,  recoBsTlv1);
         float angPiDsReco2   = angDsPi ( phiPiVec, piVec,  recoBsTlv2);
@@ -2288,38 +2280,32 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
         bs.addUserFloat("cosPiK2",         cos(angPiK2)); 
 
         bs.addUserFloat("cosPhiDsColl",    cos(angPhiDsColl)); 
-        bs.addUserFloat("cosPhiDsLhcb",    cos(angPhiDsLhcb)); 
         bs.addUserFloat("cosPhiDsLhcbAlt", cos(angPhiDsLhcbAlt)); 
         bs.addUserFloat("cosPhiDsReco1",   cos(angPhiDsReco1)); 
         bs.addUserFloat("cosPhiDsReco2",   cos(angPhiDsReco2)); 
 
         bs.addUserFloat("cosPiDsColl",     cos(angPiDsColl)); 
-        bs.addUserFloat("cosPiDsLhcb",     cos(angPiDsLhcb)); 
         bs.addUserFloat("cosPiDsLhcbAlt",  cos(angPiDsLhcbAlt)); 
         bs.addUserFloat("cosPiDsReco1",    cos(angPiDsReco1)); 
         bs.addUserFloat("cosPiDsReco2",    cos(angPiDsReco2)); 
 
         // helicity plane angle
         float angPlaneBsColl    = angPlane( phiPiVec, collBsTlv,    muVec, piVec);
-        float angPlaneBsLhcb    = angPlane( phiPiVec, lhcbBsTlv,    muVec, piVec);
         float angPlaneBsLhcbAlt = angPlane( phiPiVec, lhcbAltBsTlv, muVec, piVec);
         float angPlaneBsReco1   = angPlane( phiPiVec, recoBsTlv1,   muVec, piVec);
         float angPlaneBsReco2   = angPlane( phiPiVec, recoBsTlv2,   muVec, piVec);
 
         bs.addUserFloat("cosPlaneBsColl",    cos(angPlaneBsColl));
-        bs.addUserFloat("cosPlaneBsLhcb",    cos(angPlaneBsLhcb));
         bs.addUserFloat("cosPlaneBsLhcbAlt", cos(angPlaneBsLhcbAlt));
         bs.addUserFloat("cosPlaneBsReco1",   cos(angPlaneBsReco1));
         bs.addUserFloat("cosPlaneBsReco2",   cos(angPlaneBsReco2));
 
         float angPlaneDsColl    = angPlane2(phiPiVec, collBsTlv,    k1Vec, piVec);
-        float angPlaneDsLhcb    = angPlane2(phiPiVec, lhcbBsTlv,    k1Vec, piVec);
         float angPlaneDsLhcbAlt = angPlane2(phiPiVec, lhcbAltBsTlv, k1Vec, piVec);
         float angPlaneDsReco1   = angPlane2(phiPiVec, recoBsTlv1,   k1Vec, piVec);
         float angPlaneDsReco2   = angPlane2(phiPiVec, recoBsTlv2,   k1Vec, piVec);
 
         bs.addUserFloat("cosPlaneDsColl",    cos(angPlaneDsColl));
-        bs.addUserFloat("cosPlaneDsLhcb",    cos(angPlaneDsLhcb));
         bs.addUserFloat("cosPlaneDsLhcbAlt", cos(angPlaneDsLhcbAlt));
         bs.addUserFloat("cosPlaneDsReco1",   cos(angPlaneDsReco1));
         bs.addUserFloat("cosPlaneDsReco2",   cos(angPlaneDsReco2));

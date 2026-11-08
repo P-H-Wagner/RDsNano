@@ -398,9 +398,6 @@ genVariables = cms.PSet(
         disc_is_negative = Var("userInt('disc_is_negative_gen')",int),
         disc_negativity  = Var("userFloat('disc_negativity_gen')",float),
 
-        bs_lhcb_pt    = Var("userFloat('bs_gen_lhcb_pt')",float),
-        bs_lhcb_eta   = Var("userFloat('bs_gen_lhcb_eta')",float),
-        bs_lhcb_phi   = Var("userFloat('bs_gen_lhcb_phi')",float),
 
         fv_x          = Var("userFloat('fv_x_gen')",float),
         fv_y          = Var("userFloat('fv_y_gen')",float),
@@ -428,7 +425,6 @@ genVariables = cms.PSet(
         e_star        = ufloat('e_star_gen'),
 
         cosMuW        = Var("userFloat('cosMuWGen')",float),
-        cosMuWLhcb    = Var("userFloat('cosMuWGenLhcb')",float),
         cosMuWReco1   = Var("userFloat('cosMuWGenReco1')",float),
         cosMuWReco2   = Var("userFloat('cosMuWGenReco2')",float),
 
@@ -437,7 +433,6 @@ genVariables = cms.PSet(
         cosPiK2       = Var("userFloat('cosPiK2Gen')",float),
 
         cosPiDs       = Var("userFloat('cosPiDsGen')",float),
-        cosPiDsLhcb   = Var("userFloat('cosPiDsGenLhcb')",float),
 
         cosPhiDs      = Var("userFloat('cosPhiDsGen')",float),
 
@@ -897,31 +892,26 @@ helicityVariables = cms.PSet(
         cosPiK2             = Var("userFloat('cosPiK2')",float),
 
         cosPhiDs_coll       = Var("userFloat('cosPhiDsColl')",float),
-        cosPhiDs_lhcb       = Var("userFloat('cosPhiDsLhcb')",float),
         cosPhiDs_lhcb_alt   = Var("userFloat('cosPhiDsLhcbAlt')",float),
         cosPhiDs_reco_1      = Var("userFloat('cosPhiDsReco1')",float),
         cosPhiDs_reco_2      = Var("userFloat('cosPhiDsReco2')",float),
 
         cosPiDs_coll        = Var("userFloat('cosPiDsColl')",float),
-        cosPiDs_lhcb        = Var("userFloat('cosPiDsLhcb')",float),
         cosPiDs_lhcb_alt    = Var("userFloat('cosPiDsLhcbAlt')",float),
         cosPiDs_reco_1       = Var("userFloat('cosPiDsReco1')",float),
         cosPiDs_reco_2       = Var("userFloat('cosPiDsReco2')",float),
 
         cosMuW_coll         = Var("userFloat('cosMuWColl')",float),
-        cosMuW_lhcb         = Var("userFloat('cosMuWLhcb')",float),
         cosMuW_lhcb_alt     = Var("userFloat('cosMuWLhcbAlt')",float),
         cosMuW_reco_1        = Var("userFloat('cosMuWReco1')",float),
         cosMuW_reco_2        = Var("userFloat('cosMuWReco2')",float),
 
         cosPlaneBs_coll     = Var("userFloat('cosPlaneBsColl')",float),
-        cosPlaneBs_lhcb     = Var("userFloat('cosPlaneBsLhcb')",float),
         cosPlaneBs_lhcb_alt = Var("userFloat('cosPlaneBsLhcbAlt')",float),
         cosPlaneBs_reco_1    = Var("userFloat('cosPlaneBsReco1')",float),
         cosPlaneBs_reco_2    = Var("userFloat('cosPlaneBsReco2')",float),
 
         cosPlaneDs_coll     = Var("userFloat('cosPlaneDsColl')",float),
-        cosPlaneDs_lhcb     = Var("userFloat('cosPlaneDsLhcb')",float),
         cosPlaneDs_lhcb_alt = Var("userFloat('cosPlaneDsLhcbAlt')",float),
         cosPlaneDs_reco_1    = Var("userFloat('cosPlaneDsReco1')",float),
         cosPlaneDs_reco_2    = Var("userFloat('cosPlaneDsReco2')",float),
@@ -949,16 +939,6 @@ bsMomentumVariables = cms.PSet(
         bs_boost_y_coll  = Var("userFloat('b_boost_coll_y')",float),
         bs_boost_z_coll  = Var("userFloat('b_boost_coll_z')",float),
 
-        bs_px_lhcb         = Var("userFloat('bs_px_lhcb')",float),
-        bs_py_lhcb         = Var("userFloat('bs_py_lhcb')",float),
-        bs_pz_lhcb         = Var("userFloat('bs_pz_lhcb')",float),
-        bs_pt_lhcb         = Var("userFloat('bs_pt_lhcb')",float),
-        bs_eta_lhcb        = Var("userFloat('bs_eta_lhcb')",float),
-        bs_phi_lhcb        = Var("userFloat('bs_phi_lhcb')",float),
-        bs_boost_lhcb      = Var("userFloat('b_boost_lhcb')",float),
-        bs_boost_x_lhcb   = Var("userFloat('b_boost_lhcb_x')",float),
-        bs_boost_y_lhcb  = Var("userFloat('b_boost_lhcb_y')",float),
-        bs_boost_z_lhcb  = Var("userFloat('b_boost_lhcb_z')",float),
 
         bs_px_lhcb_alt        = Var("userFloat('bs_px_lhcb_alt')",float),
         bs_py_lhcb_alt        = Var("userFloat('bs_py_lhcb_alt')",float),
@@ -1000,25 +980,21 @@ bsMomentumVariables = cms.PSet(
         #theta = Var("userFloat('theta')",float), 
 
         m2_miss_coll     = Var("userFloat('m2_miss_coll')",float),
-        m2_miss_lhcb     = Var("userFloat('m2_miss_lhcb')",float),
         m2_miss_lhcb_alt = Var("userFloat('m2_miss_lhcb_alt')",float),
         m2_miss_reco_1   = Var("userFloat('m2_miss_reco_1')",float),
         m2_miss_reco_2   = Var("userFloat('m2_miss_reco_2')",float),
 
         pt_miss_coll     = Var("userFloat('pt_miss_coll')",float),
-        pt_miss_lhcb     = Var("userFloat('pt_miss_lhcb')",float),
         pt_miss_lhcb_alt = Var("userFloat('pt_miss_lhcb_alt')",float),
         pt_miss_reco_1   = Var("userFloat('pt_miss_reco_1')",float),
         pt_miss_reco_2   = Var("userFloat('pt_miss_reco_2')",float),
 
         q2_coll          = Var("userFloat('q2_coll')",float),
-        q2_lhcb          = Var("userFloat('q2_lhcb')",float),
         q2_lhcb_alt      = Var("userFloat('q2_lhcb_alt')",float),
         q2_reco_1        = Var("userFloat('q2_reco_1')",float),
         q2_reco_2        = Var("userFloat('q2_reco_2')",float),
 
         e_star_coll          = Var("userFloat('e_star_coll')",float),
-        e_star_lhcb          = Var("userFloat('e_star_lhcb')",float),
         e_star_lhcb_alt      = Var("userFloat('e_star_lhcb_alt')",float),
         e_star_reco_1        = Var("userFloat('e_star_reco_1')",float),
         e_star_reco_2        = Var("userFloat('e_star_reco_2')",float),

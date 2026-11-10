@@ -58,7 +58,9 @@ public:
 
 private:
    
-    OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
+    //OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
+    std::unique_ptr<OAEParametrizedMagneticField> paramField =
+        std::make_unique<OAEParametrizedMagneticField>("3_8T");
 
     // muon selection
     const StringCutObjectSelector<pat::Muon> muSelection_;
@@ -390,6 +392,8 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     ///////////////////////////////////////////
     // Loop over trigger objects and unpack  //
     ///////////////////////////////////////////
+    const size_t nObj = triggerObjects->size();
+
 
     std::vector<bool> passTrigger_Vec          ;
     std::vector<bool> failsSelection_Vec       ;
@@ -404,6 +408,20 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     std::vector<bool> filterLabelMu10p5_3p5_Vec;
     std::vector<bool> filterLabelMu12_6_Vec    ;
 
+    passTrigger_Vec          .reserve(nObj);
+    failsSelection_Vec       .reserve(nObj);
+    filterLabelMu7_4_Vec     .reserve(nObj);
+    filterLabelMu8_3_Vec     .reserve(nObj);
+    filterLabelMu8p5_3p5_Vec .reserve(nObj);
+    filterLabelMu8_5_Vec     .reserve(nObj);
+    filterLabelMu8_6_Vec     .reserve(nObj);
+    filterLabelMu9_4_Vec     .reserve(nObj);
+    filterLabelMu9_5_Vec     .reserve(nObj);
+    filterLabelMu9_6_Vec     .reserve(nObj);
+    filterLabelMu10p5_3p5_Vec.reserve(nObj);
+    filterLabelMu12_6_Vec    .reserve(nObj);
+
+
 
     for(unsigned int objIdx=0; objIdx < triggerObjects->size(); ++objIdx){
 
@@ -411,17 +429,30 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];      
 
       //check pt, eta, and if trigger object is of type muon
-      if (
+
+      const bool fails =
           (std::fabs(trgObj.eta()) > 1.6) || 
           (trgObj.pt() < 6.0)             || 
-          (!trgObj.hasTriggerObjectType(trigger::TriggerMuon)) 
-         ) {
-        failsSelection_Vec.push_back(1);
-      } 
+          (!trgObj.hasTriggerObjectType(trigger::TriggerMuon));
 
-      else failsSelection_Vec.push_back(0);
+      failsSelection_Vec.push_back(fails);
 
-      //std::cout << std::fabs(trgObj.pt()) << std::endl;
+      if (fails) {
+
+        passTrigger_Vec          .push_back(false);
+        filterLabelMu7_4_Vec     .push_back(false);
+        filterLabelMu8_3_Vec     .push_back(false);
+        filterLabelMu8p5_3p5_Vec .push_back(false);
+        filterLabelMu8_5_Vec     .push_back(false);
+        filterLabelMu8_6_Vec     .push_back(false);
+        filterLabelMu9_4_Vec     .push_back(false);
+        filterLabelMu9_5_Vec     .push_back(false);
+        filterLabelMu9_6_Vec     .push_back(false);
+        filterLabelMu10p5_3p5_Vec.push_back(false);
+        filterLabelMu12_6_Vec    .push_back(false);
+        continue;
+
+      }
 
       //unpack trigger labels
       trgObj.unpackFilterLabels(iEvent, *triggerBits);
@@ -490,14 +521,14 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
  
       // validd track ?
       if (muon.bestTrack() == nullptr) continue;
-      const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField);  
+      const reco::TransientTrack ttrackTrgMuon(*(muon.bestTrack()), paramField.get());  
       if (!ttrackTrgMuon.isValid()) continue;
 
       // this is a possible trigger cand 
       patTriggerCand++;
   
       // initialize start values
-      float drMuonTrgObj   = 0.0;
+      float drMuonTrgObj   = maxdR_;
       int   trgObjIdx      = -1;
 
 
@@ -510,14 +541,16 @@ void Trigger::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         if (!passTrigger_Vec.at(objIdx)) continue;
         if (failsSelection_Vec.at(objIdx)) continue;
 
-        pat::TriggerObjectStandAlone trgObj = (*triggerObjects)[objIdx];
+        // take const reference
+        const pat::TriggerObjectStandAlone& trgObj = (*triggerObjects)[objIdx];
 
-        if (trgObj.charge() * muon.charge() < 0) continue; // exclude opposite charge
+        // trgObj have almost always charge 0, so this is not productive
+        //if (trgObj.charge() * muon.charge() < 0) continue; // exclude opposite charge
 
  
         float dr = reco::deltaR(trgObj, muon);
 
-        if( ((dr < drMuonTrgObj) || (trgObjIdx < 0))  && (dr < maxdR_)){
+        if(dr < drMuonTrgObj){
               //modify dR and the reco and triggering muon index
   	      drMuonTrgObj = dr;
   	      trgObjIdx    = objIdx;

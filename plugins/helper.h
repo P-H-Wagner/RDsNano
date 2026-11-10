@@ -199,7 +199,7 @@ inline void printDaughters(const auto mom){
 
 inline bool isAncestor(const auto dau, const int id){
   //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
-  if (fabs(dau->pdgId()) == id){ 
+  if (abs(dau->pdgId()) == id){ 
     return true;
     }
   for(size_t momIdx = 0; momIdx < dau->numberOfMothers(); ++momIdx){
@@ -213,7 +213,7 @@ inline bool isAncestor(const auto dau, const int id){
 
 inline bool isDaughter(const auto mom, const int id){
   //std::cout << "pdgId = "<< dau->pdgId() << std::endl;
-  if (fabs(mom->pdgId()) == id){ 
+  if (abs(mom->pdgId()) == id){ 
     return true;
     }
   for(size_t dauIdx = 0; dauIdx < mom->numberOfDaughters(); ++dauIdx){
@@ -242,7 +242,7 @@ inline bool hasAncestor(const auto dau, const auto mom){
 
 inline std::vector<double> infoAncestor(const auto dau, const int id){
 
-  if (fabs(dau->pdgId()) == id){
+  if (abs(dau->pdgId()) == id){
     return {dau->pt(),dau->eta(),dau->phi(),dau->vx(),dau->vy(),dau->vz()};
   }
 
@@ -263,7 +263,7 @@ inline auto getAncestor(const auto dau, const int id){
 
   //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
   //std::cout << "I am at pdg Id = " << dau->pdgId() << " and vertex vx = " << dau->vx() << "with address" << dau << std::endl; 
-  if ((fabs(dau->pdgId()) == id)){
+  if ((abs(dau->pdgId()) == id)){
     //std::cout << "sucess!" << std::endl;
     return dau;
   }
@@ -300,7 +300,7 @@ inline auto getDaughter(const auto mom, const int id){
 
   //the pointer type changes when accessing moms, VERY ANNOYING IN A RECURSIVE FUNCTION
   //std::cout << "I am at pdg Id = " << mom->pdgId() <<  std::endl; 
-  if ((fabs(mom->pdgId()) == id)){
+  if ((abs(mom->pdgId()) == id)){
     //std::cout << "sucess!" << std::endl;
     return mom;
   }
@@ -486,7 +486,9 @@ inline float angMuW (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVecto
   //now take the angle
   double cosAngle = w_in_b.Vect().Dot(mu_in_w.Vect()) / (w_in_b.P() * mu_in_w.P());
   // clip it at -1 and 1 (prevent nans in acos)
-  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  if      (cosAngle >  1.0) cosAngle =  1.0;
+  else if (cosAngle < -1.0) cosAngle = -1.0;   // NaN fails both tests and stays NaN
+
   return std::acos(cosAngle);
 
 }
@@ -506,7 +508,8 @@ inline float angDoubleDecay (math::PtEtaPhiMLorentzVector restFrame, math::PtEta
   auto dau1_in_rest = ROOT::Math::VectorUtil::boost (dau1, restBoost);
   auto dau2_in_rest = ROOT::Math::VectorUtil::boost (dau2, restBoost);
   double cosAngle = dau1_in_rest.Vect().Dot(dau2_in_rest.Vect()) / (dau1_in_rest.P() * dau2_in_rest.P());
-  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  if      (cosAngle >  1.0) cosAngle =  1.0;
+  else if (cosAngle < -1.0) cosAngle = -1.0;   // NaN fails both tests and stays NaN
   return std::acos(cosAngle);
 }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -531,7 +534,8 @@ inline float angDsPi (math::PtEtaPhiMLorentzVector d, math::PtEtaPhiMLorentzVect
   auto d_in_b   = ROOT::Math::VectorUtil::boost (d  , bBoost);
  
   double cosAngle = dau_in_d.Vect().Dot(d_in_b.Vect()) / (dau_in_d.P() * d_in_b.P());
-  cosAngle = std::max(-1.0, std::min(1.0, cosAngle));
+  if      (cosAngle >  1.0) cosAngle =  1.0;
+  else if (cosAngle < -1.0) cosAngle = -1.0;   // NaN fails both tests and stays NaN
   return std::acos(cosAngle);
 
 }
@@ -931,7 +935,7 @@ inline std::tuple<std::vector<TLorentzVector>, float> recoMethod(TLorentzVector 
     recoNeutPll_2 = -b / (2*a);
     //std::cout << "---- disc is negative!!" << std::endl;
     //std::cout << "disc = " << disc << std::endl;
-    discNegativity = std::sqrt(abs(disc)) / abs(b);
+    discNegativity = std::sqrt(fabs(disc)) / fabs(b);
   }
  
   recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
@@ -970,7 +974,8 @@ inline std::tuple<std::vector<math::PtEtaPhiMLorentzVector>, float> recoMethod(m
   // angle between the bs flight direction and the Dsmu system (visible)
 
   double cosAngle  = dMu.Vect().Dot(bsFlightDir) / (dMu.P() * bsFlightDir.Mag());
-  cosAngle         = std::max(-1.0, std::min(1.0, cosAngle));
+  if      (cosAngle >  1.0) cosAngle =  1.0;
+  else if (cosAngle < -1.0) cosAngle = -1.0;   // NaN fails both tests and stays NaN
   double recoAngle = std::acos(cosAngle); 
                       
   //define parameters 
@@ -1020,7 +1025,7 @@ inline std::tuple<std::vector<math::PtEtaPhiMLorentzVector>, float> recoMethod(m
     recoNeutPll_2 = -b / (2*a);
     //std::cout << "---- disc is negative!!" << std::endl;
     //std::cout << "disc = " << disc << std::endl;
-    discNegativity = std::sqrt(abs(disc)) / abs(b);
+    discNegativity = std::sqrt(fabs(disc)) / fabs(b);
   }
  
   recoBsAbs_1 = recoDsMuPll + recoNeutPll_1; 
@@ -1098,11 +1103,12 @@ inline reco::Track correctCovMat(const reco::Track *tk, double delta){
             cov(i,i) -= min_eig - delta;
     }
 
-    // Debug: check if it worked!
+    //Debug: check if it worked!
     //for (i = 0; i < cov.kRows; i++) {
-    //    for (j = 0; j < cov.kRows; j++) {
-    //      std::cout << cov(i,j) << std::endl;
-    //    }
+    //  for (j = 0; j < cov.kRows; j++) {
+    //    std::cout << cov(i,j) << ",  ";
+    //  }
+    //  std::cout << std::endl;
     //}
 
     return reco::Track(tk->chi2(), tk->ndof(), tk->referencePoint(), tk->momentum(), tk->charge(), cov, tk->algo(), (reco::TrackBase::TrackQuality) tk->qualityMask());
@@ -1329,12 +1335,12 @@ inline double getIP3D(edm::Ptr<reco::Vertex> vtxPtr, double sv_x, double sv_y, d
 ///////////////////////////////////////////////////////////////////////////////////
 // Calculates impact parameter between PV and  Ds + mu flight direction (overloaded for reco::Vertex*
 //
-inline double getIP3D(reco::Vertex* vtxPtr, double sv_x, double sv_y, double sv_z, math::PtEtaPhiMLorentzVector fittedDs, math::PtEtaPhiMLorentzVector refittedMu){
+inline double getIP3D(const reco::Vertex& vtxPtr, double sv_x, double sv_y, double sv_z, const math::PtEtaPhiMLorentzVector& fittedDs, const math::PtEtaPhiMLorentzVector& refittedMu){
 
   // define direction between SV and PV
-  double dx = sv_x - vtxPtr->position().x();
-  double dy = sv_y - vtxPtr->position().y();
-  double dz = sv_z - vtxPtr->position().z();
+  double dx = sv_x - vtxPtr.position().x();
+  double dy = sv_y - vtxPtr.position().y();
+  double dz = sv_z - vtxPtr.position().z();
 
   // define Ds + mu four momentum
   math::PtEtaPhiMLorentzVector dsMu = fittedDs + refittedMu;

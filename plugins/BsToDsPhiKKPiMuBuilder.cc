@@ -58,6 +58,7 @@
 #include "TVector3.h" 
 #include "TMatrixDSym.h"
 #include "TVectorD.h"
+#include "bmmmExtras.h" 
 
 // for gen matching
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h" 
@@ -632,7 +633,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       edm::Ptr<pat::PackedCandidate> hadPtr;
       if (hadIdx < pcand->size()) hadPtr = edm::Ptr<pat::PackedCandidate>(pcand, hadIdx); //normal tracks
       else hadPtr = edm::Ptr<pat::PackedCandidate>(tracksLost, hadIdx - pcand->size());  //lost tracks
-    
+  
+      //require high purity 
+      //try {hadPtr->bestTrack()->quality(reco::TrackBase::qualityByName("highPurity"));}
+      //catch(const std::exception& e) {std::cout << e.what()  << "cannot access this at hadIdx "<< hadIdx << "pcand size total is: " << pcand->size() << std::endl;}
       if (!hadSelection_(*hadPtr)) continue; 
     
       float muonHdR = reco::deltaR(*hadPtr,*muPtr);
@@ -641,6 +645,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
       (reco::deltaR(*hadPtr, *muPtr) > mindRHadMuon_)                                                        && 
       (fabs(hadPtr->bestTrack()->dz(pv_dz.position()) - muTrack.dz(pv_dz.position())) < maxdzDiffHadMuon_)) &&
       (fabs(hadPtr->bestTrack()->dxy(pv_dz.position())) < maxdxyHadPv_ ) ;
+
+      if (!hadPtr->bestTrack()->quality(reco::TrackBase::qualityByName("highPurity")) ) continue;
  
       if (!hSel) continue;
 
@@ -833,6 +839,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           const reco::Track k1Track = *k1Ptr->bestTrack();
           const reco::Track k2Track = *k2Ptr->bestTrack();
           const reco::Track piTrack = *piPtr->bestTrack();
+
 
           //////////////////////////////////////////////
           // Build track for corrected momentum scale //
@@ -1220,9 +1227,11 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           reco::Vertex pv_general;
 
           for(size_t vtxIdx = 0; vtxIdx < primaryVtx->size(); ++vtxIdx){
-            edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
 
+            edm::Ptr<reco::Vertex> vtxPtr(primaryVtx, vtxIdx);
+            if (!vtxPtr->isValid()) continue;
             float ip3d = getIP3D(vtxPtr, sv_x, sv_y, sv_z, phiPiVec, muVec);
+            if (!std::isfinite(ip3d)) continue;
 
             if((ip3d < minIp3d_general) || (pvIdx_general < 0)){
               minIp3d_general = ip3d;
@@ -1255,8 +1264,10 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           for(size_t vtxIdx = 0; vtxIdx < refitVtx.size(); ++vtxIdx){
 
             const reco::Vertex& vtx = refitVtx[vtxIdx];
+            if (!vtx.isValid() || !(vtx.ndof() > 0)) continue;
 
             float ip3d = getIP3D(vtx, sv_x, sv_y, sv_z, phiPiVec, muVec);
+            if (!std::isfinite(ip3d)) continue;
 
             if((ip3d < minIp3d) || (pvIdx < 0)){
               minIp3d= ip3d;
@@ -1345,6 +1356,12 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserCand("k2",k2Ptr);
           bs.addUserCand("pi",piPtr);
           bs.addUserCand("mu",muPtr); 
+
+          bs.addUserFloat("f_k1",f_k1);
+          bs.addUserFloat("f_k2",f_k2);
+          bs.addUserFloat("f_pi",f_pi);
+          bs.addUserFloat("f_mu",f_mu);
+
 
           //add final states 
           bs.addUserFloat("mu_px"    , muVec.px()     );
@@ -1455,6 +1472,38 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
           bs.addUserFloat("pi_cov_34", piTrackCorr.covariance(3,4));
           bs.addUserFloat("pi_cov_44", piTrackCorr.covariance(4,4));
 
+          // phi vertex
+          bs.addUserFloat("fv_cov_xx", recoFv.covariance(0, 0));
+          bs.addUserFloat("fv_cov_xy", recoFv.covariance(0, 1));
+          bs.addUserFloat("fv_cov_xz", recoFv.covariance(0, 2));
+          bs.addUserFloat("fv_cov_yy", recoFv.covariance(1, 1));
+          bs.addUserFloat("fv_cov_yz", recoFv.covariance(1, 2));
+          bs.addUserFloat("fv_cov_zz", recoFv.covariance(2, 2));
+          
+          // Ds vertex
+          bs.addUserFloat("tv_cov_xx", recoTv.covariance(0, 0));
+          bs.addUserFloat("tv_cov_xy", recoTv.covariance(0, 1));
+          bs.addUserFloat("tv_cov_xz", recoTv.covariance(0, 2));
+          bs.addUserFloat("tv_cov_yy", recoTv.covariance(1, 1));
+          bs.addUserFloat("tv_cov_yz", recoTv.covariance(1, 2));
+          bs.addUserFloat("tv_cov_zz", recoTv.covariance(2, 2));
+          
+          // Bs vertex
+          bs.addUserFloat("sv_cov_xx", recoSv.covariance(0, 0));
+          bs.addUserFloat("sv_cov_xy", recoSv.covariance(0, 1));
+          bs.addUserFloat("sv_cov_xz", recoSv.covariance(0, 2));
+          bs.addUserFloat("sv_cov_yy", recoSv.covariance(1, 1));
+          bs.addUserFloat("sv_cov_yz", recoSv.covariance(1, 2));
+          bs.addUserFloat("sv_cov_zz", recoSv.covariance(2, 2));
+          
+          // PV vertex
+          bs.addUserFloat("pv_cov_xx", pv.covariance(0, 0));
+          bs.addUserFloat("pv_cov_xy", pv.covariance(0, 1));
+          bs.addUserFloat("pv_cov_xz", pv.covariance(0, 2));
+          bs.addUserFloat("pv_cov_yy", pv.covariance(1, 1));
+          bs.addUserFloat("pv_cov_yz", pv.covariance(1, 2));
+          bs.addUserFloat("pv_cov_zz", pv.covariance(2, 2));
+
           // add information about trg muon
           bs.addUserInt("mu_is_tracker",     muPtr->isTrackerMuon());
           bs.addUserInt("mu_is_pf",          muPtr->isPFMuon());
@@ -1509,45 +1558,143 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
           // for ID numbering check: https://github.com/cms-sw/cmssw/blob/master/DataFormats/MuonReco/interface/Muon.h
 
-          bs.addUserInt("mu_id_loose",               muPtr->passed(0)); // 
-          bs.addUserInt("mu_id_medium",              muPtr->passed(1)); // 
-          bs.addUserInt("mu_id_medium_prompt",       muPtr->passed(2)); // 
-          bs.addUserInt("mu_id_tight",               muPtr->passed(3)); // 
-          bs.addUserInt("mu_id_global_high_pt",      muPtr->passed(4)); // 
-          bs.addUserInt("mu_id_trk_high_pt",         muPtr->passed(5)); // 
-          bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(6)); // 
-          bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(7)); // 
-          bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(8)); // 
-          bs.addUserInt("mu_pf_iso_tight",           muPtr->passed(9)); // 
-          bs.addUserInt("mu_pf_iso_very_tight",      muPtr->passed(10)); // 
+  
+          bs.addUserInt("mu_id_loose",               muPtr->passed(reco::Muon::Selector(0))); // 
+          bs.addUserInt("mu_id_medium",              muPtr->passed(reco::Muon::Selector(1))); // 
+          // medium prompt and the high-pt IDs: as in MuonSelectors.cc setCutBasedSelectorFlags, but w.r.t. the candidate PV
+          const bool muMediumPrompt = muon::isMediumMuon(*muPtr) && std::abs(muPtr->muonBestTrack()->dz(pv.position())) < 0.1
+                                      && std::abs(muPtr->muonBestTrack()->dxy(pv.position())) < 0.02;
+          bs.addUserInt("mu_id_medium_prompt",       muMediumPrompt); // 
+          // tight and soft: w.r.t. the candidate PV (beam-spot-constrained refit without the signal tracks), as Bmmm;
+          // the MiniAOD selector bits are computed w.r.t. PV[0], often not the candidate PV in B-parking events
+          bs.addUserInt("mu_id_tight",               muon::isTightMuon(*muPtr, pv)); // 
+          bs.addUserInt("mu_id_global_high_pt",      muon::isHighPtMuon(*muPtr, pv)); // 
+          bs.addUserInt("mu_id_trk_high_pt",         muon::isTrackerHighPtMuon(*muPtr, pv)); // 
+          bs.addUserInt("mu_pf_iso_very_loose",      muPtr->passed(reco::Muon::Selector(6))); // 
+          bs.addUserInt("mu_pf_iso_loose",           muPtr->passed(reco::Muon::Selector(7))); // 
+          bs.addUserInt("mu_pf_iso_medium",          muPtr->passed(reco::Muon::Selector(8))); // 
+          bs.addUserInt("mu_pf_iso_tight",           muPtr->passed(reco::Muon::Selector(9))); // 
+          bs.addUserInt("mu_pf_iso_very_tight",      muPtr->passed(reco::Muon::Selector(10))); // 
+  
+          bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(reco::Muon::Selector(11))); // 
+          bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(reco::Muon::Selector(12))); // 
+          bs.addUserInt("mu_id_soft",                muon::isSoftMuon(*muPtr, pv)); // 
+          bs.addUserInt("mu_id_soft_mva",            muPtr->passed(reco::Muon::Selector(14))); // 
+          bs.addUserInt("mu_mva_loose",              muPtr->passed(reco::Muon::Selector(15))); // 
+          bs.addUserInt("mu_mva_medium",             muPtr->passed(reco::Muon::Selector(16))); // 
+          bs.addUserInt("mu_mva_tight",              muPtr->passed(reco::Muon::Selector(17))); // 
+          bs.addUserInt("mu_mini_iso_loose",         muPtr->passed(reco::Muon::Selector(18))); // 
+          bs.addUserInt("mu_mini_iso_medium",        muPtr->passed(reco::Muon::Selector(19))); // 
+          bs.addUserInt("mu_mini_iso_tight",         muPtr->passed(reco::Muon::Selector(20))); // 
+  
+          bs.addUserInt("mu_mini_iso_very_tight",    muPtr->passed(reco::Muon::Selector(21))); // 
+          bs.addUserInt("mu_trigger_id_loose",       muPtr->passed(reco::Muon::Selector(22))); // 
+          bs.addUserInt("mu_in_time_muon",           muPtr->passed(reco::Muon::Selector(23))); // 
+          bs.addUserInt("mu_pf_iso_very_very_tight", muPtr->passed(reco::Muon::Selector(24))); // 
+          bs.addUserInt("mu_multi_iso_loose",        muPtr->passed(reco::Muon::Selector(25))); // 
+          bs.addUserInt("mu_multi_iso_medium",       muPtr->passed(reco::Muon::Selector(26))); // 
+          bs.addUserInt("mu_puppi_iso_loose",        muPtr->passed(reco::Muon::Selector(27))); // 
+          bs.addUserInt("mu_puppi_iso_medium",       muPtr->passed(reco::Muon::Selector(28))); // 
+          bs.addUserInt("mu_puppi_iso_tight",        muPtr->passed(reco::Muon::Selector(29))); // 
+          bs.addUserInt("mu_mva_v_tight",            muPtr->passed(reco::Muon::Selector(30))); // 
+  
+          bs.addUserInt("mu_mva_vv_tight",           muPtr->passed(reco::Muon::Selector(31))); // 
+          bs.addUserInt("mu_low_pt_mva_loose",       muPtr->passed(reco::Muon::Selector(32))); // 
+          bs.addUserInt("mu_low_pt_mva_medium",      muPtr->passed(reco::Muon::Selector(33))); // 
+          bs.addUserInt("mu_mv_id_wp_medium",        muPtr->passed(reco::Muon::Selector(34))); // 
+          bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(reco::Muon::Selector(35))); // 
 
-          bs.addUserInt("mu_tk_iso_loose",           muPtr->passed(11)); // 
-          bs.addUserInt("mu_tk_iso_tight",           muPtr->passed(12)); // 
-          bs.addUserInt("mu_id_soft",                muPtr->passed(13)); // 
-          bs.addUserInt("mu_id_soft_mva",            muPtr->passed(14)); // 
-          bs.addUserInt("mu_mva_loose",              muPtr->passed(15)); // 
-          bs.addUserInt("mu_mva_medium",             muPtr->passed(16)); // 
-          bs.addUserInt("mu_mva_tight",              muPtr->passed(17)); // 
-          bs.addUserInt("mu_mini_iso_loose",         muPtr->passed(18)); // 
-          bs.addUserInt("mu_mini_iso_medium",        muPtr->passed(19)); // 
-          bs.addUserInt("mu_mini_iso_tight",         muPtr->passed(20)); // 
+          // For the cov flow (using Bmmm library)
+          const bmmm::HitContent h_mu = bmmm::hitContent(*muPtr->bestTrack());
 
-          bs.addUserInt("mu_mini_iso_very_tight",    muPtr->passed(21)); // 
-          bs.addUserInt("mu_trigger_id_loose",       muPtr->passed(22)); // 
-          bs.addUserInt("mu_in_time_muon",           muPtr->passed(23)); // 
-          bs.addUserInt("mu_pf_iso_very_very_tight", muPtr->passed(24)); // 
-          bs.addUserInt("mu_multi_iso_loose",        muPtr->passed(25)); // 
-          bs.addUserInt("mu_multi_iso_medium",       muPtr->passed(26)); // 
-          bs.addUserInt("mu_puppi_iso_loose",        muPtr->passed(27)); // 
-          bs.addUserInt("mu_puppi_iso_medium",       muPtr->passed(28)); // 
-          bs.addUserInt("mu_puppi_iso_tight",        muPtr->passed(29)); // 
-          bs.addUserInt("mu_mva_v_tight",            muPtr->passed(30)); // 
-
-          bs.addUserInt("mu_mva_vv_tight",           muPtr->passed(31)); // 
-          bs.addUserInt("mu_low_pt_mva_loose",       muPtr->passed(32)); // 
-          bs.addUserInt("mu_low_pt_mva_medium",      muPtr->passed(33)); // 
-          bs.addUserInt("mu_mv_id_wp_medium",        muPtr->passed(34)); // 
-          bs.addUserInt("mu_mv_id_wp_tight",         muPtr->passed(35)); // 
+          bs.addUserInt("mu_n_pix_hit",         h_mu.n_pix_hit);
+          bs.addUserInt("mu_n_pix_b_hit",       h_mu.n_pix_b_hit);
+          bs.addUserInt("mu_n_pix_e_hit",       h_mu.n_pix_e_hit);
+          bs.addUserInt("mu_n_pix_layer",       h_mu.n_pix_layer);
+          bs.addUserInt("mu_n_trk_layer",       h_mu.n_trk_layer);
+          bs.addUserInt("mu_pix_first_b_layer", h_mu.pix_first_b_layer);
+          bs.addUserInt("mu_pix_first_e_disk",  h_mu.pix_first_e_disk);
+          bs.addUserInt("mu_pix_first_layer",   h_mu.pix_first_layer);
+          bs.addUserInt("mu_n_pix_miss_inner",  h_mu.n_pix_miss_inner);
+          bs.addUserInt("mu_n_pix_inact_inner", h_mu.n_pix_inact_inner);
+          bs.addUserInt("mu_pix_valid_mask",    h_mu.pix_valid_mask);
+          bs.addUserInt("mu_pix_miss_mask",     h_mu.pix_miss_mask);
+          bs.addUserInt("mu_pix_inact_mask",    h_mu.pix_inact_mask);
+          bs.addUserInt("mu_pix_hit_count",     h_mu.pix_hit_count);
+      
+          bs.addUserInt("mu_best_trk_type", static_cast<int>(muPtr->muonBestTrackType()));
+      
+          // k1
+          const bmmm::HitContent h_k1 = bmmm::hitContent(*k1Ptr->bestTrack());
+          bs.addUserInt("k1_n_pix_hit",         h_k1.n_pix_hit);
+          bs.addUserInt("k1_n_pix_b_hit",       h_k1.n_pix_b_hit);
+          bs.addUserInt("k1_n_pix_e_hit",       h_k1.n_pix_e_hit);
+          bs.addUserInt("k1_n_pix_layer",       h_k1.n_pix_layer);
+          bs.addUserInt("k1_n_trk_layer",       h_k1.n_trk_layer);
+          bs.addUserInt("k1_pix_first_b_layer", h_k1.pix_first_b_layer);
+          bs.addUserInt("k1_pix_first_e_disk",  h_k1.pix_first_e_disk);
+          bs.addUserInt("k1_pix_first_layer",   h_k1.pix_first_layer);
+          bs.addUserInt("k1_n_pix_miss_inner",  h_k1.n_pix_miss_inner);
+          bs.addUserInt("k1_n_pix_inact_inner", h_k1.n_pix_inact_inner);
+          bs.addUserInt("k1_pix_valid_mask",    h_k1.pix_valid_mask);
+          bs.addUserInt("k1_pix_miss_mask",     h_k1.pix_miss_mask);
+          bs.addUserInt("k1_pix_inact_mask",    h_k1.pix_inact_mask);
+          bs.addUserInt("k1_pix_hit_count",     h_k1.pix_hit_count);
+      
+          bs.addUserInt("k1_from_pv",           k1Ptr->fromPV());
+          bs.addUserInt("k1_pv_assoc_q",        static_cast<int>(k1Ptr->pvAssociationQuality()));
+          bs.addUserInt("k1_high_purity",       k1Ptr->trackHighPurity());
+          bs.addUserInt("k1_high_purity_string",k1Ptr->bestTrack()->quality(reco::TrackBase::qualityByName("highPurity")));
+          bs.addUserInt("k1_lost_inner_hits",   k1Ptr->lostInnerHits());
+          bs.addUserInt("k1_is_lost",           k1Idx >= pcand->size());
+      
+          // k2
+          const bmmm::HitContent h_k2 = bmmm::hitContent(*k2Ptr->bestTrack());
+          bs.addUserInt("k2_n_pix_hit",         h_k2.n_pix_hit);
+          bs.addUserInt("k2_n_pix_b_hit",       h_k2.n_pix_b_hit);
+          bs.addUserInt("k2_n_pix_e_hit",       h_k2.n_pix_e_hit);
+          bs.addUserInt("k2_n_pix_layer",       h_k2.n_pix_layer);
+          bs.addUserInt("k2_n_trk_layer",       h_k2.n_trk_layer);
+          bs.addUserInt("k2_pix_first_b_layer", h_k2.pix_first_b_layer);
+          bs.addUserInt("k2_pix_first_e_disk",  h_k2.pix_first_e_disk);
+          bs.addUserInt("k2_pix_first_layer",   h_k2.pix_first_layer);
+          bs.addUserInt("k2_n_pix_miss_inner",  h_k2.n_pix_miss_inner);
+          bs.addUserInt("k2_n_pix_inact_inner", h_k2.n_pix_inact_inner);
+          bs.addUserInt("k2_pix_valid_mask",    h_k2.pix_valid_mask);
+          bs.addUserInt("k2_pix_miss_mask",     h_k2.pix_miss_mask);
+          bs.addUserInt("k2_pix_inact_mask",    h_k2.pix_inact_mask);
+          bs.addUserInt("k2_pix_hit_count",     h_k2.pix_hit_count);
+      
+          bs.addUserInt("k2_from_pv",         k2Ptr->fromPV());
+          bs.addUserInt("k2_pv_assoc_q",      static_cast<int>(k2Ptr->pvAssociationQuality()));
+          bs.addUserInt("k2_high_purity",     k2Ptr->trackHighPurity());
+          bs.addUserInt("k2_high_purity_string",k2Ptr->bestTrack()->quality(reco::TrackBase::qualityByName("highPurity")));
+          bs.addUserInt("k2_lost_inner_hits", k2Ptr->lostInnerHits());
+          bs.addUserInt("k2_is_lost",         k2Idx >= pcand->size());
+      
+          // pi
+          const bmmm::HitContent h_pi = bmmm::hitContent(*piPtr->bestTrack());
+          bs.addUserInt("pi_n_pix_hit",         h_pi.n_pix_hit);
+          bs.addUserInt("pi_n_pix_b_hit",       h_pi.n_pix_b_hit);
+          bs.addUserInt("pi_n_pix_e_hit",       h_pi.n_pix_e_hit);
+          bs.addUserInt("pi_n_pix_layer",       h_pi.n_pix_layer);
+          bs.addUserInt("pi_n_trk_layer",       h_pi.n_trk_layer);
+          bs.addUserInt("pi_pix_first_b_layer", h_pi.pix_first_b_layer);
+          bs.addUserInt("pi_pix_first_e_disk",  h_pi.pix_first_e_disk);
+          bs.addUserInt("pi_pix_first_layer",   h_pi.pix_first_layer);
+          bs.addUserInt("pi_n_pix_miss_inner",  h_pi.n_pix_miss_inner);
+          bs.addUserInt("pi_n_pix_inact_inner", h_pi.n_pix_inact_inner);
+          bs.addUserInt("pi_pix_valid_mask",    h_pi.pix_valid_mask);
+          bs.addUserInt("pi_pix_miss_mask",     h_pi.pix_miss_mask);
+          bs.addUserInt("pi_pix_inact_mask",    h_pi.pix_inact_mask);
+          bs.addUserInt("pi_pix_hit_count",     h_pi.pix_hit_count);
+      
+          bs.addUserInt("pi_from_pv",         piPtr->fromPV());
+          bs.addUserInt("pi_pv_assoc_q",      static_cast<int>(piPtr->pvAssociationQuality()));
+          bs.addUserInt("pi_high_purity",     piPtr->trackHighPurity());
+          bs.addUserInt("pi_high_purity_string",piPtr->bestTrack()->quality(reco::TrackBase::qualityByName("highPurity")));
+          bs.addUserInt("pi_lost_inner_hits", piPtr->lostInnerHits());
+          bs.addUserInt("pi_is_lost",         piIdx >= pcand->size());
 
 
           const float phiErr = std::sqrt(std::max(0., phiParticle->currentState().kinematicParametersError().matrix()(6,6)));
@@ -2347,6 +2494,8 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
               // loop over all refit vertices 
               const reco::Vertex& vtx = refitVtx[vtxIdx];
+              if (!vtx.isValid() || !(vtx.ndof() > 0)) continue;
+
 
               // and minimize the dz           
               float vtxDz = fabs( chPtr->vz() - vtx.z() );  
@@ -2565,6 +2714,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
               // loop over all refit vertices 
               const reco::Vertex& vtx = refitVtx[vtxIdx];
+              if (!vtx.isValid() || !(vtx.ndof() > 0)) continue;
 
               // and minimize the dz           
               float vtxDz = fabs( chPtr->vz() - vtx.z() );  

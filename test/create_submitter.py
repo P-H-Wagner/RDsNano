@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('channel') # sig or hb or data
 parser.add_argument('nFiles')  # nr of miniAOD files to process
 parser.add_argument('-f', '--failedCrab') #date_time of crab, if given, the ntuplizer will run on minis which failed during crab
+parser.add_argument('-m','--missing') #date_time of crab, if given, the ntuplizer will run on minis which failed during crab
 args = parser.parse_args()
 
 
@@ -21,11 +22,11 @@ filesPerJob = 1
 
 if (int(args.nFiles) < nMaxJobs) and (int(args.nFiles) != -1):
   filesPerJob = 1 #below 500 jobs we can take 1 file per job and thus short
-  queue = 'short' 
-  time = 60
+  queue = 'standard' 
+  time = 360
 else:
-  queue = 'short'
-  time = 60
+  queue = 'standard'
+  time = 360
   #mem = 2500
 print("========> processing ", filesPerJob, " files per job")
 
@@ -33,7 +34,7 @@ print("========> processing ", filesPerJob, " files per job")
 
 #queue = 'standard'
 #time = 60
-nevents = 1000
+nevents = -1
 nFiles = int(args.nFiles)
 now = datetime.now()
 dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
@@ -111,8 +112,8 @@ if args.channel == 'bc':
   naming = 'bc'
 
 if args.channel == 'data':
-  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH1/BPH1_partC.txt' #data bParking 2018 part D
-  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH2/BPH2_partC.txt' #data bParking 2018 part D
+  #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH1/BPH1_partA.txt' #data bParking 2018 part D
+  directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH2/BPH2_partA.txt' #data bParking 2018 part D
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH3/BPH3_partC.txt' #data bParking 2018 part D
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH5/BPH5_partC.txt' #data bParking 2018 part D
   #directory = '/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/data/BPH6/BPH6_partA.txt' #data bParking 2018 part D
@@ -146,17 +147,45 @@ if args.failedCrab is not None:
 
 #####################################
 
+if args.missing is not None:
+ 
+  print("===> Resubmission TASK")
+
+  directory = './missing/missing_minis_' + args.missing + '.txt' 
+  inputfiles = filesFromTxt(directory)
+  naming = 'all_signals'
+
+  #overwrite dt_string to the old one
+  dt_string = args.missing
+
+  with open("./missing/missing_chunks_{}.txt".format(dt_string)) as f:
+    chunk_numbers = [int(line.strip()) for line in f if line.strip()]
+
+
+
 if nFiles != -1:
   #process not the whole dataset but only nFiles
   inputfiles = inputfiles[0:nFiles] #50 files give ca 200k events
 
-os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/"+dt_string)
-os.makedirs(dt_string+"/logs")
-os.makedirs(dt_string+"/errs")
+os.makedirs("/pnfs/psi.ch/cms/trivcat/store/user/pahwagne/nanoAOD/"+dt_string, exist_ok=True)
+os.makedirs(dt_string+"/logs", exist_ok=True)
+os.makedirs(dt_string+"/errs", exist_ok=True)
+
 
 for i,j in enumerate(range(0, len(inputfiles), filesPerJob)):
 
   fin = inputfiles[j:j+filesPerJob]
+
+  #################### FOR RESUBMISSION ONLY ######################
+  if args.missing is not None:
+    print(j)
+    print("Changing i from ", i)
+    i = chunk_numbers[j]
+    print(" ... to ", i)
+
+  #################################################################
+
+
   #print(fin)
   #template
   temp = open("temp_cfg.py", "rt")

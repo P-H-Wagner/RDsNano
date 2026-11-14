@@ -471,39 +471,81 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
 
   //this is a lambda function, takes my reference, returns int
   //matches reco to AOD in dr and charge
-  auto matchAodTrack = [&](double eta, double phi, int charge) -> int {
+  //auto matchAodTrack = [&](double eta, double phi, int charge) -> int {
 
-  int    bestIdx  = -1;
-  double mindR    = 1e9;
-  //loop over AOD and match
-  for (size_t t = 0; t < unpackedTracks->size(); ++t) {
+  //int    bestIdx  = -1;
+  //double mindR    = 1e9;
+  ////loop over AOD and match
+  //for (size_t t = 0; t < unpackedTracks->size(); ++t) {
 
-    const reco::Track& trk = (*unpackedTracks)[t];
+  //  const reco::Track& trk = (*unpackedTracks)[t];
 
-    //match in charge and dR
-    if (trk.charge() != charge) continue;
-    const double dr = reco::deltaR(trk.eta(), trk.phi(), eta, phi);
+  //  //match in charge and dR
+  //  if (trk.charge() != charge) continue;
+  //  const double dr = reco::deltaR(trk.eta(), trk.phi(), eta, phi);
 
-    if (dr < mindR) { 
-      mindR = dr; 
-      bestIdx = (int)t; 
+  //  if (dr < mindR) { 
+  //    mindR = dr; 
+  //    bestIdx = (int)t; 
+  //  }
+  // }
+
+  // return bestIdx;
+  //};
+
+
+  constexpr double kAodTrkDrMatch     = 0.01;
+  constexpr double kAodTrkRelPtMatch  = 0.05;
+
+  // matches reco to AOD in dR, relative pt and charge; returns -1 if nothing passes
+  auto matchAodTrack = [&](double pt, double eta, double phi, int charge) -> int {
+  
+    int    bestIdx = -1;
+    double minDr   = 1e9;
+  
+    for (size_t t = 0; t < unpackedTracks->size(); ++t) {
+  
+      const reco::Track& trk = (*unpackedTracks)[t];
+  
+      if (trk.charge() != charge) continue;
+  
+      const double dr = reco::deltaR(trk.eta(), trk.phi(), eta, phi);
+      if (dr >= kAodTrkDrMatch) continue;
+  
+      if (std::abs(trk.pt() - pt) >= kAodTrkRelPtMatch * pt) continue;
+  
+      if (dr < minDr) {
+        minDr   = dr;
+        bestIdx = (int)t;
+      }
     }
-   }
-
-   return bestIdx;
+  
+    return bestIdx;
   };
 
   //prepare a vector of size nPf (normal + lost), filled with -2
   std::vector<int> aodMatchPf(nPf, -2);
 
-  // another lambda explicitly to match on pf collection
   auto matchAodTrackPf = [&](size_t idx) -> int {
     if (aodMatchPf[idx] == -2) {
       const auto p = pfAt(idx);
-      aodMatchPf[idx] = matchAodTrack(p->eta(), p->phi(), p->charge());
+      aodMatchPf[idx] = matchAodTrack(p->pt(), p->eta(), p->phi(), p->charge());
     }
     return aodMatchPf[idx];
   };
+
+
+
+
+
+  //// another lambda explicitly to match on pf collection
+  //auto matchAodTrackPf = [&](size_t idx) -> int {
+  //  if (aodMatchPf[idx] == -2) {
+  //    const auto p = pfAt(idx);
+  //    aodMatchPf[idx] = matchAodTrack(p->eta(), p->phi(), p->charge());
+  //  }
+  //  return aodMatchPf[idx];
+  //};
 
   //////////////////////////////////////////////////////
   // Acces the trigger muon inside the                //
@@ -563,7 +605,7 @@ void BsToDsPhiKKPiMuBuilder::produce(edm::StreamID, edm::Event &iEvent, const ed
     // get matching aod track  //
     /////////////////////////////
 
-    const int trkIdxMu = matchAodTrack(muTrack.eta(), muTrack.phi(), muPtr->charge());
+    const int trkIdxMu = matchAodTrack(muTrack.pt(), muTrack.eta(), muTrack.phi(), muPtr->charge());
     if (trkIdxMu < 0) continue; 
 
 
